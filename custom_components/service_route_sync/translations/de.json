@@ -1,0 +1,90 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Dienste auswählen",
+        "description": "Wähle eine bestehende UniFi-Anbindung. Die Einrichtung startet mit einer Vorschau ohne Routeränderungen.",
+        "data": {
+          "unifi_entry_id": "UniFi-Integration",
+          "services": "Dienste und Spiele",
+          "ipv6": "IPv6 einbeziehen",
+          "maximum_prefixes": "Maximale Präfixe pro Route",
+          "maximum_removal": "Maximal entfallende Präfixe (%)",
+          "interval_hours": "Prüfintervall (Stunden)"
+        }
+      },
+      "sources": {
+        "title": "Zielnetze eingrenzen",
+        "description": "Mehrere Werte mit Kommas trennen. SAP benötigt die dokumentierten Zielnetze deiner Dienste.",
+        "data": {
+          "azure_tags": "Azure Service Tags (z. B. Storage.WestEurope)",
+          "aws_regions": "AWS-Regionen (z. B. eu-central-1)",
+          "aws_services": "AWS-Dienste (z. B. S3)",
+          "sap_prefixes": "SAP-Zielnetze (CIDR)",
+          "custom_prefixes": "Eigene Zielnetze (CIDR)",
+          "m365_categories": "Microsoft-365-Endpunktkategorien"
+        }
+      },
+      "routes": {
+        "title": "Vorhandene Routen zuordnen",
+        "description": "Ordne jedem Dienst eine eigene IP-Route zu. WAN, Gerätezuordnung und Aktivierung bleiben erhalten. Dienste: {services}"
+      }
+    },
+    "error": {
+      "no_services": "Mindestens einen Dienst auswählen.",
+      "invalid_sources": "Auswahl oder öffentliche CIDR-Zielnetze prüfen.",
+      "duplicate_routes": "Jeder Dienst benötigt eine eigene Route.",
+      "invalid_routes": "Eine ausgewählte Route ist nicht mehr verfügbar.",
+      "immutable_router": "Für einen anderen Router eine eigene Integration einrichten."
+    },
+    "abort": {
+      "router_unavailable": "Die gewählte UniFi-Anbindung ist nicht verfügbar.",
+      "no_routes": "Lege zuerst passende IP-Routen im UniFi-Gateway an.",
+      "already_configured": "Für diese UniFi-Anbindung ist Service Route Sync bereits eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "Dienste auswählen",
+        "description": "Wähle eine bestehende UniFi-Anbindung. Die Einrichtung startet mit einer Vorschau ohne Routeränderungen.",
+        "data": {
+          "unifi_entry_id": "UniFi-Integration",
+          "services": "Dienste und Spiele",
+          "ipv6": "IPv6 einbeziehen",
+          "maximum_prefixes": "Maximale Präfixe pro Route",
+          "maximum_removal": "Maximal entfallende Präfixe (%)",
+          "interval_hours": "Prüfintervall (Stunden)"
+        }
+      },
+      "sources": {
+        "title": "Zielnetze eingrenzen",
+        "description": "Mehrere Werte mit Kommas trennen. SAP benötigt die dokumentierten Zielnetze deiner Dienste.",
+        "data": {
+          "azure_tags": "Azure Service Tags (z. B. Storage.WestEurope)",
+          "aws_regions": "AWS-Regionen (z. B. eu-central-1)",
+          "aws_services": "AWS-Dienste (z. B. S3)",
+          "sap_prefixes": "SAP-Zielnetze (CIDR)",
+          "custom_prefixes": "Eigene Zielnetze (CIDR)",
+          "m365_categories": "Microsoft-365-Endpunktkategorien"
+        }
+      },
+      "routes": {
+        "title": "Vorhandene Routen zuordnen",
+        "description": "Ordne jedem Dienst eine eigene IP-Route zu. WAN, Gerätezuordnung und Aktivierung bleiben erhalten. Dienste: {services}"
+      }
+    },
+    "error": {
+      "no_services": "Mindestens einen Dienst auswählen.",
+      "invalid_sources": "Auswahl oder öffentliche CIDR-Zielnetze prüfen.",
+      "duplicate_routes": "Jeder Dienst benötigt eine eigene Route.",
+      "invalid_routes": "Eine ausgewählte Route ist nicht mehr verfügbar.",
+      "immutable_router": "Für einen anderen Router eine eigene Integration einrichten."
+    },
+    "abort": {
+      "router_unavailable": "Die gewählte UniFi-Anbindung ist nicht verfügbar.",
+      "no_routes": "Lege zuerst passende IP-Routen im UniFi-Gateway an.",
+      "already_configured": "Für diese UniFi-Anbindung ist Service Route Sync bereits eingerichtet."
+    }
+  }
+}

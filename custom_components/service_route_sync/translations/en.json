@@ -1,0 +1,90 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select services",
+        "description": "Select an existing UniFi integration. Setup starts with a preview and makes no router changes.",
+        "data": {
+          "unifi_entry_id": "UniFi integration",
+          "services": "Services and games",
+          "ipv6": "Include IPv6",
+          "maximum_prefixes": "Maximum prefixes per route",
+          "maximum_removal": "Maximum removed prefixes (%)",
+          "interval_hours": "Refresh interval (hours)"
+        }
+      },
+      "sources": {
+        "title": "Select destinations",
+        "description": "Separate values with commas. SAP requires documented destination prefixes for your services.",
+        "data": {
+          "azure_tags": "Azure service tags (e.g. Storage.WestEurope)",
+          "aws_regions": "AWS regions (e.g. eu-central-1)",
+          "aws_services": "AWS services (e.g. S3)",
+          "sap_prefixes": "SAP destination prefixes (CIDR)",
+          "custom_prefixes": "Custom destination prefixes (CIDR)",
+          "m365_categories": "Microsoft 365 endpoint categories"
+        }
+      },
+      "routes": {
+        "title": "Bind existing routes",
+        "description": "Bind each service to a separate existing IP route. WAN, device scope and enabled state are preserved. Services: {services}"
+      }
+    },
+    "error": {
+      "no_services": "Select at least one service.",
+      "invalid_sources": "Check selections and public destination CIDRs.",
+      "duplicate_routes": "Each service needs a separate route.",
+      "invalid_routes": "A selected route is no longer available.",
+      "immutable_router": "Create a separate integration for a different router."
+    },
+    "abort": {
+      "router_unavailable": "The selected UniFi integration is unavailable.",
+      "no_routes": "Create suitable IP-based routes on your UniFi gateway first.",
+      "already_configured": "Service Route Sync is already configured for this UniFi integration."
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "Select services",
+        "description": "Select an existing UniFi integration. Setup starts with a preview and makes no router changes.",
+        "data": {
+          "unifi_entry_id": "UniFi integration",
+          "services": "Services and games",
+          "ipv6": "Include IPv6",
+          "maximum_prefixes": "Maximum prefixes per route",
+          "maximum_removal": "Maximum removed prefixes (%)",
+          "interval_hours": "Refresh interval (hours)"
+        }
+      },
+      "sources": {
+        "title": "Select destinations",
+        "description": "Separate values with commas. SAP requires documented destination prefixes for your services.",
+        "data": {
+          "azure_tags": "Azure service tags (e.g. Storage.WestEurope)",
+          "aws_regions": "AWS regions (e.g. eu-central-1)",
+          "aws_services": "AWS services (e.g. S3)",
+          "sap_prefixes": "SAP destination prefixes (CIDR)",
+          "custom_prefixes": "Custom destination prefixes (CIDR)",
+          "m365_categories": "Microsoft 365 endpoint categories"
+        }
+      },
+      "routes": {
+        "title": "Bind existing routes",
+        "description": "Bind each service to a separate existing IP route. WAN, device scope and enabled state are preserved. Services: {services}"
+      }
+    },
+    "error": {
+      "no_services": "Select at least one service.",
+      "invalid_sources": "Check selections and public destination CIDRs.",
+      "duplicate_routes": "Each service needs a separate route.",
+      "invalid_routes": "A selected route is no longer available.",
+      "immutable_router": "Create a separate integration for a different router."
+    },
+    "abort": {
+      "router_unavailable": "The selected UniFi integration is unavailable.",
+      "no_routes": "Create suitable IP-based routes on your UniFi gateway first.",
+      "already_configured": "Service Route Sync is already configured for this UniFi integration."
+    }
+  }
+}
