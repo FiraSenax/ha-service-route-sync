@@ -7,6 +7,8 @@ from .coordinator import RouteCoordinator
 
 
 async def async_setup_entry(hass, entry):
+    if entry.unique_id is None:
+        hass.config_entries.async_update_entry(entry, unique_id=entry.data["unifi_entry_id"])
     coordinator = RouteCoordinator(hass, entry)
     await coordinator.load()
     try:
