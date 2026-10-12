@@ -7,7 +7,8 @@ from .entity import RouteEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    async_add_entities([RouteSwitch(entry.runtime_data, "automatic", "Automatic route updates")])
+    if coordinator := entry.runtime_data.routes:
+        async_add_entities([RouteSwitch(coordinator, "automatic", "Automatic route updates")])
 
 
 class RouteSwitch(RouteEntity, SwitchEntity):

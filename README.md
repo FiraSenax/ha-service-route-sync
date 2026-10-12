@@ -80,6 +80,21 @@ Mehrere Routeränderungen sind **keine atomare Transaktion**. Scheitert eine sp�
 
 Diagnostik enthält Dienstnamen und Zähler, keine Zugangsdaten, WAN-IDs, Quellgeräte oder Ziel-IP-Listen. Sicherungen enthalten die lokale Routerkonfiguration und sollten wie andere HA-Konfigurationsdaten geschützt werden.
 
+## Lokale Erweiterung: WAN-Messung
+
+Der Entwicklungszweig ergänzt einen optionalen, rein lesenden WAN-Baustein.
+In den Integrationsoptionen **WAN überwachen** aktivieren, Gateway auswählen
+und die beiden Leitungen beispielsweise **DSL** und **Starlink** nennen.
+Pro Leitung stehen Download, Upload, Latenz, Verfügbarkeit im Messzeitraum
+und — sofern der Router ausdrücklich ein `up`-Feld liefert — der Linkzustand
+zur Verfügung. Ein fehlender Linkzustand bleibt unverfügbar.
+
+Das lokale Prüfintervall ist unabhängig von den öffentlichen Zielnetzquellen.
+Eine gestörte Datenquelle blockiert daher nicht die WAN-Messung. WAN-Messwerte
+beweisen keine IPv4-/IPv6-Erreichbarkeit und lösen keine Umschaltung aus.
+Die IPv6-Steuerung befindet sich noch in Entwicklung; Architektur und
+Abnahmekriterien stehen in [NETWORK_ARCHITECTURE.md](docs/NETWORK_ARCHITECTURE.md).
+
 ## Entwicklung
 
 ```sh
@@ -103,3 +118,8 @@ python -m venv .venv
 - [HACS Custom Repositories](https://www.hacs.xyz/docs/faq/custom_repositories/)
 
 MIT-Lizenz. Kein offizielles Produkt von Ubiquiti, Microsoft, AWS oder SAP.
+
+The optional [restricted gateway observer](docs/GATEWAY_OBSERVER.md) provides
+separate native IPv4/IPv6 connectivity entities. It has a dedicated key, pinned
+host identity and a verified read-only setup flow; it does not take over IPv6
+failover or change routing rules.

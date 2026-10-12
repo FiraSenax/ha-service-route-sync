@@ -1,0 +1,123 @@
+"""Fixed-scope Windows alert extraction and read-only Wazuh heartbeat lookup."""
+
+from dataclasses import dataclass
+import re
+import sqlite3
+from pathlib import Path
+from urllib.parse import quote
+
+from .windows_cursor import AlertCursor, WindowsSourceError, read_alert_page
+from .windows_archive import DailyCursor, read_daily_page
+
+
+def validate_agent_id(value):
+    if not isinstance(value, str) or not re.fullmatch(r"[0-9]{3}", value):
+        raise WindowsSourceError("Invalid configured Windows agent")
+    return value
+
+
+def extract_events(records, agent_id):
+    """No foreign agent data or raw alert structure enters the HA event stream."""
+    validate_agent_id(agent_id)
+    events = []
+    for record in records:
+        agent = record.get("agent")
+        if not isinstance(agent, dict) or agent.get("id") != agent_id:
+            continue
+        data = record.get("data")
+        win = data.get("win") if isinstance(data, dict) else None
+        system = win.get("system") if isinstance(win, dict) else None
+        if not isinstance(system, dict):
+            continue
+        stamp = system.get("systemTime") or record.get("timestamp")
+        provider, event_id = system.get("providerName"), system.get("eventID")
+        message = system.get("message", "")
+        if (
+            not isinstance(stamp, str)
+            or len(stamp) > 64
+            or not isinstance(provider, str)
+            or not 1 <= len(provider) <= 200
+        ):
+            continue
+        if type(event_id) is int and 0 <= event_id <= 65535:
+            event_id = str(event_id)
+        if not isinstance(event_id, str) or not re.fullmatch(r"[0-9]{1,5}", event_id):
+            continue
+        if not isinstance(message, str):
+            continue
+        level = system.get("level")
+        if type(level) is int:
+            level = str(level)
+        events.append(
+            {
+                "time": stamp,
+                "provider": provider,
+                "id": event_id,
+                "level": level
+                if isinstance(level, str) and level in {"0", "1", "2", "3", "4", "5"}
+                else None,
+                "message": message[:8192],
+            }
+        )
+    return tuple(events)
+
+
+def read_heartbeat(database: Path, agent_id):
+    validate_agent_id(agent_id)
+    # URI mode=ro prevents accidental creation or mutation of the manager DB.
+    uri = "file:" + quote(str(database.resolve()), safe="/") + "?mode=ro"
+    with sqlite3.connect(uri, uri=True, timeout=2) as connection:
+        connection.execute("PRAGMA query_only=ON")
+        row = connection.execute(
+            "SELECT last_keepalive FROM agent WHERE id=?", (int(agent_id),)
+        ).fetchone()
+    if row is None or type(row[0]) is not int or row[0] < 0:
+        raise WindowsSourceError("Windows agent heartbeat unavailable")
+    return {"last_keepalive": row[0]}
+
+
+@dataclass(frozen=True, slots=True)
+class WindowsBatch:
+    cursor: AlertCursor | DailyCursor | None
+    events: tuple
+    agent: dict | None
+    heartbeat_ok: bool
+    rotated: bool
+    malformed_records: int
+    partial_line: bool
+
+
+def read_windows_batch(alerts: Path, database: Path, cursor, agent_id, *, maximum_bytes=1048576):
+    """Run on the manager or in an executor, never HA's event loop."""
+    validate_agent_id(agent_id)
+    page = read_alert_page(
+        alerts, cursor, maximum_bytes=maximum_bytes, require_continuity=True
+    )
+    try:
+        heartbeat = read_heartbeat(database, agent_id)
+    except (sqlite3.Error, OSError, WindowsSourceError):
+        heartbeat = None
+    return WindowsBatch(
+        page.cursor,
+        extract_events(page.records, agent_id),
+        heartbeat,
+        heartbeat is not None,
+        page.rotated,
+        page.malformed_records,
+        page.partial_line,
+    )
+
+
+def read_windows_archive_batch(root, database, cursor, today, agent_id):
+    validate_agent_id(agent_id)
+    # Wazuh writes alerts for every agent. A minute of the shared log can
+    # exceed the old 32 KiB page even when our target agent has no events.
+    # Keep the output bounded separately by the fixed SSH reader's 64 KiB cap.
+    page = read_daily_page(root, cursor, today, maximum_bytes=1048576)
+    try:
+        heartbeat = read_heartbeat(database, agent_id)
+    except (sqlite3.Error, OSError, WindowsSourceError):
+        heartbeat = None
+    return WindowsBatch(page.cursor, extract_events(page.records, agent_id), heartbeat,
+                        heartbeat is not None, page.advanced_day,
+                        page.malformed_records, page.partial_line)

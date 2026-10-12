@@ -10,7 +10,13 @@
           "ipv6": "IPv6 einbeziehen",
           "maximum_prefixes": "Maximale Präfixe pro Route",
           "maximum_removal": "Maximal entfallende Präfixe (%)",
-          "interval_hours": "Prüfintervall (Stunden)"
+          "interval_hours": "Prüfintervall (Stunden)",
+          "network_enabled": "Internetanschlüsse überwachen (nur lesend)",
+          "client_monitoring_enabled": "PC-Netzwerk überwachen (nur lesend)",
+          "work_probe_enabled": "Microsoft-365-Verbindung vom Haus messen",
+          "network_metrics_enabled": "Geschützten Prometheus-Kompatibilitätsexport aktivieren",
+          "lady_enabled": "LadyOfGames-Netzwerkdiagnose",
+          "wifi_history_enabled": "WLAN-Historie aller Clients alle 30 Minuten speichern (lokal)"
         }
       },
       "sources": {
@@ -28,19 +34,105 @@
       "routes": {
         "title": "Vorhandene Routen zuordnen",
         "description": "Ordne jedem Dienst eine eigene IP-Route zu. WAN, Gerätezuordnung und Aktivierung bleiben erhalten. Dienste: {services}"
+      },
+      "network": {
+        "title": "Internetanschlüsse",
+        "description": "Wähle das Gateway. WAN1 und WAN2 werden getrennt gemessen. Fehlende Messwerte bleiben unbekannt; die Verfügbarkeit über ein Messfenster ist kein aktueller Verbindungsnachweis.",
+        "data": {
+          "network_gateway_id": "Gateway",
+          "network_primary_label": "Name für WAN1",
+          "network_secondary_label": "Name für WAN2",
+          "network_interval_seconds": "Abfrageintervall (Sekunden)",
+          "gateway_observer_enabled": "IPv4/IPv6 direkt am Gateway prüfen (eingeschränkter SSH-Zugang)",
+          "gateway_observer_reconfigure": "Beobachtungszugang neu einrichten",
+          "ipv6_actor_enabled": "IPv6-Regeln mit getrenntem Schlüssel prüfen",
+          "ipv6_actor_active": "Home Assistant als einzigen IPv6-Regelschreiber aktivieren",
+          "ipv6_actor_reconfigure": "IPv6-Regelzugang neu einrichten"
+        }
+      },
+      "gateway_observer": {
+        "title": "Gateway-Beobachtung",
+        "description": "Installiere zuerst den dokumentierten Beobachtungshelfer am Gateway und autorisiere ausschließlich diesen öffentlichen Schlüssel mit dem erzwungenen Lesebefehl:\n\n`{public_key}`\n\nBestätige den Ed25519-Hostschlüssel aus einem bereits vertrauenswürdigen Zugang. Die Integration ändert keine Routerregeln.",
+        "data": {
+          "gateway_host_public_key": "Ed25519-Hostschlüssel",
+          "gateway_primary_interface": "Primäres WAN-Interface",
+          "gateway_secondary_interface": "Sekundäres WAN-Interface"
+        }
+      },
+      "ipv6_actor": {
+        "title": "IPv6-Regelzugang",
+        "description": "Installiere den eingeschränkten Gateway-Aktor und autorisiere diesen eigenen öffentlichen Schlüssel ausschließlich für den festen Befehl `service-route-sync ipv6 v1`. Die Ersteinrichtung liest nur. Aktiviere HA erst nach dem Stopp des alten Schreibers in einem zweiten Schritt.\n\n`{public_key}`",
+        "data": {"gateway_host_public_key": "Ed25519-Hostschlüssel"}
+      },
+      "clients": {
+        "title": "Überwachte Geräte",
+        "description": "Wähle UniFi-Geräte aus. Bestehende Geräteprofile und ihre Netzwerkkarten bleiben zusammen erhalten. Ausgeschaltete neue Geräte müssen zur ersten Auswahl online sein.",
+        "data": {
+          "clients": "Geräte",
+          "client_probe_enabled": "PC-Probes am Gateway (nur lesend)",
+          "client_probe_reconfigure": "Probe-Zugang neu einrichten"
+        }
+      },
+      "client_probe": {
+        "title": "PC-Probe-Zugang",
+        "description": "Installiere den dokumentierten Client-Observer mit festem Lesebefehl und privater Gerätezuordnung. Autorisiere diese eigene öffentliche Identität:\n\n`{public_key}`\n\nBestätige den Gateway-Hostkey über eine bereits vertrauenswürdige Verbindung. Die Einrichtung prüft anschließend alle gewählten Profile.",
+        "data": {
+          "client_probe_host": "Gateway",
+          "gateway_host_public_key": "Öffentlicher Ed25519-Hostkey"
+        }
+      },
+      "reconfigure": {
+        "title": "PC-Profile übernehmen",
+        "description": "Einmalige administrative Übernahme bestehender Geräteprofile mit stabilen IDs und MAC-Gruppen. Der separate Probe-Zugang muss bereits eingerichtet sein und wird vor dem Speichern geprüft.",
+        "data": {
+          "profiles": "Vorhandene Profile",
+          "probe_key_id": "Identität des eingerichteten Probe-Zugangs",
+          "probe_host": "Gateway-Adresse des Probe-Zugangs"
+        }
+      },
+      "lady": {
+        "title": "LadyOfGames auswählen",
+        "description": "Wähle die Netzwerkschnittstellen dieses PCs. Die Gaming-Profile bleiben getrennt. Eine neue Einrichtung startet mit Beobachtung ohne Benachrichtigungen. Ist der PC offline, trage seine bekannte MAC-Adresse in das separate Feld ein.",
+        "data": {
+          "lady_clients": "PC-Schnittstellen",
+          "lady_reconfigure": "Quellenzugriffe neu prüfen",
+          "lady_manual_mac": "MAC-Adresse einer derzeit offline befindlichen PC-Schnittstelle"
+        }
+      },
+      "lady_sources": {
+        "title": "Lesende Quellen prüfen",
+        "description": "Richte getrennte, auf feste Lesebefehle beschränkte SSH-Zugriffe von HA ein. Host-Schlüssel müssen über einen vertrauten Verwaltungszugang ermittelt werden. DSL-Schlüssel: {dsl_public_key}\n\nPC-Schlüssel: {pc_public_key}\n\nWindows-Schlüssel: {windows_public_key}",
+        "data": {
+          "lady_gateway_host": "Router",
+          "lady_windows_host": "IP des Wazuh-Hosts",
+          "gateway_host_public_key": "Öffentlicher Ed25519-Host-Schlüssel des Routers",
+          "windows_host_public_key": "Öffentlicher Ed25519-Host-Schlüssel des Wazuh-Hosts"
+        }
       }
     },
     "error": {
-      "no_services": "Mindestens einen Dienst auswählen.",
+      "no_services": "Wähle einen Dienst oder aktiviere Internet- bzw. PC-Überwachung.",
       "invalid_sources": "Auswahl oder öffentliche CIDR-Zielnetze prüfen.",
       "duplicate_routes": "Jeder Dienst benötigt eine eigene Route.",
       "invalid_routes": "Eine ausgewählte Route ist nicht mehr verfügbar.",
-      "immutable_router": "Für einen anderen Router eine eigene Integration einrichten."
+      "immutable_router": "Für einen anderen Router eine eigene Integration einrichten.",
+      "invalid_gateway": "Das gewählte Gateway ist nicht mehr verfügbar.",
+      "invalid_configuration": "Bitte gültige Einstellungen auswählen.",
+      "invalid_observer_configuration": "Hostschlüssel oder WAN-Interfaces ungültig.",
+      "observer_unavailable": "Beobachtungszugang nicht erreichbar oder Antwort ungültig/veraltet. Helfer, Schlüssel und Uhrzeit prüfen.",
+      "invalid_clients": "Wähle mindestens ein gültiges Gerät ohne doppelte Zuordnung."
     },
     "abort": {
       "router_unavailable": "Die gewählte UniFi-Anbindung ist nicht verfügbar.",
       "no_routes": "Lege zuerst passende IP-Routen im UniFi-Gateway an.",
-      "already_configured": "Für diese UniFi-Anbindung ist Service Route Sync bereits eingerichtet."
+      "already_configured": "Für diese UniFi-Anbindung ist Service Route Sync bereits eingerichtet.",
+      "no_gateways": "Die UniFi-Anbindung liefert kein unterstütztes Gateway mit WAN-Messwerten.",
+      "observer_address_unavailable": "Das ausgewählte Gateway hat keine gültige lokale IP-Adresse.",
+      "observer_key_unavailable": "Der eigene Beobachtungsschlüssel konnte nicht sicher angelegt werden.",
+      "no_clients": "UniFi liefert keine auswählbaren Geräte.",
+      "invalid_client_import": "Profilübernahme ungültig oder Probe-Zugang nicht bestätigt.",
+      "client_profiles_imported": "Profile übernommen; die Integration wird neu geladen.",
+      "invalid_lady_configuration": "Die vorhandene Lady-Konfiguration ist ungültig."
     }
   },
   "options": {
@@ -54,7 +146,13 @@
           "ipv6": "IPv6 einbeziehen",
           "maximum_prefixes": "Maximale Präfixe pro Route",
           "maximum_removal": "Maximal entfallende Präfixe (%)",
-          "interval_hours": "Prüfintervall (Stunden)"
+          "interval_hours": "Prüfintervall (Stunden)",
+          "network_enabled": "Internetanschlüsse überwachen (nur lesend)",
+          "client_monitoring_enabled": "PC-Netzwerk überwachen (nur lesend)",
+          "work_probe_enabled": "Microsoft-365-Verbindung vom Haus messen",
+          "network_metrics_enabled": "Geschützten Prometheus-Kompatibilitätsexport aktivieren",
+          "lady_enabled": "LadyOfGames-Netzwerkdiagnose",
+          "wifi_history_enabled": "WLAN-Historie aller Clients alle 30 Minuten speichern (lokal)"
         }
       },
       "sources": {
@@ -72,19 +170,275 @@
       "routes": {
         "title": "Vorhandene Routen zuordnen",
         "description": "Ordne jedem Dienst eine eigene IP-Route zu. WAN, Gerätezuordnung und Aktivierung bleiben erhalten. Dienste: {services}"
+      },
+      "network": {
+        "title": "Internetanschlüsse",
+        "description": "Wähle das Gateway. WAN1 und WAN2 werden getrennt gemessen. Fehlende Messwerte bleiben unbekannt; die Verfügbarkeit über ein Messfenster ist kein aktueller Verbindungsnachweis.",
+        "data": {
+          "network_gateway_id": "Gateway",
+          "network_primary_label": "Name für WAN1",
+          "network_secondary_label": "Name für WAN2",
+          "network_interval_seconds": "Abfrageintervall (Sekunden)",
+          "gateway_observer_enabled": "IPv4/IPv6 direkt am Gateway prüfen (eingeschränkter SSH-Zugang)",
+          "gateway_observer_reconfigure": "Beobachtungszugang neu einrichten",
+          "ipv6_actor_enabled": "IPv6-Regeln mit getrenntem Schlüssel prüfen",
+          "ipv6_actor_active": "Home Assistant als einzigen IPv6-Regelschreiber aktivieren",
+          "ipv6_actor_reconfigure": "IPv6-Regelzugang neu einrichten"
+        }
+      },
+      "gateway_observer": {
+        "title": "Gateway-Beobachtung",
+        "description": "Installiere zuerst den dokumentierten Beobachtungshelfer am Gateway und autorisiere ausschließlich diesen öffentlichen Schlüssel mit dem erzwungenen Lesebefehl:\n\n`{public_key}`\n\nBestätige den Ed25519-Hostschlüssel aus einem bereits vertrauenswürdigen Zugang. Die Integration ändert keine Routerregeln.",
+        "data": {
+          "gateway_host_public_key": "Ed25519-Hostschlüssel",
+          "gateway_primary_interface": "Primäres WAN-Interface",
+          "gateway_secondary_interface": "Sekundäres WAN-Interface"
+        }
+      },
+      "ipv6_actor": {
+        "title": "IPv6-Regelzugang",
+        "description": "Installiere den eingeschränkten Gateway-Aktor und autorisiere diesen eigenen öffentlichen Schlüssel ausschließlich für den festen Befehl `service-route-sync ipv6 v1`. Die Ersteinrichtung liest nur. Aktiviere HA erst nach dem Stopp des alten Schreibers in einem zweiten Schritt.\n\n`{public_key}`",
+        "data": {"gateway_host_public_key": "Ed25519-Hostschlüssel"}
+      },
+      "clients": {
+        "title": "Überwachte Geräte",
+        "description": "Wähle UniFi-Geräte aus. Bestehende Geräteprofile und ihre Netzwerkkarten bleiben zusammen erhalten. Ausgeschaltete neue Geräte müssen zur ersten Auswahl online sein.",
+        "data": {
+          "clients": "Geräte",
+          "client_probe_enabled": "PC-Probes am Gateway (nur lesend)",
+          "client_probe_reconfigure": "Probe-Zugang neu einrichten"
+        }
+      },
+      "client_probe": {
+        "title": "PC-Probe-Zugang",
+        "description": "Installiere den dokumentierten Client-Observer mit festem Lesebefehl und privater Gerätezuordnung. Autorisiere diese eigene öffentliche Identität:\n\n`{public_key}`\n\nBestätige den Gateway-Hostkey über eine bereits vertrauenswürdige Verbindung. Die Einrichtung prüft anschließend alle gewählten Profile.",
+        "data": {
+          "client_probe_host": "Gateway",
+          "gateway_host_public_key": "Öffentlicher Ed25519-Hostkey"
+        }
+      },
+      "lady": {
+        "title": "LadyOfGames auswählen",
+        "description": "Wähle die Netzwerkschnittstellen dieses PCs. Die Gaming-Profile bleiben getrennt. Eine neue Einrichtung startet mit Beobachtung ohne Benachrichtigungen. Ist der PC offline, trage seine bekannte MAC-Adresse in das separate Feld ein.",
+        "data": {
+          "lady_clients": "PC-Schnittstellen",
+          "lady_reconfigure": "Quellenzugriffe neu prüfen",
+          "lady_manual_mac": "MAC-Adresse einer derzeit offline befindlichen PC-Schnittstelle"
+        }
+      },
+      "lady_sources": {
+        "title": "Lesende Quellen prüfen",
+        "description": "Richte getrennte, auf feste Lesebefehle beschränkte SSH-Zugriffe von HA ein. Host-Schlüssel müssen über einen vertrauten Verwaltungszugang ermittelt werden. DSL-Schlüssel: {dsl_public_key}\n\nPC-Schlüssel: {pc_public_key}\n\nWindows-Schlüssel: {windows_public_key}",
+        "data": {
+          "lady_gateway_host": "Router",
+          "lady_windows_host": "IP des Wazuh-Hosts",
+          "gateway_host_public_key": "Öffentlicher Ed25519-Host-Schlüssel des Routers",
+          "windows_host_public_key": "Öffentlicher Ed25519-Host-Schlüssel des Wazuh-Hosts"
+        }
+      },
+      "init": {
+        "title": "Einstellungen",
+        "menu_options": {
+          "user": "Alle Integrationsfunktionen",
+          "route_services": "Routendienste und Zuordnungen",
+          "route_tls": "Geprüftes UniFi-TLS-Zertifikat",
+          "wifi_history": "WLAN-Historie",
+          "frigate_actor": "Frigate-Steuerung",
+          "gateway_management": "Gateway-Verwaltungsadresse",
+          "ipv6_policy": "IPv6-Regelsteuerung",
+          "lady_mode": "LadyOfGames-Betriebsmodus"
+        }
+      },
+      "wifi_history": {
+        "title": "WLAN-Historie",
+        "description": "Lokale Historie aller WLAN-Clients alle 30 Minuten speichern.",
+        "data": {
+          "wifi_history_enabled": "WLAN-Historie aktivieren"
+        }
+      },
+      "ipv6_policy": {
+        "title": "IPv6-Regelsteuerung",
+        "description": "Zuerst mit einem eigenen, eingeschränkten Schlüssel nur prüfen. Schreiben erst aktivieren, nachdem der VM101-Schreiber gestoppt ist und der Gateway-Aktor Schreibbereitschaft sowie einen gesunden Zustand meldet.",
+        "data": {
+          "ipv6_actor_enabled": "IPv6-Regeln prüfen",
+          "ipv6_actor_active": "Home Assistant darf IPv6-Regeln schreiben",
+          "ipv6_actor_reconfigure": "Neuen eingeschränkten Schlüssel anlegen",
+          "legacy_writer_stopped": "Der IPv6-Schreiber auf VM101 wurde gestoppt"
+        }
+      },
+      "route_services": {
+        "title": "Routendienste",
+        "description": "Routenquellen, Quellfilter und vorhandene UniFi-Routen auswählen. Netzwerkbeobachtung, PC-Monitoring und Steuerfreigaben bleiben erhalten.",
+        "data": {
+          "services": "Dienste"
+        }
+      },
+      "route_tls": {
+        "title": "Geprüftes UniFi-TLS-Zertifikat",
+        "description": "Trage den SHA-256-Fingerabdruck des Gateway-Zertifikats und einen eigenen Routen-API-Schlüssel ein. Ein leeres Schlüsselfeld behält den gespeicherten Schlüssel. Vor dem Speichern werden beide über eine zertifikatsgeprüfte Leseanfrage geprüft; bei Zertifikatwechsel wird gesperrt.",
+        "data": {"unifi_tls_pin_sha256": "SHA-256-Fingerabdruck des Gateway-Zertifikats", "unifi_route_api_key": "Eigener Routen-API-Schlüssel (leer = behalten)"}
+      },
+      "frigate_actor": {
+        "title": "Frigate-Steuerung",
+        "description": "Vorbereitete Verbindung für Statusabfragen wählen. Eine neue Verbindung zuerst im Beobachtungsbetrieb speichern; Neustarts benötigen eine separate Freigabe.",
+        "data": {
+          "frigate_actor_enabled": "Frigate-Verbindung beobachten",
+          "frigate_actor_key_id": "Vorbereitete Verbindung",
+          "frigate_restart_enabled": "Gezielte Frigate-Neustarts erlauben"
+        }
+      },
+      "gateway_management": {
+        "title": "Vertrauenswürdige Gateway-LAN-Adresse nutzen",
+        "description": "Den bereits geprüften Gateway-Hostschlüssel übernehmen und vor dem Speichern eine lesende Beobachtung prüfen.",
+        "data": {
+          "use_existing_management_host": "Vorhandene Verwaltungsadresse des Client-Beobachters nutzen"
+        }
+      },
+      "lady_mode": {
+        "title": "LadyOfGames-Betriebsmodus",
+        "description": "Benachrichtigungen erst nach geprüftem Import und Stilllegung des alten Monitors aktivieren. Bei Problemen kann hier auf Beobachtung zurückgeschaltet werden.",
+        "data": {
+          "lady_active": "Benachrichtigungen aktiv",
+          "legacy_monitor_stopped": "Alter Monitor wurde gestoppt"
+        }
       }
     },
     "error": {
-      "no_services": "Mindestens einen Dienst auswählen.",
+      "no_services": "Wähle einen Dienst oder aktiviere Internet- bzw. PC-Überwachung.",
       "invalid_sources": "Auswahl oder öffentliche CIDR-Zielnetze prüfen.",
       "duplicate_routes": "Jeder Dienst benötigt eine eigene Route.",
       "invalid_routes": "Eine ausgewählte Route ist nicht mehr verfügbar.",
-      "immutable_router": "Für einen anderen Router eine eigene Integration einrichten."
+      "immutable_router": "Für einen anderen Router eine eigene Integration einrichten.",
+      "invalid_gateway": "Das gewählte Gateway ist nicht mehr verfügbar.",
+      "invalid_configuration": "Die gewählte Verbindung konnte nicht geprüft werden.",
+      "invalid_observer_configuration": "Hostschlüssel oder WAN-Interfaces ungültig.",
+      "observer_unavailable": "Beobachtungszugang nicht erreichbar oder Antwort ungültig/veraltet. Helfer, Schlüssel und Uhrzeit prüfen.",
+      "invalid_clients": "Wähle mindestens ein gültiges Gerät ohne doppelte Zuordnung.",
+      "frigate_observe_first": "Neue Verbindung zunächst ohne Neustartfreigabe speichern.",
+      "legacy_monitor_running": "Zuerst den alten Monitor stoppen und den finalen Checkpoint importieren.",
+      "ipv6_legacy_writer_running": "Vor der HA-Aktivierung den IPv6-Schreiber auf VM101 stoppen.",
+      "lady_sources_not_ready": "Die lesenden Lady-Quellen liefern noch keine aktuelle Beobachtung.",
+      "lady_checkpoint_missing": "Der importierte, dauerhafte Lady-Checkpoint oder seine Historie fehlt."
     },
     "abort": {
       "router_unavailable": "Die gewählte UniFi-Anbindung ist nicht verfügbar.",
       "no_routes": "Lege zuerst passende IP-Routen im UniFi-Gateway an.",
-      "already_configured": "Für diese UniFi-Anbindung ist Service Route Sync bereits eingerichtet."
+      "already_configured": "Für diese UniFi-Anbindung ist Service Route Sync bereits eingerichtet.",
+      "no_gateways": "Die UniFi-Anbindung liefert kein unterstütztes Gateway mit WAN-Messwerten.",
+      "observer_address_unavailable": "Das ausgewählte Gateway hat keine gültige lokale IP-Adresse.",
+      "observer_key_unavailable": "Der eigene Beobachtungsschlüssel konnte nicht sicher angelegt werden.",
+      "no_clients": "UniFi liefert keine auswählbaren Geräte.",
+      "invalid_lady_configuration": "Die vorhandene Lady-Konfiguration ist ungültig.",
+      "lady_not_configured": "LadyOfGames ist noch nicht eingerichtet."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "wan_availability_pct": {
+        "name": "{wan} Verfügbarkeit im Messfenster"
+      },
+      "wan_latency_ms": {
+        "name": "{wan} Latenz"
+      },
+      "wan_download_mbit_s": {
+        "name": "{wan} Download"
+      },
+      "wan_upload_mbit_s": {
+        "name": "{wan} Upload"
+      },
+      "network_updated": {
+        "name": "Letzte WAN-Messung"
+      },
+      "client_speed_mbit_s": {
+        "name": "Linkgeschwindigkeit"
+      },
+      "client_rx_errors": {
+        "name": "Empfangsfehler"
+      },
+      "client_tx_errors": {
+        "name": "Sendefehler"
+      },
+      "client_rx_dropped": {
+        "name": "Verworfene Empfangspakete"
+      },
+      "client_tx_dropped": {
+        "name": "Verworfene Sendepakete"
+      },
+      "client_rx_bytes": {
+        "name": "Empfangene Bytes"
+      },
+      "client_tx_bytes": {
+        "name": "Gesendete Bytes"
+      },
+      "client_link_down_count": {
+        "name": "Link-Unterbrechungen"
+      },
+      "lady_mode": {
+        "name": "Betriebsart",
+        "state": {
+          "observation": "Beobachtung",
+          "active": "Aktiv"
+        }
+      },
+      "lady_pending": {
+        "name": "Ausstehende Benachrichtigungen"
+      },
+      "lady_active_incidents": {
+        "name": "Aktive Störungen"
+      },
+      "lady_last_observation": {
+        "name": "Letzte Messung"
+      },
+      "wifi_client_count": {
+        "name": "Beobachtete WLAN-Clients"
+      },
+      "wifi_last_observation": {
+        "name": "Letzte WLAN-Abfrage"
+      },
+      "frigate_control_last_observation": {
+        "name": "Letzte Statusprüfung"
+      },
+      "frigate_control_started": {
+        "name": "Container gestartet"
+      }
+    },
+    "binary_sensor": {
+      "wan_link": {
+        "name": "{wan} Verbindung"
+      },
+      "wan_ipv4_connectivity": {
+        "name": "{wan} IPV4 Erreichbarkeit"
+      },
+      "wan_ipv6_connectivity": {
+        "name": "{wan} IPV6 Erreichbarkeit"
+      },
+      "client_online": {
+        "name": "Verbunden"
+      },
+      "lady_source_api": {
+        "name": "UniFi-Messwerte aktuell"
+      },
+      "lady_source_probe": {
+        "name": "Router-Messwerte aktuell"
+      },
+      "lady_source_dns": {
+        "name": "DNS-Messwerte aktuell"
+      },
+      "lady_source_windows": {
+        "name": "Windows-Quelle verfügbar"
+      },
+      "lady_notification": {
+        "name": "Benachrichtigung fehlgeschlagen"
+      },
+      "frigate_control_connection": {
+        "name": "Steuerverbindung"
+      },
+      "frigate_control_running": {
+        "name": "Container läuft"
+      },
+      "frigate_control_restart_enabled": {
+        "name": "Neustartfreigabe"
+      }
     }
   }
 }

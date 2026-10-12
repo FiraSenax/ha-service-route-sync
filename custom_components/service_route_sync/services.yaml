@@ -1,0 +1,76 @@
+restart_frigate:
+  name: Request a controlled Frigate restart
+  description: Requires administrator access or a trusted system automation context and an explicitly enabled Frigate recovery profile. Uses only the fixed restricted actor. A successful response confirms the request; monitor Frigate uptime separately to confirm recovery.
+  fields:
+    entry_id:
+      name: Integration
+      required: true
+      selector:
+        config_entry:
+          integration: service_route_sync
+acknowledge_ipv6_policy_review:
+  name: Acknowledge audited IPv6 policy state
+  description: Administrator-only recovery after auditing the gateway journal and exact managed rules. The HA writer must be inactive. Requires the inspected mode and SHA-256 digest; refuses an unresolved gateway intent.
+  fields:
+    entry_id:
+      name: Integration
+      required: true
+      selector:
+        config_entry:
+          integration: service_route_sync
+    mode:
+      name: Audited policy mode
+      required: true
+      selector:
+        select:
+          options:
+            - dsl
+            - starlink
+    digest:
+      name: Audited gateway state digest
+      required: true
+      selector:
+        text:
+import_wifi_history:
+  name: Import staged Wi-Fi history
+  description: Import a privately staged CSV with a verified SHA-256 checksum. Requires an authenticated administrator. Existing rows are preserved and repeated imports are idempotent.
+  fields:
+    entry_id:
+      name: Integration
+      required: true
+      selector:
+        config_entry:
+          integration: service_route_sync
+    sha256:
+      name: Verified SHA-256 checksum
+      required: true
+      selector:
+        text:
+import_lady_checkpoint:
+  name: Import Lady checkpoint
+  description: Import a verified daily checkpoint while Lady is loaded in observation mode. Requires an authenticated administrator. Does not activate notifications.
+  fields:
+    entry_id:
+      name: Integration
+      required: true
+      selector:
+        config_entry:
+          integration: service_route_sync
+    checkpoint:
+      name: Verified checkpoint
+      required: true
+      selector:
+        object:
+    expected_revision:
+      name: Expected stored revision
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 9007199254740991
+          mode: box
+    history_events:
+      name: Complete legacy incident history
+      required: true
+      selector:
+        object:
