@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- English README for international HACS readers, with the German version kept separately.
+- Document the existing English and German HA translations and how to contribute further languages.
+
 ## 0.2.0
 
 - Optionale WAN-, Gateway-, Client- und WLAN-Beobachtung direkt in Home Assistant.
