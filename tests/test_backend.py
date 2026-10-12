@@ -1,4 +1,5 @@
 from copy import deepcopy
+from json import JSONDecodeError
 from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
@@ -140,6 +141,17 @@ class UniFiTests(unittest.IsolatedAsyncioTestCase):
             await backend.read_gateways()
         self.assertNotIn("private-example", str(captured.exception))
         self.assertTrue(captured.exception.__suppress_context__)
+
+    async def test_truncated_unifi_json_is_a_sanitized_transient_failure(self):
+        backend, api = self.backend({})
+        api.request.side_effect = JSONDecodeError("private-response", "private-response", 0)
+        with self.assertRaises(SyncError) as captured:
+            await backend.read_clients()
+        self.assertNotIn("private-response", str(captured.exception))
+        self.assertTrue(captured.exception.__suppress_context__)
+        api.request.side_effect = None
+        api.request.return_value = {"data": [{"mac": "02:00:00:00:00:01"}]}
+        self.assertEqual(len(await backend.read_clients()), 1)
 
     async def test_cancelled_read_propagates_without_retry_or_login(self):
         import asyncio

@@ -3,6 +3,7 @@
 from copy import deepcopy
 import asyncio
 import ipaddress
+from json import JSONDecodeError
 import logging
 import re
 
@@ -130,7 +131,7 @@ class UniFiBackend:
 
         try:
             return await (await self._trusted_api()).request(request)
-        except (AiounifiException, ClientError, TimeoutError, OSError) as exc:
+        except (AiounifiException, ClientError, JSONDecodeError, TimeoutError, OSError) as exc:
             _LOGGER.warning("UniFi API request failed (%s)", type(exc).__name__)
             raise SyncError("The selected UniFi API request failed") from None
 
@@ -171,7 +172,7 @@ class UniFiBackend:
                 if request.method == "put":
                     return None
                 return await response.json(content_type=None)
-        except (ClientError, TimeoutError, OSError):
+        except (ClientError, JSONDecodeError, TimeoutError, OSError):
             raise SyncError("The dedicated UniFi route API request failed") from None
 
     async def read_routes(self):

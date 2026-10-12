@@ -39,6 +39,12 @@ Azure und AWS werden bewusst nach konkreten Tags, Diensten und Regionen ausgewä
 
 Die Integration aktualisiert ausschließlich `ip_addresses` ausdrücklich zugeordneter IP-Routen. Sie legt keine Routen an und löscht keine. WAN, Quellgeräte/VLANs, Aktivierung, Kill Switch und vorhandene IP-Bereichsanker bleiben erhalten. Eine deaktivierte Routerroute bleibt deaktiviert.
 
+Bei überwachten Clients zeigen die Diagnose-Sensoren für Portgeschwindigkeit und
+Portzähler nur einen **aktuell belegten kabelgebundenen Switchport**. Bei WLAN-
+Geräten bleiben diese Sensoren bewusst „nicht verfügbar“; die WLAN-Verbindung
+hat keinen eigenen Switchport mit solchen Zählern. Ein vorübergehend fehlerhafter
+UniFi-API-Abruf verwirft außerdem keinen zuletzt gültigen Client-Snapshot.
+
 ## Installation
 
 Home Assistant **2026.9 oder neuer** und eine bereits eingerichtete, geladene **UniFi Network**-Integration werden benötigt. Der UniFi-Benutzer braucht Zugriff auf Traffic Routes; für automatische Änderungen entsprechende Schreibrechte.
