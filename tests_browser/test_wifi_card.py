@@ -66,6 +66,8 @@ class WifiCardBrowserTests(unittest.TestCase):
             self.assertEqual(page.evaluate("window.calls.length"), 4)
             page.evaluate("window.card.hass = {language: 'en', user: {is_admin: false}}")
             page.get_by_text("Device history is available to administrators only.").wait_for()
+            page.evaluate("window.card.hass = {language: 'fr', user: {is_admin: false}}")
+            page.get_by_role("heading", name="Wi-Fi history").wait_for()
             print(
                 json.dumps(
                     {
