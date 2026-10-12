@@ -22,19 +22,25 @@ class RouteCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, entry):
         self.entry = entry
         self.settings = {**entry.data, **entry.options}
-        self.backend = UniFiBackend(hass, self.settings["unifi_entry_id"])
+        self.backend = UniFiBackend(
+            hass,
+            self.settings["unifi_entry_id"],
+            tls_pin_sha256=self.settings.get("unifi_tls_pin_sha256"),
+            route_api_key=self.settings.get("unifi_route_api_key"),
+        )
         self.feeds = FeedClient(async_get_clientsession(hass), self.settings)
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.backups")
         self.backups = []
         self.write_blocked = False
         self.last_success = None
         self.lock = asyncio.Lock()
+        self.normal_interval = timedelta(hours=self.settings.get("interval_hours", 24))
         super().__init__(
             hass,
             _LOGGER,
             name="Service Route Sync",
             config_entry=entry,
-            update_interval=timedelta(hours=self.settings.get("interval_hours", 24)),
+            update_interval=self.normal_interval,
         )
 
     async def load(self):
@@ -61,11 +67,18 @@ class RouteCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         async with self.lock:
             try:
-                prefixes = await self.feeds.all_prefixes()
+                async with asyncio.timeout(30):
+                    prefixes = await self.feeds.all_prefixes()
                 routes = await self.backend.read_routes()
                 plans = build_plans(routes, prefixes, self.settings["bindings"])
                 changed = [plan for plan in plans if plan.changed]
                 active = self.settings.get("automatic_apply", False)
+                if active and (
+                    self.backend.tls_pin_sha256 is None or self.backend.route_api_key is None
+                ):
+                    raise SyncError(
+                        "Verified UniFi TLS trust and route API key are required for route writes"
+                    )
                 if active and changed and not self.write_blocked:
                     # Revalidate all removal limits before the first write.
                     build_plans(
@@ -84,6 +97,7 @@ class RouteCoordinator(DataUpdateCoordinator):
                     self.write_blocked = False
                     await self.persist()
                     changed = []
+                self.update_interval = self.normal_interval
                 return {
                     "status": "review_required"
                     if self.write_blocked
@@ -98,18 +112,32 @@ class RouteCoordinator(DataUpdateCoordinator):
                             "prefixes": len(prefixes[plan.service]),
                             "added": plan.added,
                             "removed": plan.removed,
+                            "removed_coverage_pct": round(plan.removed_coverage_pct, 3),
+                            "added_coverage_pct": round(plan.added_coverage_pct, 3),
                         }
                         for plan in plans
                     },
                 }
             except Exception as exc:
+                _LOGGER.warning(
+                    "Route cycle halted (%s%s)",
+                    type(exc).__name__,
+                    f": {exc}" if isinstance(exc, SyncError) else "",
+                )
                 # Keep snapshots and any uncertain-write latch; never retry writes.
-                raise UpdateFailed(
-                    f"Service route sync stopped: {type(exc).__name__}: {exc}"
-                ) from exc
+                # A failed read must recover sooner than the normal daily poll,
+                # including when only the WAN feature could initialize at boot.
+                self.update_interval = timedelta(minutes=1)
+                raise UpdateFailed(f"Service route sync stopped ({type(exc).__name__})") from None
 
     async def set_automatic(self, enabled):
         async with self.lock:
+            if enabled and (
+                self.backend.tls_pin_sha256 is None or self.backend.route_api_key is None
+            ):
+                raise SyncError(
+                    "Configure verified UniFi TLS trust and route API key before route writes"
+                )
             self.settings["automatic_apply"] = enabled
             if enabled:
                 self.write_blocked = False  # Explicit user acknowledgement, not an automatic retry.
@@ -118,6 +146,10 @@ class RouteCoordinator(DataUpdateCoordinator):
                 self.entry, options={**self.entry.options, "automatic_apply": enabled}
             )
         # The entry update listener reloads the coordinator and requests a fresh plan.
+
+    async def async_shutdown(self):
+        await super().async_shutdown()
+        await self.backend.async_close()
 
     async def restore_last(self):
         async with self.lock:

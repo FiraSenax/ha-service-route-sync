@@ -64,6 +64,19 @@ class PrefixTests(unittest.TestCase):
         with self.assertRaises(SyncError):
             normalize_prefixes(["8.8.8.0/24", "9.9.9.0/24"], maximum=1)
 
+    def test_removal_guard_uses_address_coverage_across_collapsed_cidrs(self):
+        old = route()
+        old["ip_addresses"] = [
+            {"ip_or_subnet": value, "ip_version": "v4", "ports": [], "port_ranges": []}
+            for value in ("8.8.8.0/25", "8.8.8.128/25")
+        ]
+        collapsed = build_plan("example", old, ["8.8.8.0/24"])
+        self.assertEqual(collapsed.removed, 2)
+        self.assertEqual(collapsed.removed_coverage_pct, 0)
+        self.assertFalse(collapsed.changed)
+        with self.assertRaises(SyncError):
+            build_plan("example", old, ["8.8.8.0/26"])
+
     def test_ipv6_disabled_must_not_make_empty_update(self):
         with self.assertRaises(SyncError):
             normalize_prefixes(["2606:4700::/32"], ipv6=False)
@@ -84,6 +97,18 @@ class PrefixTests(unittest.TestCase):
         filtered["ip_addresses"][0]["ports"] = [443]
         with self.assertRaises(SyncError):
             build_plan("example", filtered, ["8.8.8.0/24"])
+
+    def test_fortnite_requires_existing_epic_anchor_ranges(self):
+        existing = route()
+        existing["ip_ranges"] = [
+            {"ip_version": "v4", "ip_start": "199.255.40.0", "ip_stop": "199.255.43.255"},
+            {"ip_version": "v4", "ip_start": "185.25.180.0", "ip_stop": "185.25.183.255"},
+        ]
+        plan = build_plan("fortnite", existing, ["8.8.8.0/24", "52.23.121.216/32"])
+        self.assertEqual(plan.after["ip_ranges"], existing["ip_ranges"])
+        existing["ip_ranges"].pop()
+        with self.assertRaises(SyncError):
+            build_plan("fortnite", existing, ["52.23.121.216/32"])
 
 
 class TransactionTests(unittest.IsolatedAsyncioTestCase):

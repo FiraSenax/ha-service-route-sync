@@ -4,7 +4,7 @@
 
 Eine Home-Assistant-Integration, die Zielnetze ausgewählter Spiele und Dienste in bestehenden UniFi-Routen aktuell hält. Läuft direkt in HA, nutzt die vorhandene UniFi-Anmeldung und braucht keinen externen Timer.
 
-**Erste Version: Vorschau standardmäßig aktiv.** Router-Lesezugriffe, Einrichtung und Statusentitäten wurden mit Home Assistant **2026.9.4** und **aiounifi 95** live geprüft. Öffentliche Datenquellen wurden ebenfalls live geprüft. Router-Schreibvorgänge und Wiederherstellung sind automatisiert mit simuliertem Backend getestet; ein produktiver Schreibtest dieser neuen Integration steht noch aus.
+**Vorschau ist standardmäßig aktiv.** Die Integration läuft in der lokalen Installation mit Home Assistant **2026.10.1**. Router-Schreibvorgänge und Wiederherstellung sind automatisiert mit simuliertem Backend getestet; ein produktiver Schreibtest für die Dienstrouten steht noch aus.
 
 ## Dienste
 
@@ -20,7 +20,7 @@ Eine Home-Assistant-Integration, die Zielnetze ausgewählter Spiele und Dienste 
 | Teams, Exchange, SharePoint / OneDrive | Gewählter Servicebereich einschließlich `Common`, ausgewählte Kategorien |
 | Azure | Exakt ausgewählte Service Tags, beispielsweise `Storage.WestEurope` |
 | AWS | Exakt ausgewählte Regionen und Dienste, beispielsweise `eu-central-1` und `S3` |
-| SAP | Eigene, dokumentierte **Zielnetze** der tatsächlich verwendeten SAP-Dienste |
+| SAP | Eigene, dokumentierte **Zielnetze** der tatsächlich verwendeten SAP-Dienste; [Cloud-ALM-Hinweise](docs/SAP_DESTINATIONS.md) |
 | Eigene Dienste | Öffentliche IPv4-/IPv6-Zielnetze als CIDR |
 
 Die Spieleauswahl deckt bekannte Betreiber-ASNs ab. Spiele können zusätzliche Server in fremden Clouds, CDNs oder Netzen nutzen. Es ist keine vollständige Spieleerkennung. Microsoft-Endpunkte ohne veröffentlichte IP-Adresse werden nicht abgebildet. SAP-Egress-/NAT-Adressen sind nicht automatisch die passenden Zielnetze für Clientzugriffe.
@@ -38,6 +38,14 @@ Azure und AWS werden bewusst nach konkreten Tags, Diensten und Regionen ausgewä
 | Weitere Router | Backend-Schnittstelle vorhanden, konkrete Unterstützung noch offen |
 
 Die Integration aktualisiert ausschließlich `ip_addresses` ausdrücklich zugeordneter IP-Routen. Sie legt keine Routen an und löscht keine. WAN, Quellgeräte/VLANs, Aktivierung, Kill Switch und vorhandene IP-Bereichsanker bleiben erhalten. Eine deaktivierte Routerroute bleibt deaktiviert.
+
+Bei überwachten Clients zeigt **Verbindungstyp** an, ob ein Gerät per Kabel,
+WLAN oder derzeit nicht verbunden ist. Die Diagnose-Sensoren für
+Portgeschwindigkeit und Portzähler liefern nur bei einem **aktuell belegten
+kabelgebundenen Switchport** Werte. Bei WLAN-Geräten bleiben sie bewusst „nicht
+verfügbar“; die WLAN-Verbindung hat keinen eigenen Switchport mit solchen
+Zählern. Ein vorübergehend fehlerhafter UniFi-API-Abruf verwirft außerdem
+keinen zuletzt gültigen Client-Snapshot.
 
 ## Installation
 
@@ -80,17 +88,31 @@ Mehrere Routeränderungen sind **keine atomare Transaktion**. Scheitert eine sp�
 
 Diagnostik enthält Dienstnamen und Zähler, keine Zugangsdaten, WAN-IDs, Quellgeräte oder Ziel-IP-Listen. Sicherungen enthalten die lokale Routerkonfiguration und sollten wie andere HA-Konfigurationsdaten geschützt werden.
 
+## Netzwerküberwachung
+
+Optional können WAN-Leitungen, Gateway-Verkehr, ausgewählte Clients und WLAN-Verläufe in Home Assistant beobachtet werden. In den Integrationsoptionen **WAN überwachen** aktivieren, Gateway auswählen und die beiden Leitungen beispielsweise **DSL** und **Starlink** nennen.
+Pro Leitung stehen Download, Upload, Latenz, Verfügbarkeit im Messzeitraum
+und — sofern der Router ausdrücklich ein `up`-Feld liefert — der Linkzustand
+zur Verfügung. Ein fehlender Linkzustand bleibt unverfügbar.
+
+Das lokale Prüfintervall ist unabhängig von den öffentlichen Zielnetzquellen.
+Eine gestörte Datenquelle blockiert daher nicht die WAN-Messung. WAN-Messwerte
+beweisen keine IPv4-/IPv6-Erreichbarkeit und lösen keine Umschaltung aus.
+Aktive IPv6-Policy-Steuerung und weitere Host-Beobachter sind getrennte, ausdrücklich einzurichtende Funktionen mit eigenen eingeschränkten SSH-Schlüsseln und gepinnten Host-Identitäten. Die Beobachter können keine Routen verändern. Für schreibende Funktionen gibt es einen lokalen Prüf- und Sperrzustand. Aufbau und Grenzen beschreiben [Netzwerkarchitektur](docs/NETWORK_ARCHITECTURE.md), [Gateway-Beobachter](docs/GATEWAY_OBSERVER.md) und [IPv6-Aktor](docs/IPV6_ACTOR.md).
+
 ## Entwicklung
 
 ```sh
 python -m venv .venv
-.venv/bin/pip install aiohttp aiounifi==95 ruff==0.17.0
+.venv/bin/pip install homeassistant==2026.10.0 aiounifi==95 ruff==0.17.0
 .venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests_gateway -v
+.venv/bin/python -m unittest discover -s tests_ha -t . -v
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
 ```
 
-`core.py` enthält routerunabhängige Planung und Schreibprüfungen, `providers.py` die Datenquellen und `backends/unifi.py` den Adapter. Der Adapter nutzt die aktuelle `aiounifi`-API der offiziellen HA-Integration; Änderungen dieser Schnittstelle können Anpassungen benötigen. GitHub Actions prüft Tests, Formatierung und Python-Kompilierung.
+`core.py` enthält routerunabhängige Planung und Schreibprüfungen, `providers.py` die Datenquellen und `backends/unifi.py` den Adapter. Der Adapter nutzt die `aiounifi`-API der offiziellen HA-Integration; Änderungen dieser Schnittstelle können Anpassungen benötigen. GitHub Actions prüft Tests, Formatierung, Python-Kompilierung, Hassfest und HACS.
 
 ## Quellen
 
@@ -103,3 +125,8 @@ python -m venv .venv
 - [HACS Custom Repositories](https://www.hacs.xyz/docs/faq/custom_repositories/)
 
 MIT-Lizenz. Kein offizielles Produkt von Ubiquiti, Microsoft, AWS oder SAP.
+
+The optional [restricted gateway observer](docs/GATEWAY_OBSERVER.md) provides
+separate native IPv4/IPv6 connectivity entities. It has a dedicated key, pinned
+host identity and a verified read-only setup flow; it does not take over IPv6
+failover or change routing rules.

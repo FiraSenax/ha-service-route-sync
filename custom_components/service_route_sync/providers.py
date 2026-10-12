@@ -44,6 +44,15 @@ def select_prefixes(service_id, payload, options):
                 if item.get("region") in regions and item.get("service") in services
             )
         return result
+    if service.provider == "aws_fortnite":
+        result = ["52.23.121.216/32"]
+        for key, prefix_key in (("prefixes", "ip_prefix"), ("ipv6_prefixes", "ipv6_prefix")):
+            result.extend(
+                item[prefix_key]
+                for item in payload.get(key, [])
+                if item.get("region") == "eu-central-1" and item.get("service") == "EC2"
+            )
+        return result
     return options[f"{service_id}_prefixes"]
 
 
@@ -107,7 +116,7 @@ class FeedClient:
             payload = await self._fetch(
                 f"https://endpoints.office.com/endpoints/Worldwide?ClientRequestId={guid}"
             )
-        elif service.provider == "aws":
+        elif service.provider in ("aws", "aws_fortnite"):
             payload = await self._fetch("https://ip-ranges.amazonaws.com/ip-ranges.json")
         elif service.provider == "azure":
             page = await self._fetch(

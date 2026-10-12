@@ -40,6 +40,21 @@ class ProviderTests(unittest.TestCase):
             ["8.8.8.0/24"],
         )
 
+    def test_fortnite_keeps_reviewed_epic_anchor_and_only_frankfurt_ec2(self):
+        feed = {
+            "prefixes": [
+                {"region": "eu-central-1", "service": "EC2", "ip_prefix": "18.184.0.0/14"},
+                {"region": "eu-central-1", "service": "S3", "ip_prefix": "52.0.0.0/16"},
+            ],
+            "ipv6_prefixes": [
+                {"region": "eu-central-1", "service": "EC2", "ipv6_prefix": "2a05:d014::/32"},
+            ],
+        }
+        self.assertEqual(
+            select_prefixes("fortnite", feed, {}),
+            ["52.23.121.216/32", "18.184.0.0/14", "2a05:d014::/32"],
+        )
+
 
 class SourceSafetyTests(unittest.IsolatedAsyncioTestCase):
     async def test_changed_as_owner_stops_before_prefix_fetch(self):

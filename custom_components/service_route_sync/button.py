@@ -8,10 +8,12 @@ from .entity import RouteEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
+    if entry.runtime_data.routes is None:
+        return
     async_add_entities(
         [
-            RouteButton(entry.runtime_data, "refresh", "Refresh destinations"),
-            RouteButton(entry.runtime_data, "restore", "Restore last route update"),
+            RouteButton(entry.runtime_data.routes, "refresh", "Refresh destinations"),
+            RouteButton(entry.runtime_data.routes, "restore", "Restore last route update"),
         ]
     )
 

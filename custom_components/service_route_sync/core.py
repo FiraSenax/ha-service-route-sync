@@ -53,10 +53,12 @@ class Plan:
     after: dict
     added: int
     removed: int
+    removed_coverage_pct: float
+    added_coverage_pct: float
 
     @property
     def changed(self):
-        return bool(self.added or self.removed)
+        return bool(self.added_coverage_pct or self.removed_coverage_pct)
 
 
 def route_prefixes(route):
@@ -69,16 +71,71 @@ def route_prefixes(route):
         raise SyncError("Unexpected router destination format") from exc
 
 
+def removed_coverage_percentage(previous, desired):
+    """Compare actual address coverage, not CIDR spelling after safe collapse."""
+    largest = 0.0
+    for version in (4, 6):
+        old = list(
+            ipaddress.collapse_addresses(
+                ipaddress.ip_network(value)
+                for value in previous
+                if ipaddress.ip_network(value).version == version
+            )
+        )
+        if not old:
+            continue
+        remaining = old
+        covers = ipaddress.collapse_addresses(
+            ipaddress.ip_network(value)
+            for value in desired
+            if ipaddress.ip_network(value).version == version
+        )
+        for cover in covers:
+            next_remaining = []
+            for portion in remaining:
+                if not portion.overlaps(cover):
+                    next_remaining.append(portion)
+                elif cover.subnet_of(portion):
+                    next_remaining.extend(portion.address_exclude(cover))
+                # A portion fully inside the new feed has no removed coverage.
+            if len(next_remaining) > 20_000:
+                raise SyncError("Prefix coverage comparison exceeds safety bound")
+            remaining = next_remaining
+        removed_addresses = sum(row.num_addresses for row in remaining)
+        old_addresses = sum(row.num_addresses for row in old)
+        largest = max(largest, 100 * removed_addresses / old_addresses)
+    return largest
+
+
 def build_plan(service, route, prefixes, *, maximum_removal=0.5):
     if route.get("matching_target") != "IP" or route.get("domains") or route.get("regions"):
         raise SyncError("Bind an IP-based route without domain/region matching")
+    if service == "fortnite":
+        expected_ranges = {
+            ("v4", "199.255.40.0", "199.255.43.255"),
+            ("v4", "185.25.180.0", "185.25.183.255"),
+        }
+        observed_ranges = route.get("ip_ranges")
+        if (
+            not isinstance(observed_ranges, list)
+            or len(observed_ranges) != 2
+            or any(
+                not isinstance(row, dict) or set(row) != {"ip_version", "ip_start", "ip_stop"}
+                for row in observed_ranges
+            )
+            or {(row["ip_version"], row["ip_start"], row["ip_stop"]) for row in observed_ranges}
+            != expected_ranges
+        ):
+            raise SyncError("Fortnite route anchor ranges differ from the reviewed policy")
     before = deepcopy(route)
     previous = route_prefixes(before)
     desired = set(prefixes)
     if not desired:
         raise SyncError("Empty feed cannot replace a route")
     removed = previous - desired
-    if previous and len(removed) / len(previous) > maximum_removal:
+    removed_coverage_pct = removed_coverage_percentage(previous, desired)
+    added_coverage_pct = removed_coverage_percentage(desired, previous)
+    if previous and removed_coverage_pct > maximum_removal * 100:
         raise SyncError("Removal exceeds configured limit; inspect the preview")
     after = deepcopy(before)
     after["ip_addresses"] = [
@@ -90,7 +147,16 @@ def build_plan(service, route, prefixes, *, maximum_removal=0.5):
         }
         for value in prefixes
     ]
-    return Plan(service, str(before["_id"]), before, after, len(desired - previous), len(removed))
+    return Plan(
+        service,
+        str(before["_id"]),
+        before,
+        after,
+        len(desired - previous),
+        len(removed),
+        removed_coverage_pct,
+        added_coverage_pct,
+    )
 
 
 def policy(route):

@@ -10,7 +10,13 @@
           "ipv6": "Include IPv6",
           "maximum_prefixes": "Maximum prefixes per route",
           "maximum_removal": "Maximum removed prefixes (%)",
-          "interval_hours": "Refresh interval (hours)"
+          "interval_hours": "Refresh interval (hours)",
+          "network_enabled": "Monitor internet connections (read-only)",
+          "client_monitoring_enabled": "Monitor client networks (read-only)",
+          "work_probe_enabled": "Measure Microsoft 365 connectivity from the house",
+          "network_metrics_enabled": "Enable authenticated Prometheus compatibility export",
+          "lady_enabled": "LadyOfGames network diagnostics",
+          "wifi_history_enabled": "Store all-client Wi-Fi history every 30 minutes (local)"
         }
       },
       "sources": {
@@ -28,19 +34,107 @@
       "routes": {
         "title": "Bind existing routes",
         "description": "Bind each service to a separate existing IP route. WAN, device scope and enabled state are preserved. Services: {services}"
+      },
+      "network": {
+        "title": "Internet connections",
+        "description": "Select the gateway. WAN1 and WAN2 are observed independently. Missing values remain unknown; availability over a measurement window does not prove current connectivity.",
+        "data": {
+          "network_gateway_id": "Gateway",
+          "network_primary_label": "WAN1 label",
+          "network_secondary_label": "WAN2 label",
+          "network_interval_seconds": "Polling interval (seconds)",
+          "gateway_observer_enabled": "Observe IPv4/IPv6 on the gateway (restricted SSH access)",
+          "gateway_observer_reconfigure": "Reconfigure observer access",
+          "ipv6_actor_enabled": "Inspect the managed IPv6 policy with a separate key",
+          "ipv6_actor_active": "Activate HA as the sole IPv6 policy writer",
+          "ipv6_actor_reconfigure": "Reconfigure IPv6 policy access"
+        }
+      },
+      "gateway_observer": {
+        "title": "Gateway observations",
+        "description": "First install the documented gateway observer and authorize only this public key with the forced read-only command:\n\n`{public_key}`\n\nConfirm the Ed25519 host key through an already trusted connection. This integration does not change router rules.",
+        "data": {
+          "gateway_host_public_key": "Ed25519 host public key",
+          "gateway_primary_interface": "Primary WAN interface",
+          "gateway_secondary_interface": "Secondary WAN interface"
+        }
+      },
+      "ipv6_actor": {
+        "title": "IPv6 policy access",
+        "description": "Install the restricted gateway actor and authorize this dedicated public key with the fixed `service-route-sync ipv6 v1` command. Initial setup only inspects; activation requires a separate options change after the old writer is stopped.\n\n`{public_key}`",
+        "data": {
+          "gateway_host_public_key": "Ed25519 host public key"
+        }
+      },
+      "clients": {
+        "title": "Monitored clients",
+        "description": "Select UniFi clients. Existing device profiles retain their grouped network adapters. New offline clients must be online for their first selection.",
+        "data": {
+          "clients": "Clients",
+          "client_probe_enabled": "Probe clients on the gateway (read-only)",
+          "client_probe_reconfigure": "Reconfigure probe access"
+        }
+      },
+      "client_probe": {
+        "title": "Client probe access",
+        "description": "Install the documented client observer with its fixed read-only command and private target configuration. Authorize this dedicated public identity:\n\n`{public_key}`\n\nVerify the gateway host key through an already trusted connection. Setup then validates all selected profiles.",
+        "data": {
+          "client_probe_host": "Gateway",
+          "gateway_host_public_key": "Ed25519 host public key"
+        }
+      },
+      "reconfigure": {
+        "title": "Migrate client profiles",
+        "description": "One-time administrator migration of existing client profiles with stable IDs and MAC groups. The dedicated probe access must already be provisioned and is verified before saving.",
+        "data": {
+          "profiles": "Existing profiles",
+          "probe_key_id": "Provisioned probe identity",
+          "probe_host": "Probe gateway address"
+        }
+      },
+      "lady": {
+        "title": "Select LadyOfGames",
+        "description": "Select this PC’s network interfaces. Gaming profiles remain separate. New setups start with observation and no notifications. If the PC is offline, enter its known MAC address in the separate field.",
+        "data": {
+          "lady_clients": "PC interfaces",
+          "lady_reconfigure": "Recheck source access",
+          "lady_manual_mac": "MAC address of an offline PC interface"
+        }
+      },
+      "lady_sources": {
+        "title": "Verify read-only sources",
+        "description": "Configure separate SSH access from HA restricted to fixed read commands. Obtain host keys through a trusted administrative connection. DSL key: {dsl_public_key}\n\nPC key: {pc_public_key}\n\nWindows key: {windows_public_key}",
+        "data": {
+          "lady_gateway_host": "Router",
+          "lady_windows_host": "Wazuh host IP",
+          "gateway_host_public_key": "Router public Ed25519 host key",
+          "windows_host_public_key": "Wazuh public Ed25519 host key"
+        }
       }
     },
     "error": {
-      "no_services": "Select at least one service.",
+      "no_services": "Select a service or enable internet or client monitoring.",
       "invalid_sources": "Check selections and public destination CIDRs.",
       "duplicate_routes": "Each service needs a separate route.",
       "invalid_routes": "A selected route is no longer available.",
-      "immutable_router": "Create a separate integration for a different router."
+      "immutable_router": "Create a separate integration for a different router.",
+      "invalid_gateway": "The selected gateway is no longer available.",
+      "invalid_configuration": "Select valid settings.",
+      "invalid_observer_configuration": "Invalid host key or WAN interfaces.",
+      "observer_unavailable": "Observer unavailable or response invalid/stale. Check helper, keys and clocks.",
+      "invalid_clients": "Select at least one valid client without duplicate assignments."
     },
     "abort": {
       "router_unavailable": "The selected UniFi integration is unavailable.",
       "no_routes": "Create suitable IP-based routes on your UniFi gateway first.",
-      "already_configured": "Service Route Sync is already configured for this UniFi integration."
+      "already_configured": "Service Route Sync is already configured for this UniFi integration.",
+      "no_gateways": "The UniFi integration exposes no supported gateway with WAN telemetry.",
+      "observer_address_unavailable": "The selected gateway has no valid local IP address.",
+      "observer_key_unavailable": "Unable to safely prepare the dedicated observer key.",
+      "no_clients": "UniFi exposes no selectable clients.",
+      "invalid_client_import": "Invalid profile migration or probe access could not be verified.",
+      "client_profiles_imported": "Profiles migrated; the integration will reload.",
+      "invalid_lady_configuration": "The existing Lady configuration is invalid."
     }
   },
   "options": {
@@ -54,7 +148,13 @@
           "ipv6": "Include IPv6",
           "maximum_prefixes": "Maximum prefixes per route",
           "maximum_removal": "Maximum removed prefixes (%)",
-          "interval_hours": "Refresh interval (hours)"
+          "interval_hours": "Refresh interval (hours)",
+          "network_enabled": "Monitor internet connections (read-only)",
+          "client_monitoring_enabled": "Monitor client networks (read-only)",
+          "work_probe_enabled": "Measure Microsoft 365 connectivity from the house",
+          "network_metrics_enabled": "Enable authenticated Prometheus compatibility export",
+          "lady_enabled": "LadyOfGames network diagnostics",
+          "wifi_history_enabled": "Store all-client Wi-Fi history every 30 minutes (local)"
         }
       },
       "sources": {
@@ -72,19 +172,298 @@
       "routes": {
         "title": "Bind existing routes",
         "description": "Bind each service to a separate existing IP route. WAN, device scope and enabled state are preserved. Services: {services}"
+      },
+      "network": {
+        "title": "Internet connections",
+        "description": "Select the gateway. WAN1 and WAN2 are observed independently. Missing values remain unknown; availability over a measurement window does not prove current connectivity.",
+        "data": {
+          "network_gateway_id": "Gateway",
+          "network_primary_label": "WAN1 label",
+          "network_secondary_label": "WAN2 label",
+          "network_interval_seconds": "Polling interval (seconds)",
+          "gateway_observer_enabled": "Observe IPv4/IPv6 on the gateway (restricted SSH access)",
+          "gateway_observer_reconfigure": "Reconfigure observer access",
+          "ipv6_actor_enabled": "Inspect the managed IPv6 policy with a separate key",
+          "ipv6_actor_active": "Activate HA as the sole IPv6 policy writer",
+          "ipv6_actor_reconfigure": "Reconfigure IPv6 policy access"
+        }
+      },
+      "gateway_observer": {
+        "title": "Gateway observations",
+        "description": "First install the documented gateway observer and authorize only this public key with the forced read-only command:\n\n`{public_key}`\n\nConfirm the Ed25519 host key through an already trusted connection. This integration does not change router rules.",
+        "data": {
+          "gateway_host_public_key": "Ed25519 host public key",
+          "gateway_primary_interface": "Primary WAN interface",
+          "gateway_secondary_interface": "Secondary WAN interface"
+        }
+      },
+      "ipv6_actor": {
+        "title": "IPv6 policy access",
+        "description": "Install the restricted gateway actor and authorize this dedicated public key with the fixed `service-route-sync ipv6 v1` command. Initial setup only inspects; activation requires a separate options change after the old writer is stopped.\n\n`{public_key}`",
+        "data": {
+          "gateway_host_public_key": "Ed25519 host public key"
+        }
+      },
+      "clients": {
+        "title": "Monitored clients",
+        "description": "Select UniFi clients. Existing device profiles retain their grouped network adapters. New offline clients must be online for their first selection.",
+        "data": {
+          "clients": "Clients",
+          "client_probe_enabled": "Probe clients on the gateway (read-only)",
+          "client_probe_reconfigure": "Reconfigure probe access"
+        }
+      },
+      "client_probe": {
+        "title": "Client probe access",
+        "description": "Install the documented client observer with its fixed read-only command and private target configuration. Authorize this dedicated public identity:\n\n`{public_key}`\n\nVerify the gateway host key through an already trusted connection. Setup then validates all selected profiles.",
+        "data": {
+          "client_probe_host": "Gateway",
+          "gateway_host_public_key": "Ed25519 host public key"
+        }
+      },
+      "lady": {
+        "title": "Select LadyOfGames",
+        "description": "Select this PC’s network interfaces. Gaming profiles remain separate. New setups start with observation and no notifications. If the PC is offline, enter its known MAC address in the separate field.",
+        "data": {
+          "lady_clients": "PC interfaces",
+          "lady_reconfigure": "Recheck source access",
+          "lady_manual_mac": "MAC address of an offline PC interface"
+        }
+      },
+      "lady_sources": {
+        "title": "Verify read-only sources",
+        "description": "Configure separate SSH access from HA restricted to fixed read commands. Obtain host keys through a trusted administrative connection. DSL key: {dsl_public_key}\n\nPC key: {pc_public_key}\n\nWindows key: {windows_public_key}",
+        "data": {
+          "lady_gateway_host": "Router",
+          "lady_windows_host": "Wazuh host IP",
+          "gateway_host_public_key": "Router public Ed25519 host key",
+          "windows_host_public_key": "Wazuh public Ed25519 host key"
+        }
+      },
+      "init": {
+        "title": "Settings",
+        "menu_options": {
+          "user": "All integration features",
+          "route_services": "Route services and bindings",
+          "route_tls": "Verified UniFi TLS certificate",
+          "wifi_history": "Wi-Fi history",
+          "frigate_actor": "Frigate control",
+          "gateway_management": "Gateway management address",
+          "ipv6_policy": "IPv6 policy controller",
+          "lady_mode": "LadyOfGames operating mode",
+          "lady_dns": "DNS resolvers for monitored host"
+        }
+      },
+      "wifi_history": {
+        "title": "Wi-Fi history",
+        "description": "Store all wireless client history locally every 30 minutes.",
+        "data": {
+          "wifi_history_enabled": "Enable Wi-Fi history"
+        }
+      },
+      "ipv6_policy": {
+        "title": "IPv6 policy controller",
+        "description": "Inspect first with a dedicated restricted key. Activate writing only after the VM101 writer is stopped and the gateway actor reports writable and healthy.",
+        "data": {
+          "ipv6_actor_enabled": "Inspect IPv6 policy",
+          "ipv6_actor_active": "Allow HA to write IPv6 policy",
+          "ipv6_actor_reconfigure": "Create a new restricted key",
+          "legacy_writer_stopped": "The VM101 IPv6 writer has been stopped"
+        }
+      },
+      "route_services": {
+        "title": "Route services",
+        "description": "Select route feeds, source filters and existing UniFi route bindings. Network observers, client monitoring and control gates remain unchanged.",
+        "data": {
+          "services": "Services"
+        }
+      },
+      "route_tls": {
+        "title": "Verified UniFi TLS certificate",
+        "description": "Enter the gateway certificate SHA-256 fingerprint and a dedicated route API key. Leave the key blank to keep the saved key. A live pinned read validates both before saving. Certificate rotation fails closed.",
+        "data": {
+          "unifi_tls_pin_sha256": "Gateway certificate SHA-256 fingerprint",
+          "unifi_route_api_key": "Dedicated route API key (blank keeps existing)"
+        }
+      },
+      "frigate_actor": {
+        "title": "Frigate control",
+        "description": "Select a provisioned connection for status observations. Save a new connection in observation mode first; restarts require separate enablement.",
+        "data": {
+          "frigate_actor_enabled": "Observe Frigate connection",
+          "frigate_actor_key_id": "Provisioned connection",
+          "frigate_restart_enabled": "Allow targeted Frigate restarts"
+        }
+      },
+      "gateway_management": {
+        "title": "Use trusted gateway LAN address",
+        "description": "Reuse the already pinned gateway identity and verify a read-only observation before saving.",
+        "data": {
+          "use_existing_management_host": "Use existing client observer management address"
+        }
+      },
+      "lady_mode": {
+        "title": "LadyOfGames operating mode",
+        "description": "Enable notifications only after a verified import and stopping the legacy monitor. Switch back to observation here if needed.",
+        "data": {
+          "lady_active": "Notifications active",
+          "legacy_monitor_stopped": "Legacy monitor has been stopped"
+        }
+      },
+      "lady_dns": {
+        "title": "DNS resolvers for monitored host",
+        "data": {
+          "primary": "Primary LAN resolver",
+          "secondary": "Secondary LAN resolver"
+        }
       }
     },
     "error": {
-      "no_services": "Select at least one service.",
+      "no_services": "Select a service or enable internet or client monitoring.",
       "invalid_sources": "Check selections and public destination CIDRs.",
       "duplicate_routes": "Each service needs a separate route.",
       "invalid_routes": "A selected route is no longer available.",
-      "immutable_router": "Create a separate integration for a different router."
+      "immutable_router": "Create a separate integration for a different router.",
+      "invalid_gateway": "The selected gateway is no longer available.",
+      "invalid_configuration": "The selected connection could not be verified.",
+      "invalid_observer_configuration": "Invalid host key or WAN interfaces.",
+      "observer_unavailable": "Observer unavailable or response invalid/stale. Check helper, keys and clocks.",
+      "invalid_clients": "Select at least one valid client without duplicate assignments.",
+      "frigate_observe_first": "Save a new connection without restart enablement first.",
+      "legacy_monitor_running": "Stop the legacy monitor and import the final checkpoint first.",
+      "ipv6_legacy_writer_running": "Stop the VM101 IPv6 writer before activating HA.",
+      "lady_sources_not_ready": "Lady read-only sources have not provided a current observation.",
+      "lady_checkpoint_missing": "The imported durable Lady checkpoint or history is missing.",
+      "invalid_dns_servers": "Enter two different private IPv4 addresses (10/8, 172.16/12 or 192.168/16)."
     },
     "abort": {
       "router_unavailable": "The selected UniFi integration is unavailable.",
       "no_routes": "Create suitable IP-based routes on your UniFi gateway first.",
-      "already_configured": "Service Route Sync is already configured for this UniFi integration."
+      "already_configured": "Service Route Sync is already configured for this UniFi integration.",
+      "no_gateways": "The UniFi integration exposes no supported gateway with WAN telemetry.",
+      "observer_address_unavailable": "The selected gateway has no valid local IP address.",
+      "observer_key_unavailable": "Unable to safely prepare the dedicated observer key.",
+      "no_clients": "UniFi exposes no selectable clients.",
+      "invalid_lady_configuration": "The existing Lady configuration is invalid.",
+      "lady_not_configured": "LadyOfGames is not configured yet."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "wan_availability_pct": {
+        "name": "{wan} Availability over measurement window"
+      },
+      "wan_latency_ms": {
+        "name": "{wan} Latency"
+      },
+      "wan_download_mbit_s": {
+        "name": "{wan} Download"
+      },
+      "wan_upload_mbit_s": {
+        "name": "{wan} Upload"
+      },
+      "network_updated": {
+        "name": "Last WAN observation"
+      },
+      "client_connection": {
+        "name": "Connection type",
+        "state": {
+          "wired": "Wired",
+          "wifi": "Wi-Fi",
+          "offline": "Offline",
+          "unknown": "Unknown"
+        }
+      },
+      "client_speed_mbit_s": {
+        "name": "Link speed"
+      },
+      "client_rx_errors": {
+        "name": "Receive errors"
+      },
+      "client_tx_errors": {
+        "name": "Transmit errors"
+      },
+      "client_rx_dropped": {
+        "name": "Dropped receive packets"
+      },
+      "client_tx_dropped": {
+        "name": "Dropped transmit packets"
+      },
+      "client_rx_bytes": {
+        "name": "Received bytes"
+      },
+      "client_tx_bytes": {
+        "name": "Transmitted bytes"
+      },
+      "client_link_down_count": {
+        "name": "Link interruptions"
+      },
+      "lady_mode": {
+        "name": "Operating mode",
+        "state": {
+          "observation": "Observation",
+          "active": "Active"
+        }
+      },
+      "lady_pending": {
+        "name": "Pending notifications"
+      },
+      "lady_active_incidents": {
+        "name": "Active incidents"
+      },
+      "lady_last_observation": {
+        "name": "Last observation"
+      },
+      "wifi_client_count": {
+        "name": "Observed Wi-Fi clients"
+      },
+      "wifi_last_observation": {
+        "name": "Last Wi-Fi observation"
+      },
+      "frigate_control_last_observation": {
+        "name": "Last status check"
+      },
+      "frigate_control_started": {
+        "name": "Container started"
+      }
+    },
+    "binary_sensor": {
+      "wan_link": {
+        "name": "{wan} Connection"
+      },
+      "wan_ipv4_connectivity": {
+        "name": "{wan} IPV4 connectivity"
+      },
+      "wan_ipv6_connectivity": {
+        "name": "{wan} IPV6 connectivity"
+      },
+      "client_online": {
+        "name": "Connected"
+      },
+      "lady_source_api": {
+        "name": "UniFi readings current"
+      },
+      "lady_source_probe": {
+        "name": "Router readings current"
+      },
+      "lady_source_dns": {
+        "name": "DNS readings current"
+      },
+      "lady_source_windows": {
+        "name": "Windows source available"
+      },
+      "lady_notification": {
+        "name": "Notification failed"
+      },
+      "frigate_control_connection": {
+        "name": "Control connection"
+      },
+      "frigate_control_running": {
+        "name": "Container running"
+      },
+      "frigate_control_restart_enabled": {
+        "name": "Restart enabled"
+      }
     }
   }
 }

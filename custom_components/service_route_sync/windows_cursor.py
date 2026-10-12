@@ -1,0 +1,100 @@
+"""Bounded local alert-log pages with explicit rotation and partial-line handling."""
+
+from dataclasses import dataclass
+import json
+import os
+from pathlib import Path
+import stat
+
+
+class WindowsSourceError(ValueError):
+    """Sanitized source failure; never include event or credential content."""
+
+
+@dataclass(frozen=True, slots=True)
+class AlertCursor:
+    inode: int
+    offset: int
+
+    def __post_init__(self):
+        if (
+            type(self.inode) is not int
+            or type(self.offset) is not int
+            or self.inode < 0
+            or self.offset < 0
+        ):
+            raise WindowsSourceError("Invalid alert cursor")
+
+
+@dataclass(frozen=True, slots=True)
+class AlertPage:
+    cursor: AlertCursor
+    records: tuple
+    rotated: bool
+    malformed_records: int
+    partial_line: bool
+
+
+def read_alert_page(
+    path: Path,
+    cursor: AlertCursor | None,
+    *,
+    maximum_bytes=1048576,
+    maximum_records=1000,
+    require_continuity=False,
+) -> AlertPage:
+    """Read at most one page; caller checkpoints only after processing succeeds.
+
+    This internal reader accepts a path for tests. The future fixed-command
+    adapter must choose the Wazuh path, never accept a caller-provided path.
+    """
+    if (
+        type(require_continuity) is not bool
+        or type(maximum_bytes) is not int
+        or not 1 <= maximum_bytes <= 1048576
+        or type(maximum_records) is not int
+        or not 1 <= maximum_records <= 1000
+    ):
+        raise WindowsSourceError("Invalid alert page bounds")
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    with os.fdopen(fd, "rb") as source:
+        info = os.fstat(source.fileno())
+        if not stat.S_ISREG(info.st_mode):
+            raise WindowsSourceError("Alert source must be a regular file")
+        rotated = cursor is not None and (
+            cursor.inode != info.st_ino or cursor.offset > info.st_size
+        )
+        if rotated and require_continuity:
+            # Wazuh compresses yesterday's hard-linked daily file. Its inode
+            # disappears; blindly resetting here would discard unread events.
+            raise WindowsSourceError("Alert continuity requires archive recovery")
+        start = cursor.offset if cursor is not None and not rotated else 0
+        source.seek(start)
+        records, malformed, partial = [], 0, False
+        while source.tell() - start < maximum_bytes and len(records) < maximum_records:
+            position = source.tell()
+            budget = maximum_bytes - (position - start)
+            line = source.readline(budget + 1)
+            if not line:
+                break
+            if len(line) > budget:
+                source.seek(position)
+                if position == start:
+                    raise WindowsSourceError("Alert record exceeds page limit")
+                break
+            if not line.endswith(b"\n"):
+                source.seek(position)
+                partial = True
+                break
+            try:
+                record = json.loads(line)
+            except (ValueError, UnicodeError):
+                malformed += 1
+                continue
+            if not isinstance(record, dict):
+                malformed += 1
+                continue
+            records.append(record)
+        return AlertPage(
+            AlertCursor(info.st_ino, source.tell()), tuple(records), rotated, malformed, partial
+        )
