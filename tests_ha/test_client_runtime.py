@@ -77,14 +77,17 @@ class ClientRuntimeTests(unittest.IsolatedAsyncioTestCase):
         await self.coordinator.async_config_entry_first_refresh()
         self.assertTrue(sensor.available)
         self.assertEqual(sensor.native_value, "wired")
+        self.assertEqual(sensor.extra_state_attributes, {"switch_port_status": "not_reported"})
         self.coordinator.backend.read_clients.return_value = [
             {"mac": MAC, "last_seen": dt_util.utcnow().timestamp(), "is_wired": False}
         ]
         await self.coordinator.async_refresh()
         self.assertEqual(sensor.native_value, "wifi")
+        self.assertEqual(sensor.extra_state_attributes, {"switch_port_status": "not_wired"})
         self.coordinator.backend.read_clients.return_value = []
         await self.coordinator.async_refresh()
         self.assertEqual(sensor.native_value, "offline")
+        self.assertEqual(sensor.extra_state_attributes, {"switch_port_status": "offline"})
         self.coordinator.backend.read_clients.side_effect = SyncError("private")
         await self.coordinator.async_refresh()
         self.assertFalse(sensor.available)

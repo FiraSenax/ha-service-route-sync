@@ -190,6 +190,25 @@ class ClientConnectionSensor(ClientEntity, SensorEntity):
             return None
         return row.connection if row.online else "offline"
 
+    @property
+    def extra_state_attributes(self):
+        row = self.observation
+        if row is None:
+            return None
+        if not row.online:
+            status = "offline"
+        elif row.connection != "wired":
+            status = "not_wired"
+        elif row.port_ambiguous:
+            status = "ambiguous"
+        elif row.port is None:
+            status = "not_reported"
+        elif row.port.up is not True:
+            status = "not_up"
+        else:
+            status = "active"
+        return {"switch_port_status": status}
+
 
 class NetworkMetricSensor(NetworkEntity, SensorEntity):
     """Numeric telemetry retains valid zero and exposes missing values as unavailable."""
