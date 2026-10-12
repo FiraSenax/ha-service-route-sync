@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Optionale WAN-, Gateway-, Client- und WLAN-Beobachtung direkt in Home Assistant.
+- Getrennte, ausdrücklich einzurichtende IPv6-Policy-Steuerung mit geprüfter Rücklesung und dauerhafter Sperre bei unklarem Zustand.
+- Begrenzter WLAN-Verlauf mit eigener Karte sowie optionale Frigate- und Windows-Beobachter.
+- Zwei private DNS-Resolver für die zusätzliche Netzwerkdiagnose in den HA-Optionen konfigurierbar.
+- Automatisierte Prüfungen mit HA 2026.10, HACS, Hassfest, Chromium und Frontend-Tests.
+- SAP-Cloud-ALM-Regionen und die Grenzen der manuell gepflegten Ziel-CIDRs dokumentiert.
+
 ## 0.1.0
 
 - Erste HACS-Custom-Integration mit bestehender HA-UniFi-Anbindung.
