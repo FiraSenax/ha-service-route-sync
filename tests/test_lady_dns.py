@@ -1,7 +1,13 @@
 import struct
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.lady_dns import QUESTION, response_ok, probe_dns
+from service_route_sync.lady_dns import (
+    QUESTION,
+    response_ok,
+    probe_dns,
+    validate_dns_servers,
+    LadyDNSReader,
+)
 
 
 class DNSTests(unittest.IsolatedAsyncioTestCase):
@@ -26,4 +32,20 @@ class DNSTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_caller_cannot_select_other_resolver(self):
         with self.assertRaises(ValueError):
-            await probe_dns("8.8.8.8")
+            await probe_dns("8.8.8.8", ("192.168.1.10", "192.168.1.11"))
+
+    def test_resolvers_are_explicit_and_lan_only(self):
+        self.assertEqual(
+            LadyDNSReader(["192.168.1.10", "10.0.0.53"]).servers,
+            ("192.168.1.10", "10.0.0.53"),
+        )
+        for invalid in (
+            None,
+            ["192.168.1.10"],
+            ["192.168.1.10"] * 2,
+            ["8.8.8.8", "192.168.1.10"],
+            ["127.0.0.1", "192.168.1.10"],
+            ["192.0.2.1", "192.168.1.10"],
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                validate_dns_servers(invalid)

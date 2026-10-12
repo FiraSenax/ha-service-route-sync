@@ -8,7 +8,7 @@ import tempfile
 from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from test_wifi_flow import Harness
+from tests_ha.test_wifi_flow import Harness
 from custom_components.service_route_sync.frigate_flow import discover_frigate_scopes
 
 

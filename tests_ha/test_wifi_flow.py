@@ -52,10 +52,13 @@ class WifiFlowTests(unittest.IsolatedAsyncioTestCase):
             [
                 "user",
                 "route_services",
+                "route_tls",
                 "gateway_management",
+                "ipv6_policy",
                 "wifi_history",
                 "frigate_actor",
                 "lady_mode",
+                "lady_dns",
             ],
         )
         result = await self.flow.async_step_wifi_history({"wifi_history_enabled": True})

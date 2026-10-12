@@ -23,6 +23,7 @@ from .gateway_credentials import (
     validate_host_key,
 )
 from .lady_dsl import parse_dsl
+from .lady_dns import validate_dns_servers
 from .lady_probes import LadyClientSSHConfig
 
 
@@ -100,7 +101,11 @@ class LadyFlowSteps:
                 ):
                     self.settings["lady_active"] = False
                     return await self.async_step_lady_sources()
-                return self.finish()
+                return (
+                    self.finish()
+                    if self.settings.get("lady_dns_servers")
+                    else await self.async_step_lady_dns()
+                )
             except (vol.Invalid, ValueError, TypeError):
                 errors["base"] = "invalid_clients"
         return self.async_show_form(step_id="lady", data_schema=schema, errors=errors)
@@ -191,7 +196,7 @@ class LadyFlowSteps:
                     lady_windows_host=values["lady_windows_host"],
                     lady_active=False,
                 )
-                return self.finish()
+                return await self.async_step_lady_dns()
             except (OSError, GatewayTransportError, TimeoutError):
                 errors["base"] = "observer_unavailable"
             except (ValueError, vol.Invalid):
@@ -202,3 +207,26 @@ class LadyFlowSteps:
             errors=errors,
             description_placeholders=public,
         )
+
+    async def async_step_lady_dns(self, user_input=None):
+        """Choose two fixed LAN resolvers; callers cannot supply probe targets."""
+        current = getattr(self, "settings", None) or getattr(self, "defaults", {})
+        if not current.get("lady_enabled"):
+            return self.async_abort(reason="lady_not_configured")
+        previous = current.get("lady_dns_servers") or ("", "")
+        schema = vol.Schema(
+            {
+                vol.Required("primary", default=previous[0]): selector.TextSelector(),
+                vol.Required("secondary", default=previous[1]): selector.TextSelector(),
+            }
+        )
+        errors = {}
+        if user_input is not None:
+            try:
+                values = schema(user_input)
+                servers = validate_dns_servers((values["primary"], values["secondary"]))
+                self.settings = {**current, "lady_dns_servers": list(servers)}
+                return self.finish()
+            except (vol.Invalid, ValueError):
+                errors["base"] = "invalid_dns_servers"
+        return self.async_show_form(step_id="lady_dns", data_schema=schema, errors=errors)

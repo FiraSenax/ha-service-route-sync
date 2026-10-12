@@ -69,11 +69,23 @@ class LadyFlowTests(unittest.IsolatedAsyncioTestCase):
             lady_dsl_key_id="a" * 32,
             lady_pc_key_id="b" * 32,
             lady_windows_key_id="c" * 32,
+            lady_dns_servers=["192.168.1.10", "192.168.1.11"],
         )
         result = await self.flow.async_step_lady({"lady_clients": [MAC, OTHER]})
         self.assertEqual(result["type"], "create_entry")
         self.assertTrue(result["data"]["lady_active"])
         self.assertEqual(result["data"]["lady_profile"]["macs"], [MAC, OTHER])
+
+    async def test_dns_options_require_two_fixed_lan_resolvers(self):
+        invalid = await self.flow.async_step_lady_dns(
+            {"primary": "192.168.1.10", "secondary": "8.8.8.8"}
+        )
+        self.assertEqual(invalid["errors"], {"base": "invalid_dns_servers"})
+        saved = await self.flow.async_step_lady_dns(
+            {"primary": "192.168.1.10", "secondary": "192.168.1.11"}
+        )
+        self.assertEqual(saved["type"], "create_entry")
+        self.assertEqual(saved["data"]["lady_dns_servers"], ["192.168.1.10", "192.168.1.11"])
 
     async def test_invalid_existing_profile_has_sanitized_failure(self):
         self.flow.settings["lady_profile"] = {"id": "other", "macs": [MAC]}

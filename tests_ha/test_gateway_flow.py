@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, patch
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from test_network_flow import FlowHarness
-from test_gateway_credentials import PUBLIC
-from test_gateway_runtime import observation
+from tests_ha.test_network_flow import FlowHarness
+from tests_ha.test_gateway_credentials import PUBLIC
+from tests_ha.test_gateway_runtime import observation
 
 
 class GatewayFlowTests(unittest.IsolatedAsyncioTestCase):

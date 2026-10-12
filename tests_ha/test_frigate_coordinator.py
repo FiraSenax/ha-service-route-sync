@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 import sys
 import tempfile
@@ -32,6 +33,17 @@ class FrigateCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         )
         self.trust.start()
         self.addCleanup(self.trust.stop)
+
+        async def run_validation(target, *args):
+            # Preserve the yield where a real executor job could change options.
+            await asyncio.sleep(0)
+            return target(*args)
+
+        self.executor = patch.object(
+            self.hass, "async_add_executor_job", side_effect=run_validation
+        )
+        self.executor.start()
+        self.addCleanup(self.executor.stop)
 
     async def asyncTearDown(self):
         await self.coordinator.async_shutdown()

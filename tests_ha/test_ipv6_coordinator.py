@@ -15,7 +15,7 @@ from custom_components.service_route_sync.ipv6_coordinator import (
     reconciliation_allowed,
 )
 from custom_components.service_route_sync.ipv6_control import IPv6Controls
-from test_ipv6_control import NOW, observation, status
+from tests.test_ipv6_control import NOW, observation, status
 
 
 class IPv6CoordinatorTests(unittest.IsolatedAsyncioTestCase):

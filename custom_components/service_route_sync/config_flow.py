@@ -684,6 +684,7 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
                 "wifi_history",
                 "frigate_actor",
                 "lady_mode",
+                "lady_dns",
             ],
         )
 

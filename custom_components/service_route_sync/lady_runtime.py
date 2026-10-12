@@ -11,7 +11,7 @@ from .client_coordinator import ClientCoordinator, validate_profiles
 from .gateway_credentials import credential_directory, same_pinned_gateway
 from .lady_client import LadyClientReader
 from .lady_coordinator import LadyCoordinator
-from .lady_dns import LadyDNSReader
+from .lady_dns import LadyDNSReader, validate_dns_servers
 from .lady_dsl import LadyDSLReader
 from .lady_notifier import LadyNotifier
 from .lady_probes import LadyClientSSHConfig, LadyPCProbeReader, LadyProbeReader
@@ -89,7 +89,7 @@ async def prepare_lady(hass, entry, settings):
     readers = {
         "api": LadyClientReader(clients, "ladyofgames"),
         "probe": LadyProbeReader(LadyDSLReader(dsl), LadyPCProbeReader(hass, pc, clients)),
-        "dns": LadyDNSReader(),
+        "dns": LadyDNSReader(validate_dns_servers(settings.get("lady_dns_servers"))),
         "windows": read_windows,
     }
     notifier = LadyNotifier(hass, transaction) if active else ObservationOnlyNotifier()

@@ -62,7 +62,9 @@
       "ipv6_actor": {
         "title": "IPv6 policy access",
         "description": "Install the restricted gateway actor and authorize this dedicated public key with the fixed `service-route-sync ipv6 v1` command. Initial setup only inspects; activation requires a separate options change after the old writer is stopped.\n\n`{public_key}`",
-        "data": {"gateway_host_public_key": "Ed25519 host public key"}
+        "data": {
+          "gateway_host_public_key": "Ed25519 host public key"
+        }
       },
       "clients": {
         "title": "Monitored clients",
@@ -198,7 +200,9 @@
       "ipv6_actor": {
         "title": "IPv6 policy access",
         "description": "Install the restricted gateway actor and authorize this dedicated public key with the fixed `service-route-sync ipv6 v1` command. Initial setup only inspects; activation requires a separate options change after the old writer is stopped.\n\n`{public_key}`",
-        "data": {"gateway_host_public_key": "Ed25519 host public key"}
+        "data": {
+          "gateway_host_public_key": "Ed25519 host public key"
+        }
       },
       "clients": {
         "title": "Monitored clients",
@@ -246,7 +250,8 @@
           "frigate_actor": "Frigate control",
           "gateway_management": "Gateway management address",
           "ipv6_policy": "IPv6 policy controller",
-          "lady_mode": "LadyOfGames operating mode"
+          "lady_mode": "LadyOfGames operating mode",
+          "lady_dns": "DNS resolvers for monitored host"
         }
       },
       "wifi_history": {
@@ -276,7 +281,10 @@
       "route_tls": {
         "title": "Verified UniFi TLS certificate",
         "description": "Enter the gateway certificate SHA-256 fingerprint and a dedicated route API key. Leave the key blank to keep the saved key. A live pinned read validates both before saving. Certificate rotation fails closed.",
-        "data": {"unifi_tls_pin_sha256": "Gateway certificate SHA-256 fingerprint", "unifi_route_api_key": "Dedicated route API key (blank keeps existing)"}
+        "data": {
+          "unifi_tls_pin_sha256": "Gateway certificate SHA-256 fingerprint",
+          "unifi_route_api_key": "Dedicated route API key (blank keeps existing)"
+        }
       },
       "frigate_actor": {
         "title": "Frigate control",
@@ -301,6 +309,13 @@
           "lady_active": "Notifications active",
           "legacy_monitor_stopped": "Legacy monitor has been stopped"
         }
+      },
+      "lady_dns": {
+        "title": "DNS resolvers for monitored host",
+        "data": {
+          "primary": "Primary LAN resolver",
+          "secondary": "Secondary LAN resolver"
+        }
       }
     },
     "error": {
@@ -318,7 +333,8 @@
       "legacy_monitor_running": "Stop the legacy monitor and import the final checkpoint first.",
       "ipv6_legacy_writer_running": "Stop the VM101 IPv6 writer before activating HA.",
       "lady_sources_not_ready": "Lady read-only sources have not provided a current observation.",
-      "lady_checkpoint_missing": "The imported durable Lady checkpoint or history is missing."
+      "lady_checkpoint_missing": "The imported durable Lady checkpoint or history is missing.",
+      "invalid_dns_servers": "Enter two different private IPv4 addresses (10/8, 172.16/12 or 192.168/16)."
     },
     "abort": {
       "router_unavailable": "The selected UniFi integration is unavailable.",

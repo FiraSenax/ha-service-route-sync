@@ -80,5 +80,5 @@ every mutation and latches on a concurrent edit, changed delegation or
 ambiguous rollback. A real HA-originated DSL→Starlink→DSL exercise completed
 with exact readback and closed journals. HA reports DSL, a current decision
 and no review latch. The read-only WAN observer remains independent. The
-pre-cutover rule snapshot, PBS restore record and recovery details are in
-`/home/sven/iobroker-host-exit-2026-10-11/VM101_RESTORE_AND_IPV6_CUTOVER.md`.
+pre-cutover rule snapshot, restore record and recovery details are kept in the
+private deployment notes, outside this repository.

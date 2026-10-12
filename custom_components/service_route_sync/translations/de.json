@@ -62,7 +62,9 @@
       "ipv6_actor": {
         "title": "IPv6-Regelzugang",
         "description": "Installiere den eingeschränkten Gateway-Aktor und autorisiere diesen eigenen öffentlichen Schlüssel ausschließlich für den festen Befehl `service-route-sync ipv6 v1`. Die Ersteinrichtung liest nur. Aktiviere HA erst nach dem Stopp des alten Schreibers in einem zweiten Schritt.\n\n`{public_key}`",
-        "data": {"gateway_host_public_key": "Ed25519-Hostschlüssel"}
+        "data": {
+          "gateway_host_public_key": "Ed25519-Hostschlüssel"
+        }
       },
       "clients": {
         "title": "Überwachte Geräte",
@@ -198,7 +200,9 @@
       "ipv6_actor": {
         "title": "IPv6-Regelzugang",
         "description": "Installiere den eingeschränkten Gateway-Aktor und autorisiere diesen eigenen öffentlichen Schlüssel ausschließlich für den festen Befehl `service-route-sync ipv6 v1`. Die Ersteinrichtung liest nur. Aktiviere HA erst nach dem Stopp des alten Schreibers in einem zweiten Schritt.\n\n`{public_key}`",
-        "data": {"gateway_host_public_key": "Ed25519-Hostschlüssel"}
+        "data": {
+          "gateway_host_public_key": "Ed25519-Hostschlüssel"
+        }
       },
       "clients": {
         "title": "Überwachte Geräte",
@@ -246,7 +250,8 @@
           "frigate_actor": "Frigate-Steuerung",
           "gateway_management": "Gateway-Verwaltungsadresse",
           "ipv6_policy": "IPv6-Regelsteuerung",
-          "lady_mode": "LadyOfGames-Betriebsmodus"
+          "lady_mode": "LadyOfGames-Betriebsmodus",
+          "lady_dns": "DNS-Server für überwachten PC"
         }
       },
       "wifi_history": {
@@ -276,7 +281,10 @@
       "route_tls": {
         "title": "Geprüftes UniFi-TLS-Zertifikat",
         "description": "Trage den SHA-256-Fingerabdruck des Gateway-Zertifikats und einen eigenen Routen-API-Schlüssel ein. Ein leeres Schlüsselfeld behält den gespeicherten Schlüssel. Vor dem Speichern werden beide über eine zertifikatsgeprüfte Leseanfrage geprüft; bei Zertifikatwechsel wird gesperrt.",
-        "data": {"unifi_tls_pin_sha256": "SHA-256-Fingerabdruck des Gateway-Zertifikats", "unifi_route_api_key": "Eigener Routen-API-Schlüssel (leer = behalten)"}
+        "data": {
+          "unifi_tls_pin_sha256": "SHA-256-Fingerabdruck des Gateway-Zertifikats",
+          "unifi_route_api_key": "Eigener Routen-API-Schlüssel (leer = behalten)"
+        }
       },
       "frigate_actor": {
         "title": "Frigate-Steuerung",
@@ -301,6 +309,13 @@
           "lady_active": "Benachrichtigungen aktiv",
           "legacy_monitor_stopped": "Alter Monitor wurde gestoppt"
         }
+      },
+      "lady_dns": {
+        "title": "DNS-Server für überwachten PC",
+        "data": {
+          "primary": "Erster DNS-Server im LAN",
+          "secondary": "Zweiter DNS-Server im LAN"
+        }
       }
     },
     "error": {
@@ -318,7 +333,8 @@
       "legacy_monitor_running": "Zuerst den alten Monitor stoppen und den finalen Checkpoint importieren.",
       "ipv6_legacy_writer_running": "Vor der HA-Aktivierung den IPv6-Schreiber auf VM101 stoppen.",
       "lady_sources_not_ready": "Die lesenden Lady-Quellen liefern noch keine aktuelle Beobachtung.",
-      "lady_checkpoint_missing": "Der importierte, dauerhafte Lady-Checkpoint oder seine Historie fehlt."
+      "lady_checkpoint_missing": "Der importierte, dauerhafte Lady-Checkpoint oder seine Historie fehlt.",
+      "invalid_dns_servers": "Zwei verschiedene private IPv4-Adressen eingeben (10/8, 172.16/12 oder 192.168/16)."
     },
     "abort": {
       "router_unavailable": "Die gewählte UniFi-Anbindung ist nicht verfügbar.",

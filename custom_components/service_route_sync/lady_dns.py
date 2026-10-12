@@ -2,13 +2,36 @@
 
 import asyncio
 from datetime import datetime, timezone
+import ipaddress
 import secrets
 import socket
 import struct
 import time
 
-SERVERS = ("172.20.1.253", "172.20.1.254")
 QUESTION = b"\x09epicgames\x03com\x00\x00\x01\x00\x01"
+LAN_NETWORKS = tuple(
+    ipaddress.IPv4Network(cidr) for cidr in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+)
+
+
+def validate_dns_servers(raw):
+    """Allow exactly two distinct, explicit private IPv4 resolvers."""
+    if not isinstance(raw, (tuple, list)) or len(raw) != 2:
+        raise ValueError("Two DNS resolvers must be configured")
+    servers = []
+    for value in raw:
+        if not isinstance(value, str):
+            raise ValueError("DNS resolver must be an IPv4 address")
+        try:
+            address = ipaddress.IPv4Address(value)
+        except ipaddress.AddressValueError:
+            raise ValueError("DNS resolver must be an IPv4 address") from None
+        if not any(address in network for network in LAN_NETWORKS):
+            raise ValueError("DNS resolver must be a private LAN IPv4 address")
+        servers.append(str(address))
+    if len(set(servers)) != 2:
+        raise ValueError("DNS resolvers must differ")
+    return tuple(servers)
 
 
 def query_packet(identifier):
@@ -67,8 +90,8 @@ def response_ok(packet, identifier):
     return found
 
 
-async def probe_dns(server):
-    if server not in SERVERS:
+async def probe_dns(server, allowed_servers):
+    if server not in allowed_servers:
         raise ValueError("DNS destination is not configured")
     identifier = secrets.randbelow(65536)
     query = query_packet(identifier)
@@ -108,10 +131,13 @@ async def probe_dns(server):
 
 
 class LadyDNSReader:
+    def __init__(self, servers):
+        self.servers = validate_dns_servers(servers)
+
     async def __call__(self):
         from .lady_coordinator import TimedObservation
 
-        values = await asyncio.gather(*(probe_dns(server) for server in SERVERS))
+        values = await asyncio.gather(*(probe_dns(server, self.servers) for server in self.servers))
         return TimedObservation(
-            dict(zip(SERVERS, values, strict=True)), datetime.now(timezone.utc).timestamp()
+            dict(zip(self.servers, values, strict=True)), datetime.now(timezone.utc).timestamp()
         )

@@ -180,12 +180,19 @@ class LadyCoordinator(DataUpdateCoordinator):
                     else None
                 )
                 if name == "dns":
-                    for suffix, resolver in (("253", "172.20.1.253"), ("254", "172.20.1.254")):
-                        known = type(row.get("dns", {}).get(resolver, {}).get("ok")) is bool
+                    # Keep the old Prometheus source labels as stable slots.
+                    # Resolver addresses are read only from the config entry.
+                    results = tuple(row.get("dns", {}).values())
+                    for suffix, result in zip(("253", "254"), results, strict=False):
+                        known = type(result.get("ok")) is bool
                         source_metadata["dns" + suffix] = {
                             "observed_at": observed,
                             "ok": health[name] and known,
                         }
+                    for suffix in ("253", "254"):
+                        source_metadata.setdefault(
+                            "dns" + suffix, {"observed_at": None, "ok": False}
+                        )
                 else:
                     source_metadata[name] = {"observed_at": observed, "ok": health[name]}
             source_metadata["windows"] = {

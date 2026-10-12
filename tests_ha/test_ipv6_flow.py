@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from custom_components.service_route_sync.config_flow import OptionsFlow
-from test_network_flow import FlowHarness
+from tests_ha.test_network_flow import FlowHarness
 
 
 class IPv6FlowTests(unittest.IsolatedAsyncioTestCase):
