@@ -90,9 +90,7 @@ class WindowsBatch:
 def read_windows_batch(alerts: Path, database: Path, cursor, agent_id, *, maximum_bytes=1048576):
     """Run on the manager or in an executor, never HA's event loop."""
     validate_agent_id(agent_id)
-    page = read_alert_page(
-        alerts, cursor, maximum_bytes=maximum_bytes, require_continuity=True
-    )
+    page = read_alert_page(alerts, cursor, maximum_bytes=maximum_bytes, require_continuity=True)
     try:
         heartbeat = read_heartbeat(database, agent_id)
     except (sqlite3.Error, OSError, WindowsSourceError):
@@ -118,6 +116,12 @@ def read_windows_archive_batch(root, database, cursor, today, agent_id):
         heartbeat = read_heartbeat(database, agent_id)
     except (sqlite3.Error, OSError, WindowsSourceError):
         heartbeat = None
-    return WindowsBatch(page.cursor, extract_events(page.records, agent_id), heartbeat,
-                        heartbeat is not None, page.advanced_day,
-                        page.malformed_records, page.partial_line)
+    return WindowsBatch(
+        page.cursor,
+        extract_events(page.records, agent_id),
+        heartbeat,
+        heartbeat is not None,
+        page.advanced_day,
+        page.malformed_records,
+        page.partial_line,
+    )

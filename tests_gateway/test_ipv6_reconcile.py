@@ -12,29 +12,41 @@ from tests_gateway.test_ipv6_policy import RAW, snapshot
 class ReconcileTests(TestCase):
     def test_complete_target_closes_only_matching_intent(self):
         current = snapshot("starlink")
-        journal = {"phase": "intent", "transaction_id": "a" * 32,
-                   "before_digest": "b" * 64, "desired": "starlink"}
+        journal = {
+            "phase": "intent",
+            "transaction_id": "a" * 32,
+            "before_digest": "b" * 64,
+            "desired": "starlink",
+        }
         saved = []
-        with tempfile.TemporaryDirectory() as directory, \
-                patch.object(recovery, "LOCK", Path(directory) / "lock"), \
-                patch.object(recovery.os, "geteuid", return_value=0), \
-                patch.object(recovery, "private_json", side_effect=[RAW, journal]), \
-                patch.object(recovery, "snapshot", return_value=current), \
-                patch.object(recovery, "atomic_journal", side_effect=saved.append):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(recovery, "LOCK", Path(directory) / "lock"),
+            patch.object(recovery.os, "geteuid", return_value=0),
+            patch.object(recovery, "private_json", side_effect=[RAW, journal]),
+            patch.object(recovery, "snapshot", return_value=current),
+            patch.object(recovery, "atomic_journal", side_effect=saved.append),
+        ):
             result = recovery.reconcile("a" * 32, current.digest(), "starlink")
         self.assertTrue(result["reconciled"])
         self.assertEqual(saved[0]["phase"], "complete")
 
     def test_foreign_digest_or_journal_never_closes(self):
         current = snapshot("dsl")
-        journal = {"phase": "blocked", "transaction_id": "a" * 32,
-                   "before_digest": "b" * 64, "desired": "starlink"}
-        with tempfile.TemporaryDirectory() as directory, \
-                patch.object(recovery, "LOCK", Path(directory) / "lock"), \
-                patch.object(recovery.os, "geteuid", return_value=0), \
-                patch.object(recovery, "private_json", side_effect=[RAW, journal]), \
-                patch.object(recovery, "snapshot", return_value=current), \
-                patch.object(recovery, "atomic_journal") as save:
+        journal = {
+            "phase": "blocked",
+            "transaction_id": "a" * 32,
+            "before_digest": "b" * 64,
+            "desired": "starlink",
+        }
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(recovery, "LOCK", Path(directory) / "lock"),
+            patch.object(recovery.os, "geteuid", return_value=0),
+            patch.object(recovery, "private_json", side_effect=[RAW, journal]),
+            patch.object(recovery, "snapshot", return_value=current),
+            patch.object(recovery, "atomic_journal") as save,
+        ):
             with self.assertRaisesRegex(recovery.PolicyError, "gateway_state_does_not_match"):
                 recovery.reconcile("a" * 32, current.digest(), "dsl")
             save.assert_not_called()

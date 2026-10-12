@@ -9,7 +9,9 @@ NOW = datetime(2026, 10, 12, 1, tzinfo=timezone.utc).timestamp()
 
 class LadyEngineTests(unittest.TestCase):
     def test_missing_dns_source_breaks_existing_recovery_timer(self):
-        engine = LadyIncidentEngine({"incidents": {"DNS test-resolver": {"active": True, "since": None, "good": NOW - 20}}})
+        engine = LadyIncidentEngine(
+            {"incidents": {"DNS test-resolver": {"active": True, "since": None, "good": NOW - 20}}}
+        )
         engine.sample({}, NOW)
         self.assertIsNone(engine.s["incidents"]["DNS test-resolver"]["good"])
         engine.sample({"dns": {"test-resolver": {"ok": True}}}, NOW + 20)
@@ -20,24 +22,30 @@ class LadyEngineTests(unittest.TestCase):
     def test_unknown_link_is_not_an_offline_transition(self):
         engine = LadyIncidentEngine()
         row = self.row()
-        row['port']['up'] = None
+        row["port"]["up"] = None
         engine.sample(row, NOW)
-        self.assertNotIn('down_since', engine.s)
-        row['port']['up'] = True
+        self.assertNotIn("down_since", engine.s)
+        row["port"]["up"] = True
         events = engine.sample(row, NOW + 5)
-        self.assertFalse(any(e['key'] == 'LAN-Unterbrechung' for e in events))
+        self.assertFalse(any(e["key"] == "LAN-Unterbrechung" for e in events))
 
     def test_link_flap_counter_types_and_gap_do_not_recover_active_incident(self):
         engine = LadyIncidentEngine()
-        row = {'api_ok': True, 'port_identity': 'test', 'port': {'link_down_count': True}, 'switch_uptime': '10'}
+        row = {
+            "api_ok": True,
+            "port_identity": "test",
+            "port": {"link_down_count": True},
+            "switch_uptime": "10",
+        }
         engine.link_flaps(row, NOW, False, False)
-        self.assertNotIn('link_flap_window', engine.s)
-        row['port']['link_down_count'] = 10
-        row['switch_uptime'] = 100
+        self.assertNotIn("link_flap_window", engine.s)
+        row["port"]["link_down_count"] = 10
+        row["switch_uptime"] = 100
         engine.link_flaps(row, NOW, False, False)
-        engine.s['incidents']['LAN-Linkabbrüche gehäuft']['active'] = True
+        engine.s["incidents"]["LAN-Linkabbrüche gehäuft"]["active"] = True
         engine.link_flaps(row, NOW + 121, False, False)
-        self.assertTrue(engine.s['incidents']['LAN-Linkabbrüche gehäuft']['active'])
+        self.assertTrue(engine.s["incidents"]["LAN-Linkabbrüche gehäuft"]["active"])
+
     def row(self):
         return {
             "port": {

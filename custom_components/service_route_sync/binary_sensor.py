@@ -18,13 +18,18 @@ from .ipv6_entity import IPv6Entity
 async def async_setup_entry(
     hass: HomeAssistant, entry: RouteConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    if coordinator := getattr(entry.runtime_data, 'ipv6_actor', None):
+    if coordinator := getattr(entry.runtime_data, "ipv6_actor", None):
         async_add_entities([IPv6ReviewSensor(coordinator)])
-    if coordinator := getattr(entry.runtime_data, 'frigate_actor', None):
-        async_add_entities(FrigateStatusBinarySensor(coordinator, key) for key in ('connection', 'running', 'restart_enabled'))
+    if coordinator := getattr(entry.runtime_data, "frigate_actor", None):
+        async_add_entities(
+            FrigateStatusBinarySensor(coordinator, key)
+            for key in ("connection", "running", "restart_enabled")
+        )
     if lady := getattr(entry.runtime_data, "lady", None):
         async_add_entities([ClientOnlineSensor(lady.clients, "ladyofgames", "online")])
-        async_add_entities(LadySourceSensor(lady, key) for key in ("api", "probe", "dns", "windows"))
+        async_add_entities(
+            LadySourceSensor(lady, key) for key in ("api", "probe", "dns", "windows")
+        )
         async_add_entities([LadyNotificationSensor(lady, "notification")])
     if coordinator := entry.runtime_data.clients:
         async_add_entities(

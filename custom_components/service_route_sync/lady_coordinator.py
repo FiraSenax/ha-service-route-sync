@@ -43,8 +43,13 @@ class LadyCoordinator(DataUpdateCoordinator):
         self.publish_heartbeat = publish_heartbeat
         self.history_snapshot = None
         self.metrics_snapshot = None
-        super().__init__(hass, _LOGGER, name="Lady network incidents", config_entry=entry,
-                         update_interval=timedelta(seconds=5))
+        super().__init__(
+            hass,
+            _LOGGER,
+            name="Lady network incidents",
+            config_entry=entry,
+            update_interval=timedelta(seconds=5),
+        )
 
     async def async_start(self):
         # Keep polling even with no subscribed entities or open dashboards.
@@ -60,13 +65,27 @@ class LadyCoordinator(DataUpdateCoordinator):
     async def _read(self, name, cursor):
         try:
             async with asyncio.timeout(22 if name == "probe" else 15):
-                value = await self.readers[name](cursor) if name == "windows" else await self.readers[name]()
+                value = (
+                    await self.readers[name](cursor)
+                    if name == "windows"
+                    else await self.readers[name]()
+                )
                 if name in self._source_failures:
                     _LOGGER.info("Lady source %s recovered", name)
                     del self._source_failures[name]
                 return value
-        except (HomeAssistantError, GatewayTransportError, WindowsSourceError, ClientDataError, DSLDataError, OSError, TimeoutError) as error:
-            failure = str(error) if isinstance(error, GatewayTransportError) else type(error).__name__
+        except (
+            HomeAssistantError,
+            GatewayTransportError,
+            WindowsSourceError,
+            ClientDataError,
+            DSLDataError,
+            OSError,
+            TimeoutError,
+        ) as error:
+            failure = (
+                str(error) if isinstance(error, GatewayTransportError) else type(error).__name__
+            )
             if self._source_failures.get(name) != failure:
                 _LOGGER.warning("Lady source %s unavailable (%s)", name, failure)
                 self._source_failures[name] = failure
@@ -78,8 +97,9 @@ class LadyCoordinator(DataUpdateCoordinator):
         # replaying cached events would duplicate Windows incidents.
         cached = self._windows_cache
         if cached is not None and cursor == cached.cursor and now < self._windows_next_poll:
-            return WindowsBatch(cached.cursor, (), cached.agent, cached.heartbeat_ok,
-                                False, 0, False)
+            return WindowsBatch(
+                cached.cursor, (), cached.agent, cached.heartbeat_ok, False, 0, False
+            )
         if cached is None and now < self._windows_next_poll:
             return None
         self._windows_next_poll = now + 60
@@ -94,29 +114,43 @@ class LadyCoordinator(DataUpdateCoordinator):
         cursor = parse_cursor(stored, schema=2 if stored and "day" in stored else 1, nullable=True)
         names = ("api", "probe", "dns", "windows")
         started = dt_util.utcnow().timestamp()
-        values = await asyncio.gather(*(self._read(name, cursor) for name in names[:3]),
-                                      self._read_windows(cursor, started))
+        values = await asyncio.gather(
+            *(self._read(name, cursor) for name in names[:3]), self._read_windows(cursor, started)
+        )
         now = dt_util.utcnow().timestamp()
         row, health = {}, {}
         for name, value in zip(names[:3], values[:3], strict=True):
             age_bound = 100 if name == "dns" else 45
-            fresh = (isinstance(value, TimedObservation) and isinstance(value.value, dict)
-                     and type(value.observed_at) in (int, float) and math.isfinite(value.observed_at)
-                     and 0 <= now - value.observed_at <= age_bound)
+            fresh = (
+                isinstance(value, TimedObservation)
+                and isinstance(value.value, dict)
+                and type(value.observed_at) in (int, float)
+                and math.isfinite(value.observed_at)
+                and 0 <= now - value.observed_at <= age_bound
+            )
             health[name] = fresh
             if name in ("api", "probe"):
                 row[name + "_ok"] = fresh
             if fresh:
                 if name == "api":
-                    allowed = {"port", "port_identity", "tracked_port", "switch_uptime", "planned_link_test"}
+                    allowed = {
+                        "port",
+                        "port_identity",
+                        "tracked_port",
+                        "switch_uptime",
+                        "planned_link_test",
+                    }
                     row.update({key: val for key, val in value.value.items() if key in allowed})
                 else:
                     row["probes" if name == "probe" else "dns"] = value.value
         batch = values[3]
         if not isinstance(batch, WindowsBatch):
             batch = WindowsBatch(None, (), None, False, False, 0, False)
-        health["windows"] = (batch.heartbeat_ok and self._windows_observed_at is not None
-                             and 0 <= now - self._windows_observed_at <= 75)
+        health["windows"] = (
+            batch.heartbeat_ok
+            and self._windows_observed_at is not None
+            and 0 <= now - self._windows_observed_at <= 75
+        )
         try:
             result = await self.transaction.async_sample(row, batch, now)
         except (LadyCheckpointError, WindowsSourceError, OSError, ValueError):
@@ -125,7 +159,8 @@ class LadyCoordinator(DataUpdateCoordinator):
             try:
                 self.history_snapshot = await self.hass.async_add_executor_job(
                     self.transaction.history.snapshot,
-                    self.transaction.store.state["history_revision"], now,
+                    self.transaction.store.state["history_revision"],
+                    now,
                 )
             except (ValueError, OSError):
                 self.history_snapshot = None
@@ -139,23 +174,43 @@ class LadyCoordinator(DataUpdateCoordinator):
         if self.history_snapshot is not None:
             source_metadata = {}
             for name, value in zip(names[:3], values[:3], strict=True):
-                observed = value.observed_at if isinstance(value, TimedObservation) and health[name] else None
+                observed = (
+                    value.observed_at
+                    if isinstance(value, TimedObservation) and health[name]
+                    else None
+                )
                 if name == "dns":
                     for suffix, resolver in (("253", "172.20.1.253"), ("254", "172.20.1.254")):
                         known = type(row.get("dns", {}).get(resolver, {}).get("ok")) is bool
-                        source_metadata["dns" + suffix] = {"observed_at": observed, "ok": health[name] and known}
+                        source_metadata["dns" + suffix] = {
+                            "observed_at": observed,
+                            "ok": health[name] and known,
+                        }
                 else:
                     source_metadata[name] = {"observed_at": observed, "ok": health[name]}
-            source_metadata["windows"] = {"observed_at": self._windows_observed_at,
-                                          "ok": health["windows"]}
+            source_metadata["windows"] = {
+                "observed_at": self._windows_observed_at,
+                "ok": health["windows"],
+            }
             measured = copy.deepcopy(row)
             measured["windows"] = {"agent": copy.deepcopy(batch.agent)}
             self.metrics_snapshot = {
-                "observed_at": now, "row": measured, "sources": source_metadata,
-                "engine": self.transaction.store.state["engine"], "pending": pending,
+                "observed_at": now,
+                "row": measured,
+                "sources": source_metadata,
+                "engine": self.transaction.store.state["engine"],
+                "pending": pending,
                 "history": copy.deepcopy(self.history_snapshot),
             }
         if self.publish_heartbeat:
-            self.hass.bus.async_fire("lady_network_monitor_heartbeat", {"source": "service_route_sync", "pending": pending})
-        return {"observed_at": now, "sources": health, "pending": pending,
-                "notification_ok": notify_ok, **result}
+            self.hass.bus.async_fire(
+                "lady_network_monitor_heartbeat",
+                {"source": "service_route_sync", "pending": pending},
+            )
+        return {
+            "observed_at": now,
+            "sources": health,
+            "pending": pending,
+            "notification_ok": notify_ok,
+            **result,
+        }

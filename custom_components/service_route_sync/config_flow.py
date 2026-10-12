@@ -61,7 +61,9 @@ def fields(hass, defaults):
             vol.Optional(
                 "work_probe_enabled", default=defaults.get("work_probe_enabled", False)
             ): selector.BooleanSelector(),
-            vol.Optional("lady_enabled", default=defaults.get("lady_enabled", False)): selector.BooleanSelector(),
+            vol.Optional(
+                "lady_enabled", default=defaults.get("lady_enabled", False)
+            ): selector.BooleanSelector(),
             vol.Optional(
                 "wifi_history_enabled", default=defaults.get("wifi_history_enabled", False)
             ): selector.BooleanSelector(),
@@ -169,7 +171,11 @@ class Steps(LadyFlowSteps):
 
     async def async_step_routes(self, user_input=None):
         if not self.settings["services"]:
-            return self.finish() if getattr(self, "_route_only", False) else await self.async_step_network()
+            return (
+                self.finish()
+                if getattr(self, "_route_only", False)
+                else await self.async_step_network()
+            )
         errors = {}
         try:
             routes = await UniFiBackend(self.hass, self.settings["unifi_entry_id"]).read_routes()
@@ -202,7 +208,11 @@ class Steps(LadyFlowSteps):
                 errors["base"] = "invalid_routes"
             else:
                 self.settings["bindings"] = dict(user_input)
-                return self.finish() if getattr(self, "_route_only", False) else await self.async_step_network()
+                return (
+                    self.finish()
+                    if getattr(self, "_route_only", False)
+                    else await self.async_step_network()
+                )
         return self.async_show_form(
             step_id="routes",
             data_schema=vol.Schema(schema),
@@ -253,8 +263,12 @@ class Steps(LadyFlowSteps):
                 default=self.settings.get("gateway_observer_enabled", False),
             ): selector.BooleanSelector(),
             vol.Optional("gateway_observer_reconfigure", default=False): selector.BooleanSelector(),
-            vol.Optional("ipv6_actor_enabled", default=self.settings.get("ipv6_actor_enabled", False)): selector.BooleanSelector(),
-            vol.Optional("ipv6_actor_active", default=self.settings.get("ipv6_actor_active", False)): selector.BooleanSelector(),
+            vol.Optional(
+                "ipv6_actor_enabled", default=self.settings.get("ipv6_actor_enabled", False)
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                "ipv6_actor_active", default=self.settings.get("ipv6_actor_active", False)
+            ): selector.BooleanSelector(),
             vol.Optional("ipv6_actor_reconfigure", default=False): selector.BooleanSelector(),
         }
         errors = {}
@@ -265,7 +279,9 @@ class Steps(LadyFlowSteps):
                     raise vol.Invalid("Unknown gateway")
                 reconfigure = user_input.pop("gateway_observer_reconfigure", False)
                 actor_reconfigure = user_input.pop("ipv6_actor_reconfigure", False)
-                if user_input.get("ipv6_actor_enabled") and not user_input.get("gateway_observer_enabled"):
+                if user_input.get("ipv6_actor_enabled") and not user_input.get(
+                    "gateway_observer_enabled"
+                ):
                     raise vol.Invalid("IPv6 actor requires gateway observer")
                 if user_input.get("ipv6_actor_active") and not user_input.get("ipv6_actor_enabled"):
                     raise vol.Invalid("Inactive IPv6 actor cannot write")
@@ -280,10 +296,7 @@ class Steps(LadyFlowSteps):
                         GatewaySSHConfig(host, credential_directory(self.hass, "0" * 32))
                     except (ValueError, GatewayTransportError):
                         return self.async_abort(reason="observer_address_unavailable")
-                    if (
-                        reconfigure
-                        or not self.settings.get("gateway_observer_key_id")
-                    ):
+                    if reconfigure or not self.settings.get("gateway_observer_key_id"):
                         # A canceled wizard must never overwrite active trust material.
                         self.settings["gateway_observer_host"] = host
                         self.settings["gateway_observer_key_id"] = uuid4().hex
@@ -381,9 +394,12 @@ class Steps(LadyFlowSteps):
                 values = schema(user_input)
                 host_key = validate_host_key(values["gateway_host_public_key"])
                 directory = credential_directory(self.hass, self.settings["ipv6_actor_key_id"])
-                observer_dir = credential_directory(self.hass, self.settings["gateway_observer_key_id"])
+                observer_dir = credential_directory(
+                    self.hass, self.settings["gateway_observer_key_id"]
+                )
                 await self.hass.async_add_executor_job(
-                    save_known_host, directory, self.settings["ipv6_actor_host"], host_key)
+                    save_known_host, directory, self.settings["ipv6_actor_host"], host_key
+                )
                 if not await self.hass.async_add_executor_job(
                     same_pinned_gateway, directory / "known_hosts", observer_dir / "known_hosts"
                 ):
@@ -391,13 +407,19 @@ class Steps(LadyFlowSteps):
                 transport = IPv6ActorSSHConfig(self.settings["ipv6_actor_host"], directory)
                 await self.hass.async_add_executor_job(transport.validate_files)
                 await inspect_actor(transport)
-                return self.finish() if getattr(self, "_ipv6_only", False) else await self.async_step_clients()
+                return (
+                    self.finish()
+                    if getattr(self, "_ipv6_only", False)
+                    else await self.async_step_clients()
+                )
             except (vol.Invalid, ValueError):
                 errors["base"] = "invalid_observer_configuration"
             except (OSError, GatewayTransportError, TimeoutError):
                 errors["base"] = "observer_unavailable"
         return self.async_show_form(
-            step_id="ipv6_actor", data_schema=schema, errors=errors,
+            step_id="ipv6_actor",
+            data_schema=schema,
+            errors=errors,
             description_placeholders={"public_key": public_key},
         )
 
@@ -651,16 +673,32 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
         self.defaults = {**DEFAULTS, **self.config_entry.data, **self.config_entry.options}
         if user_input is not None:
             return await self.async_step_user(user_input)
-        return self.async_show_menu(step_id='init', menu_options=['user', 'route_services', 'route_tls', 'gateway_management', 'ipv6_policy', 'wifi_history', 'frigate_actor', 'lady_mode'])
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=[
+                "user",
+                "route_services",
+                "route_tls",
+                "gateway_management",
+                "ipv6_policy",
+                "wifi_history",
+                "frigate_actor",
+                "lady_mode",
+            ],
+        )
 
     async def async_step_route_tls(self, user_input=None):
         """Pin the exact UniFi certificate before this integration may write routes."""
-        schema = vol.Schema({
-            vol.Required("unifi_tls_pin_sha256", default=self.defaults.get("unifi_tls_pin_sha256", "")):
-                selector.TextSelector(),
-            vol.Optional("unifi_route_api_key"):
-                selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
-        })
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    "unifi_tls_pin_sha256", default=self.defaults.get("unifi_tls_pin_sha256", "")
+                ): selector.TextSelector(),
+                vol.Optional("unifi_route_api_key"): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                ),
+            }
+        )
         errors = {}
         if user_input is not None:
             backend = None
@@ -669,11 +707,20 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
                 pin = values["unifi_tls_pin_sha256"].replace(":", "").lower().strip()
                 if not re.fullmatch(r"[0-9a-f]{64}", pin):
                     raise ValueError("Invalid SHA-256 fingerprint")
-                api_key = values.get("unifi_route_api_key") or self.defaults.get("unifi_route_api_key")
-                backend = UniFiBackend(self.hass, self.defaults["unifi_entry_id"],
-                                       tls_pin_sha256=pin, route_api_key=api_key)
+                api_key = values.get("unifi_route_api_key") or self.defaults.get(
+                    "unifi_route_api_key"
+                )
+                backend = UniFiBackend(
+                    self.hass,
+                    self.defaults["unifi_entry_id"],
+                    tls_pin_sha256=pin,
+                    route_api_key=api_key,
+                )
                 routes = await backend.read_routes()
-                if any(route_id not in routes for route_id in self.defaults.get("bindings", {}).values()):
+                if any(
+                    route_id not in routes
+                    for route_id in self.defaults.get("bindings", {}).values()
+                ):
                     raise ValueError("A selected UniFi route is missing")
                 self.settings = {**self.defaults, "unifi_tls_pin_sha256": pin}
                 if api_key:
@@ -688,14 +735,18 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
 
     async def async_step_ipv6_policy(self, user_input=None):
         """A narrow IPv6 management flow preserves all unrelated options."""
-        schema = vol.Schema({
-            vol.Required("ipv6_actor_enabled", default=self.defaults.get("ipv6_actor_enabled", False)):
-                selector.BooleanSelector(),
-            vol.Required("ipv6_actor_active", default=self.defaults.get("ipv6_actor_active", False)):
-                selector.BooleanSelector(),
-            vol.Optional("ipv6_actor_reconfigure", default=False): selector.BooleanSelector(),
-            vol.Optional("legacy_writer_stopped", default=False): selector.BooleanSelector(),
-        })
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    "ipv6_actor_enabled", default=self.defaults.get("ipv6_actor_enabled", False)
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    "ipv6_actor_active", default=self.defaults.get("ipv6_actor_active", False)
+                ): selector.BooleanSelector(),
+                vol.Optional("ipv6_actor_reconfigure", default=False): selector.BooleanSelector(),
+                vol.Optional("legacy_writer_stopped", default=False): selector.BooleanSelector(),
+            }
+        )
         errors = {}
         if user_input is not None:
             try:
@@ -705,18 +756,29 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
                     raise ValueError("WAN observer required")
                 if active and not enabled:
                     raise ValueError("Actor cannot write while disabled")
-                if active and not self.defaults.get("ipv6_actor_active") and values.get("legacy_writer_stopped") is not True:
+                if (
+                    active
+                    and not self.defaults.get("ipv6_actor_active")
+                    and values.get("legacy_writer_stopped") is not True
+                ):
                     errors["base"] = "ipv6_legacy_writer_running"
                 if not errors and enabled:
-                    fresh_key = values.get("ipv6_actor_reconfigure", False) or not self.defaults.get("ipv6_actor_key_id")
-                    self.settings = {**self.defaults, "ipv6_actor_enabled": True,
-                                     "ipv6_actor_active": active and not fresh_key}
+                    fresh_key = values.get(
+                        "ipv6_actor_reconfigure", False
+                    ) or not self.defaults.get("ipv6_actor_key_id")
+                    self.settings = {
+                        **self.defaults,
+                        "ipv6_actor_enabled": True,
+                        "ipv6_actor_active": active and not fresh_key,
+                    }
                     if fresh_key:
                         self.settings["ipv6_actor_host"] = self.defaults["gateway_observer_host"]
                         self.settings["ipv6_actor_key_id"] = uuid4().hex
                         self._ipv6_only = True
                         return await self.async_step_ipv6_actor()
-                    if self.settings.get("ipv6_actor_host") != self.defaults.get("gateway_observer_host"):
+                    if self.settings.get("ipv6_actor_host") != self.defaults.get(
+                        "gateway_observer_host"
+                    ):
                         raise ValueError("Gateway identity changed")
                     transport = IPv6ActorSSHConfig(
                         self.settings["ipv6_actor_host"],
@@ -724,101 +786,147 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
                     )
                     await self.hass.async_add_executor_job(transport.validate_files)
                     actor = await inspect_actor(transport)
-                    if active and (not actor.writable or actor.review_required or not actor.healthy):
+                    if active and (
+                        not actor.writable or actor.review_required or not actor.healthy
+                    ):
                         errors["base"] = "observer_unavailable"
                     elif not errors:
                         return self.finish()
                 elif not errors:
-                    self.settings = {**self.defaults, "ipv6_actor_enabled": False,
-                                     "ipv6_actor_active": False}
+                    self.settings = {
+                        **self.defaults,
+                        "ipv6_actor_enabled": False,
+                        "ipv6_actor_active": False,
+                    }
                     return self.finish()
-            except (vol.Invalid, ValueError, KeyError, OSError, GatewayTransportError, TimeoutError):
+            except (
+                vol.Invalid,
+                ValueError,
+                KeyError,
+                OSError,
+                GatewayTransportError,
+                TimeoutError,
+            ):
                 errors["base"] = "invalid_configuration"
         return self.async_show_form(step_id="ipv6_policy", data_schema=schema, errors=errors)
 
     async def async_step_lady_mode(self, user_input=None):
         """Activate only an imported, durable Lady checkpoint after legacy freeze."""
-        if not self.defaults.get('lady_enabled'):
-            return self.async_abort(reason='lady_not_configured')
-        schema = vol.Schema({
-            vol.Required('lady_active', default=self.defaults.get('lady_active', False)):
-                selector.BooleanSelector(),
-            vol.Optional('legacy_monitor_stopped', default=False):
-                selector.BooleanSelector(),
-        })
+        if not self.defaults.get("lady_enabled"):
+            return self.async_abort(reason="lady_not_configured")
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    "lady_active", default=self.defaults.get("lady_active", False)
+                ): selector.BooleanSelector(),
+                vol.Optional("legacy_monitor_stopped", default=False): selector.BooleanSelector(),
+            }
+        )
         errors = {}
         if user_input is not None:
             try:
                 values = schema(user_input)
-                active = values['lady_active']
-                if active and not self.defaults.get('lady_active'):
-                    if values['legacy_monitor_stopped'] is not True:
-                        errors['base'] = 'legacy_monitor_running'
+                active = values["lady_active"]
+                if active and not self.defaults.get("lady_active"):
+                    if values["legacy_monitor_stopped"] is not True:
+                        errors["base"] = "legacy_monitor_running"
                     else:
-                        runtime = getattr(self.config_entry, 'runtime_data', None)
-                        lady = getattr(runtime, 'lady', None)
+                        runtime = getattr(self.config_entry, "runtime_data", None)
+                        lady = getattr(runtime, "lady", None)
                         if lady is None or not lady.incidents.last_update_success:
-                            errors['base'] = 'lady_sources_not_ready'
+                            errors["base"] = "lady_sources_not_ready"
                         else:
                             store = LadyCheckpointStore(self.hass, self.config_entry.entry_id)
                             checkpoint = await store.async_load()
-                            if (checkpoint is None or not isinstance(checkpoint.get('cursor'), dict)
-                                    or 'day' not in checkpoint['cursor']
-                                    or not checkpoint.get('history_epoch')
-                                    or not checkpoint.get('history_revision')):
-                                errors['base'] = 'lady_checkpoint_missing'
+                            if (
+                                checkpoint is None
+                                or not isinstance(checkpoint.get("cursor"), dict)
+                                or "day" not in checkpoint["cursor"]
+                                or not checkpoint.get("history_epoch")
+                                or not checkpoint.get("history_revision")
+                            ):
+                                errors["base"] = "lady_checkpoint_missing"
                             else:
-                                history = LadyHistory(journal_path(
-                                    self.hass.config.path(DOMAIN, 'lady_history'),
-                                    store.store.key, checkpoint['history_epoch']))
+                                history = LadyHistory(
+                                    journal_path(
+                                        self.hass.config.path(DOMAIN, "lady_history"),
+                                        store.store.key,
+                                        checkpoint["history_epoch"],
+                                    )
+                                )
                                 await self.hass.async_add_executor_job(
-                                    history.snapshot, checkpoint['history_revision'], time.time())
+                                    history.snapshot, checkpoint["history_revision"], time.time()
+                                )
                 if not errors:
-                    self.settings = {**self.defaults, 'lady_active': active}
+                    self.settings = {**self.defaults, "lady_active": active}
                     return self.finish()
-            except (vol.Invalid, LadyCheckpointError, LadyHistoryError, OSError, ValueError, TypeError):
-                errors['base'] = 'lady_checkpoint_missing'
-        return self.async_show_form(step_id='lady_mode', data_schema=schema, errors=errors)
+            except (
+                vol.Invalid,
+                LadyCheckpointError,
+                LadyHistoryError,
+                OSError,
+                ValueError,
+                TypeError,
+            ):
+                errors["base"] = "lady_checkpoint_missing"
+        return self.async_show_form(step_id="lady_mode", data_schema=schema, errors=errors)
 
     async def async_step_route_services(self, user_input=None):
         """Edit route sources and bindings without reprovisioning network or actors."""
-        schema = vol.Schema({
-            vol.Required('services', default=self.defaults.get('services', [])):
-                selector.SelectSelector(selector.SelectSelectorConfig(
-                    options=[{'value': key, 'label': service.name} for key, service in CATALOG.items()],
-                    multiple=True)),
-        })
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    "services", default=self.defaults.get("services", [])
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": key, "label": service.name}
+                            for key, service in CATALOG.items()
+                        ],
+                        multiple=True,
+                    )
+                ),
+            }
+        )
         if user_input is None:
-            return self.async_show_form(step_id='route_services', data_schema=schema)
+            return self.async_show_form(step_id="route_services", data_schema=schema)
         try:
             values = schema(user_input)
-            chosen = values['services']
+            chosen = values["services"]
             if len(chosen) != len(set(chosen)) or any(key not in CATALOG for key in chosen):
-                raise vol.Invalid('Invalid route service selection')
-            self.settings = {**self.defaults, 'services': chosen}
+                raise vol.Invalid("Invalid route service selection")
+            self.settings = {**self.defaults, "services": chosen}
             self._route_only = True
             return await self.async_step_sources()
         except vol.Invalid:
-            return self.async_show_form(step_id='route_services', data_schema=schema,
-                                        errors={'base': 'invalid_configuration'})
+            return self.async_show_form(
+                step_id="route_services",
+                data_schema=schema,
+                errors={"base": "invalid_configuration"},
+            )
 
     async def async_step_gateway_management(self, user_input=None):
         """Rebind a pinned observer to the already trusted LAN management peer."""
-        schema = vol.Schema({vol.Required('use_existing_management_host'): selector.BooleanSelector()})
+        schema = vol.Schema(
+            {vol.Required("use_existing_management_host"): selector.BooleanSelector()}
+        )
         if user_input is None:
-            return self.async_show_form(step_id='gateway_management', data_schema=schema)
+            return self.async_show_form(step_id="gateway_management", data_schema=schema)
         try:
             values = schema(user_input)
-            if values['use_existing_management_host'] is not True:
-                return self.async_abort(reason='no_change')
+            if values["use_existing_management_host"] is not True:
+                return self.async_abort(reason="no_change")
             settings = self.defaults
-            if settings.get('gateway_observer_enabled') is not True or settings.get('client_probe_enabled') is not True:
-                raise GatewayTransportError('Management peer unavailable')
+            if (
+                settings.get("gateway_observer_enabled") is not True
+                or settings.get("client_probe_enabled") is not True
+            ):
+                raise GatewayTransportError("Management peer unavailable")
             management = ClientProbeSSHConfig(
-                settings['client_probe_host'],
-                credential_directory(self.hass, settings['client_probe_key_id']),
+                settings["client_probe_host"],
+                credential_directory(self.hass, settings["client_probe_key_id"]),
             )
-            observer_dir = credential_directory(self.hass, settings['gateway_observer_key_id'])
+            observer_dir = credential_directory(self.hass, settings["gateway_observer_key_id"])
             await self.hass.async_add_executor_job(
                 bind_existing_gateway_host,
                 observer_dir,
@@ -828,46 +936,72 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
             config = GatewaySSHConfig(management.host, observer_dir)
             raw = await read_gateway(config)
             parse_gateway_observation(
-                raw, dt_util.utcnow(),
-                primary_interface=settings['gateway_primary_interface'],
-                secondary_interface=settings['gateway_secondary_interface'],
+                raw,
+                dt_util.utcnow(),
+                primary_interface=settings["gateway_primary_interface"],
+                secondary_interface=settings["gateway_secondary_interface"],
             )
-            self.settings = {**settings, 'gateway_observer_host': management.host}
+            self.settings = {**settings, "gateway_observer_host": management.host}
             return self.finish()
-        except (vol.Invalid, KeyError, OSError, ValueError, GatewayTransportError,
-                NetworkDataError, TimeoutError):
+        except (
+            vol.Invalid,
+            KeyError,
+            OSError,
+            ValueError,
+            GatewayTransportError,
+            NetworkDataError,
+            TimeoutError,
+        ):
             return self.async_show_form(
-                step_id='gateway_management', data_schema=schema,
-                errors={'base': 'invalid_configuration'},
+                step_id="gateway_management",
+                data_schema=schema,
+                errors={"base": "invalid_configuration"},
             )
 
     async def async_step_wifi_history(self, user_input=None):
         """Change only wireless sampling without reprovisioning existing SSH scopes."""
-        schema = vol.Schema({vol.Required('wifi_history_enabled', default=self.defaults.get('wifi_history_enabled', False)):
-                             selector.BooleanSelector()})
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    "wifi_history_enabled", default=self.defaults.get("wifi_history_enabled", False)
+                ): selector.BooleanSelector()
+            }
+        )
         errors = {}
         if user_input is not None:
             try:
                 values = schema(user_input)
-                if values['wifi_history_enabled']:
+                if values["wifi_history_enabled"]:
                     async with asyncio.timeout(8):
-                        rows = await UniFiBackend(self.hass, self.defaults['unifi_entry_id']).read_clients()
+                        rows = await UniFiBackend(
+                            self.hass, self.defaults["unifi_entry_id"]
+                        ).read_clients()
                     observe_wireless(rows, dt_util.utcnow())
                 self.settings = {**self.defaults, **values}
                 return self.finish()
             except (vol.Invalid, SyncError, WifiDataError, TimeoutError):
-                errors['base'] = 'invalid_configuration'
-        return self.async_show_form(step_id='wifi_history', data_schema=schema, errors=errors)
+                errors["base"] = "invalid_configuration"
+        return self.async_show_form(step_id="wifi_history", data_schema=schema, errors=errors)
 
     def finish(self):
         # Only route-policy changes require a fresh manual enablement. Editing
         # an independent IPv6, Lady, Frigate or Wi-Fi feature must not silently
         # stop the already reviewed daily route updates.
         route_fields = (
-            "services", "bindings", "m365_categories", "azure_tags",
-            "aws_regions", "aws_services", "sap_prefixes", "custom_prefixes",
-            "maximum_removal", "maximum_prefixes", "ipv6", "interval_hours",
-            "unifi_tls_pin_sha256", "unifi_route_api_key",
+            "services",
+            "bindings",
+            "m365_categories",
+            "azure_tags",
+            "aws_regions",
+            "aws_services",
+            "sap_prefixes",
+            "custom_prefixes",
+            "maximum_removal",
+            "maximum_prefixes",
+            "ipv6",
+            "interval_hours",
+            "unifi_tls_pin_sha256",
+            "unifi_route_api_key",
         )
         if any(self.settings.get(key) != self.defaults.get(key) for key in route_fields):
             self.settings["automatic_apply"] = False

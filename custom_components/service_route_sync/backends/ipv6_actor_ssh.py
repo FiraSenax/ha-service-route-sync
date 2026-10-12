@@ -72,22 +72,47 @@ def parse_actor_response(raw: Any, operation: str) -> ActorStatus | ActorResult:
     if not isinstance(raw, dict) or type(raw.get("schema")) is not int or raw["schema"] != 1:
         raise GatewayTransportError("Invalid gateway actor response")
     if operation == "inspect":
-        fields = {"schema", "operation", "mode", "writable", "owned_mode", "repairable", "blank", "healthy", "digest", "delegation_ready",
-                  "dsl_default", "starlink_default", "review_required"}
+        fields = {
+            "schema",
+            "operation",
+            "mode",
+            "writable",
+            "owned_mode",
+            "repairable",
+            "blank",
+            "healthy",
+            "digest",
+            "delegation_ready",
+            "dsl_default",
+            "starlink_default",
+            "review_required",
+        }
         if set(raw) != fields or raw["operation"] != "inspect":
             raise GatewayTransportError("Invalid gateway actor response")
         mode = _mode(raw["mode"])
         owned_mode = _mode(raw["owned_mode"])
         repairable, blank = _bool(raw["repairable"]), _bool(raw["blank"])
         healthy = _bool(raw["healthy"])
-        if (healthy != (mode in ("dsl", "starlink"))
-                or (mode != "unknown" and (mode != owned_mode or not repairable or blank))
-                or (blank and (mode != "unknown" or owned_mode != "unknown" or not repairable))
-                or (owned_mode != "unknown" and not repairable)):
+        if (
+            healthy != (mode in ("dsl", "starlink"))
+            or (mode != "unknown" and (mode != owned_mode or not repairable or blank))
+            or (blank and (mode != "unknown" or owned_mode != "unknown" or not repairable))
+            or (owned_mode != "unknown" and not repairable)
+        ):
             raise GatewayTransportError("Conflicting gateway policy status")
-        return ActorStatus(mode, _bool(raw["writable"]), owned_mode, repairable, blank, healthy, _digest(raw["digest"]),
-                           _bool(raw["delegation_ready"]), _bool(raw["dsl_default"]),
-                           _bool(raw["starlink_default"]), _bool(raw["review_required"]))
+        return ActorStatus(
+            mode,
+            _bool(raw["writable"]),
+            owned_mode,
+            repairable,
+            blank,
+            healthy,
+            _digest(raw["digest"]),
+            _bool(raw["delegation_ready"]),
+            _bool(raw["dsl_default"]),
+            _bool(raw["starlink_default"]),
+            _bool(raw["review_required"]),
+        )
     if operation == "apply":
         fields = {"schema", "operation", "mode", "applied", "digest", "review_required"}
         if set(raw) != fields or raw["operation"] != "apply":
@@ -113,9 +138,16 @@ async def apply_actor(
     _digest(expected_digest)
     if mode not in ("dsl", "starlink") or not isinstance(mode, str):
         raise GatewayTransportError("Invalid gateway policy mode")
-    payload = json.dumps({"schema": 1, "operation": "apply", "transaction_id": transaction_id,
-                          "expected_digest": expected_digest, "mode": mode},
-                         separators=(",", ":")).encode("ascii")
+    payload = json.dumps(
+        {
+            "schema": 1,
+            "operation": "apply",
+            "transaction_id": transaction_id,
+            "expected_digest": expected_digest,
+            "mode": mode,
+        },
+        separators=(",", ":"),
+    ).encode("ascii")
     # Gateway verifies each rule edit and may need a full bounded rollback.
     # Keep the SSH deadline longer than that transaction; an uncertain result
     # still latches both sides and is never retried automatically.

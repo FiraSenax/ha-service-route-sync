@@ -2,8 +2,17 @@
 
 import unittest
 
-from gateway.ipv6_policy import (PolicyError, PolicySnapshot, classify, owned_mode, recoverable, expected_nat,
-                                 expected_policy, expected_sab, parse_config)
+from gateway.ipv6_policy import (
+    PolicyError,
+    PolicySnapshot,
+    classify,
+    owned_mode,
+    recoverable,
+    expected_nat,
+    expected_policy,
+    expected_sab,
+    parse_config,
+)
 
 
 RAW = {
@@ -26,7 +35,9 @@ def snapshot(mode="dsl", *, delegation=PD):
         ("-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",),
         expected_sab(config),
         ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",),
-        expected_policy(config, mode), (), delegation,
+        expected_policy(config, mode),
+        (),
+        delegation,
     )
 
 
@@ -40,33 +51,87 @@ class PolicyTests(unittest.TestCase):
         config = parse_config(RAW)
         good = snapshot()
         for changed in (
-            PolicySnapshot(good.nat_chain, (), good.sab_chain, good.sab_hook,
-                           good.policy, good.temporary_policy, good.delegation),
-            PolicySnapshot(good.nat_chain + ("-A IOB_V6_NAT -j ACCEPT",), good.nat_hook,
-                           good.sab_chain, good.sab_hook, good.policy, (), good.delegation),
-            PolicySnapshot(good.nat_chain, good.nat_hook, good.sab_chain, good.sab_hook,
-                           good.policy, ("31009: from fd12:3456:789a:bc00::/56 lookup 202.eth1",), good.delegation),
+            PolicySnapshot(
+                good.nat_chain,
+                (),
+                good.sab_chain,
+                good.sab_hook,
+                good.policy,
+                good.temporary_policy,
+                good.delegation,
+            ),
+            PolicySnapshot(
+                good.nat_chain + ("-A IOB_V6_NAT -j ACCEPT",),
+                good.nat_hook,
+                good.sab_chain,
+                good.sab_hook,
+                good.policy,
+                (),
+                good.delegation,
+            ),
+            PolicySnapshot(
+                good.nat_chain,
+                good.nat_hook,
+                good.sab_chain,
+                good.sab_hook,
+                good.policy,
+                ("31009: from fd12:3456:789a:bc00::/56 lookup 202.eth1",),
+                good.delegation,
+            ),
         ):
             self.assertEqual(classify(changed, config), "unknown")
-        self.assertTrue(recoverable(PolicySnapshot(
-            good.nat_chain, (), good.sab_chain, good.sab_hook,
-            good.policy, (), good.delegation), config))
-        self.assertFalse(recoverable(PolicySnapshot(
-            good.nat_chain + ("-A IOB_V6_NAT -j ACCEPT",), good.nat_hook,
-            good.sab_chain, good.sab_hook, good.policy, (), good.delegation), config))
+        self.assertTrue(
+            recoverable(
+                PolicySnapshot(
+                    good.nat_chain,
+                    (),
+                    good.sab_chain,
+                    good.sab_hook,
+                    good.policy,
+                    (),
+                    good.delegation,
+                ),
+                config,
+            )
+        )
+        self.assertFalse(
+            recoverable(
+                PolicySnapshot(
+                    good.nat_chain + ("-A IOB_V6_NAT -j ACCEPT",),
+                    good.nat_hook,
+                    good.sab_chain,
+                    good.sab_hook,
+                    good.policy,
+                    (),
+                    good.delegation,
+                ),
+                config,
+            )
+        )
 
     def test_delegation_rotation_requires_new_verified_rule(self):
         config = parse_config(RAW)
         before = snapshot()
-        after = PolicySnapshot(before.nat_chain, before.nat_hook, before.sab_chain,
-                               before.sab_hook, before.policy, (), "2001:4860:abcd:3400::/56")
+        after = PolicySnapshot(
+            before.nat_chain,
+            before.nat_hook,
+            before.sab_chain,
+            before.sab_hook,
+            before.policy,
+            (),
+            "2001:4860:abcd:3400::/56",
+        )
         self.assertEqual(classify(after, config), "unknown")
         self.assertEqual(owned_mode(after, config), ("dsl", PD))
         self.assertNotEqual(before.digest(), after.digest())
 
     def test_configuration_rejects_broad_or_unmasked_scopes(self):
-        for update in ({"ula_prefix": "::/0"}, {"dsl_mark": "0xffffffff/0x7e0000"},
-                       {"sab_dsl_ip": "8.8.8.8"}, {"schema": True}):
+        for update in (
+            {"ula_prefix": "::/0"},
+            {"dsl_mark": "0xffffffff/0x7e0000"},
+            {"sab_dsl_ip": "8.8.8.8"},
+            {"schema": True},
+        ):
             with self.subTest(update=update), self.assertRaises(PolicyError):
                 parse_config({**RAW, **update})
 

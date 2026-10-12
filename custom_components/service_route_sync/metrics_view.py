@@ -45,7 +45,9 @@ class NetworkMetricsView(HomeAssistantView):
         client_entities = [
             row.entity_id
             for row in er.async_entries_for_config_entry(registry, entry_id)
-            if row.unique_id.startswith(tuple(entry_id + "_client_" + key + "_" for key in runtime.clients.profiles))
+            if row.unique_id.startswith(
+                tuple(entry_id + "_client_" + key + "_" for key in runtime.clients.profiles)
+            )
         ]
         if not client_entities or any(
             not user.permissions.check_entity(entity, POLICY_READ) for entity in client_entities
@@ -94,12 +96,22 @@ class LadyMetricsView(HomeAssistantView):
         settings = {**entry.data, **entry.options}
         runtime = getattr(entry, "runtime_data", None)
         lady = getattr(runtime, "lady", None)
-        if entry.state is not ConfigEntryState.LOADED or not settings.get("network_metrics_enabled") or not settings.get("lady_enabled") or lady is None:
+        if (
+            entry.state is not ConfigEntryState.LOADED
+            or not settings.get("network_metrics_enabled")
+            or not settings.get("lady_enabled")
+            or lady is None
+        ):
             return web.Response(status=503)
         registry = er.async_get(self.hass)
-        entities = [row.entity_id for row in er.async_entries_for_config_entry(registry, entry_id)
-                    if row.unique_id.startswith((entry_id + "_lady_", entry_id + "_client_ladyofgames_"))]
-        if not entities or any(not user.permissions.check_entity(entity, POLICY_READ) for entity in entities):
+        entities = [
+            row.entity_id
+            for row in er.async_entries_for_config_entry(registry, entry_id)
+            if row.unique_id.startswith((entry_id + "_lady_", entry_id + "_client_ladyofgames_"))
+        ]
+        if not entities or any(
+            not user.permissions.check_entity(entity, POLICY_READ) for entity in entities
+        ):
             return web.Response(status=403)
         coordinator = lady.incidents
         if not coordinator.last_update_success or coordinator.metrics_snapshot is None:
@@ -107,14 +119,30 @@ class LadyMetricsView(HomeAssistantView):
         now = dt_util.utcnow()
         bandwidth = None
         network = getattr(runtime, "network", None)
-        if settings.get("gateway_primary_interface") == "ppp0" and network is not None and network.last_update_success and network.data is not None and network.data.primary is not None:
+        if (
+            settings.get("gateway_primary_interface") == "ppp0"
+            and network is not None
+            and network.last_update_success
+            and network.data is not None
+            and network.data.primary is not None
+        ):
             primary = network.data.primary
-            bandwidth = {"observed_at": primary.observed_at.timestamp(), "upload": primary.upload_mbit_s, "download": primary.download_mbit_s}
+            bandwidth = {
+                "observed_at": primary.observed_at.timestamp(),
+                "upload": primary.upload_mbit_s,
+                "download": primary.download_mbit_s,
+            }
         try:
             text = render_lady(coordinator.metrics_snapshot, now.timestamp(), bandwidth)
         except (MetricDataError, ValueError, TypeError, KeyError):
             return web.Response(status=503)
-        return web.Response(text=text, headers={"Content-Type": "text/plain; version=0.0.4; charset=utf-8", "Cache-Control": "no-store"})
+        return web.Response(
+            text=text,
+            headers={
+                "Content-Type": "text/plain; version=0.0.4; charset=utf-8",
+                "Cache-Control": "no-store",
+            },
+        )
 
 
 def register_metrics_view(hass):

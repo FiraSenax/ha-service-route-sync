@@ -50,8 +50,10 @@ class ProviderTests(unittest.TestCase):
                 {"region": "eu-central-1", "service": "EC2", "ipv6_prefix": "2a05:d014::/32"},
             ],
         }
-        self.assertEqual(select_prefixes("fortnite", feed, {}),
-                         ["52.23.121.216/32", "18.184.0.0/14", "2a05:d014::/32"])
+        self.assertEqual(
+            select_prefixes("fortnite", feed, {}),
+            ["52.23.121.216/32", "18.184.0.0/14", "2a05:d014::/32"],
+        )
 
 
 class SourceSafetyTests(unittest.IsolatedAsyncioTestCase):

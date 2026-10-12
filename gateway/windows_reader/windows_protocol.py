@@ -15,12 +15,16 @@ def cursor_request(cursor, *, schema=1):
     expected = AlertCursor if schema == 1 else DailyCursor
     if cursor is not None and not isinstance(cursor, expected):
         raise WindowsSourceError("Invalid Windows source cursor")
-    return json.dumps({"schema": schema, "cursor": None if cursor is None else asdict(cursor)}, separators=(",", ":")).encode()
+    return json.dumps(
+        {"schema": schema, "cursor": None if cursor is None else asdict(cursor)},
+        separators=(",", ":"),
+    ).encode()
 
 
 def parse_cursor_request(raw, *, expected_schema=None):
     if not isinstance(raw, bytes) or len(raw) > 1024:
         raise WindowsSourceError("Invalid Windows request size")
+
     def unique_pairs(pairs):
         result = {}
         for key, value in pairs:
@@ -28,11 +32,17 @@ def parse_cursor_request(raw, *, expected_schema=None):
                 raise WindowsSourceError("Duplicate Windows request field")
             result[key] = value
         return result
+
     try:
         value = json.loads(raw, object_pairs_hook=unique_pairs)
     except (ValueError, UnicodeError):
         raise WindowsSourceError("Invalid Windows request") from None
-    if not isinstance(value, dict) or set(value) != {"schema", "cursor"} or type(value["schema"]) is not int or value["schema"] not in (1, 2):
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"schema", "cursor"}
+        or type(value["schema"]) is not int
+        or value["schema"] not in (1, 2)
+    ):
         raise WindowsSourceError("Invalid Windows request schema")
     if expected_schema is not None and value["schema"] != expected_schema:
         raise WindowsSourceError("Windows command version mismatch")
@@ -55,8 +65,22 @@ def parse_cursor(raw, *, nullable=False, schema=1):
 
 
 def parse_windows_response(raw):
-    fields = {"schema", "cursor", "events", "agent", "heartbeat_ok", "rotated", "malformed_records", "partial_line"}
-    if not isinstance(raw, dict) or set(raw) != fields or type(raw["schema"]) is not int or raw["schema"] not in (1, 2):
+    fields = {
+        "schema",
+        "cursor",
+        "events",
+        "agent",
+        "heartbeat_ok",
+        "rotated",
+        "malformed_records",
+        "partial_line",
+    }
+    if (
+        not isinstance(raw, dict)
+        or set(raw) != fields
+        or type(raw["schema"]) is not int
+        or raw["schema"] not in (1, 2)
+    ):
         raise WindowsSourceError("Invalid Windows response schema")
     for key in ("heartbeat_ok", "rotated", "partial_line"):
         if type(raw[key]) is not bool:
@@ -64,12 +88,24 @@ def parse_windows_response(raw):
     if type(raw["malformed_records"]) is not int or not 0 <= raw["malformed_records"] <= 1000:
         raise WindowsSourceError("Invalid Windows malformed count")
     agent = raw["agent"]
-    if agent is not None and (not isinstance(agent, dict) or set(agent) != {"last_keepalive"} or type(agent["last_keepalive"]) is not int or agent["last_keepalive"] < 0):
+    if agent is not None and (
+        not isinstance(agent, dict)
+        or set(agent) != {"last_keepalive"}
+        or type(agent["last_keepalive"]) is not int
+        or agent["last_keepalive"] < 0
+    ):
         raise WindowsSourceError("Invalid Windows heartbeat")
     if raw["heartbeat_ok"] != (agent is not None):
         raise WindowsSourceError("Inconsistent Windows heartbeat")
     if not isinstance(raw["events"], list) or len(raw["events"]) > 1000:
         raise WindowsSourceError("Invalid Windows event page")
     events = tuple(normalize_event(event)[0] for event in raw["events"])
-    return WindowsBatch(parse_cursor(raw["cursor"], schema=raw["schema"]), events, dict(agent) if agent is not None else None,
-                        raw["heartbeat_ok"], raw["rotated"], raw["malformed_records"], raw["partial_line"])
+    return WindowsBatch(
+        parse_cursor(raw["cursor"], schema=raw["schema"]),
+        events,
+        dict(agent) if agent is not None else None,
+        raw["heartbeat_ok"],
+        raw["rotated"],
+        raw["malformed_records"],
+        raw["partial_line"],
+    )

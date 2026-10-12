@@ -20,7 +20,13 @@ def response_ok(packet, identifier):
     if len(packet) < 12 + len(QUESTION):
         raise ValueError("Invalid DNS response length")
     ident, flags, questions, answers, _, _ = struct.unpack("!6H", packet[:12])
-    if ident != identifier or not flags & 0x8000 or flags & 0x7800 or questions != 1 or packet[12:12 + len(QUESTION)] != QUESTION:
+    if (
+        ident != identifier
+        or not flags & 0x8000
+        or flags & 0x7800
+        or questions != 1
+        or packet[12 : 12 + len(QUESTION)] != QUESTION
+    ):
         raise ValueError("Invalid DNS response identity")
     if flags & 0x0200:
         raise ValueError("Truncated DNS response")
@@ -34,7 +40,10 @@ def response_ok(packet, identifier):
                 raise ValueError("Incomplete DNS answer")
             length = packet[position]
             if length & 0xC0 == 0xC0:
-                if position + 1 >= len(packet) or ((length & 63) << 8 | packet[position + 1]) >= position:
+                if (
+                    position + 1 >= len(packet)
+                    or ((length & 63) << 8 | packet[position + 1]) >= position
+                ):
                     raise ValueError("Invalid DNS name pointer")
                 position += 2
                 break
@@ -48,7 +57,7 @@ def response_ok(packet, identifier):
             raise ValueError("DNS name exceeds bound")
         if position + 10 > len(packet):
             raise ValueError("Incomplete DNS resource header")
-        kind, klass, _, size = struct.unpack("!HHIH", packet[position:position + 10])
+        kind, klass, _, size = struct.unpack("!HHIH", packet[position : position + 10])
         position += 10
         if position + size > len(packet):
             raise ValueError("Incomplete DNS resource data")
@@ -101,5 +110,8 @@ async def probe_dns(server):
 class LadyDNSReader:
     async def __call__(self):
         from .lady_coordinator import TimedObservation
+
         values = await asyncio.gather(*(probe_dns(server) for server in SERVERS))
-        return TimedObservation(dict(zip(SERVERS, values, strict=True)), datetime.now(timezone.utc).timestamp())
+        return TimedObservation(
+            dict(zip(SERVERS, values, strict=True)), datetime.now(timezone.utc).timestamp()
+        )

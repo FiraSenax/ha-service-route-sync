@@ -19,7 +19,13 @@ def normalize_event(event):
     if not event["provider"]:
         raise WindowsSourceError("Missing Windows provider")
     identifier = event["id"]
-    if not isinstance(identifier, str) or not identifier.isascii() or not identifier.isdigit() or not 1 <= len(identifier) <= 5 or int(identifier) > 65535:
+    if (
+        not isinstance(identifier, str)
+        or not identifier.isascii()
+        or not identifier.isdigit()
+        or not 1 <= len(identifier) <= 5
+        or int(identifier) > 65535
+    ):
         raise WindowsSourceError("Invalid Windows event identifier")
     if event["level"] not in (None, "0", "1", "2", "3", "4", "5"):
         raise WindowsSourceError("Invalid Windows event level")
@@ -28,7 +34,9 @@ def normalize_event(event):
         if stamp.tzinfo is None:
             raise ValueError
         observed = stamp.timestamp()
-        canonical = dict(event, time=stamp.astimezone(timezone.utc).isoformat(), id=str(int(identifier)))
+        canonical = dict(
+            event, time=stamp.astimezone(timezone.utc).isoformat(), id=str(int(identifier))
+        )
         encoded = json.dumps(canonical, sort_keys=True, ensure_ascii=False).encode("utf-8")
     except (ValueError, OverflowError, UnicodeError):
         raise WindowsSourceError("Invalid Windows event encoding or time") from None
@@ -51,11 +59,20 @@ def prepare_replay(checkpoint, incoming, now):
     """
     if type(now) not in (int, float) or not math.isfinite(now):
         raise WindowsSourceError("Invalid replay clock")
-    if not isinstance(checkpoint, list) or len(checkpoint) > 1000 or not isinstance(incoming, (list, tuple)) or len(incoming) > 1000:
+    if (
+        not isinstance(checkpoint, list)
+        or len(checkpoint) > 1000
+        or not isinstance(incoming, (list, tuple))
+        or len(incoming) > 1000
+    ):
         raise WindowsSourceError("Invalid replay queue size")
     rows = {}
     for row in checkpoint:
-        if not isinstance(row, dict) or set(row) != {"event", "delivered"} or type(row["delivered"]) is not bool:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"event", "delivered"}
+            or type(row["delivered"]) is not bool
+        ):
             raise WindowsSourceError("Invalid replay checkpoint")
         event, observed, identity = normalize_event(row["event"])
         if identity in rows:

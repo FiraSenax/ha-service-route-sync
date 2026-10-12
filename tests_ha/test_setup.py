@@ -14,10 +14,15 @@ from custom_components.service_route_sync.runtime import RuntimeData
 
 class SetupTests(unittest.IsolatedAsyncioTestCase):
     async def test_frigate_observation_lifecycle_is_independent(self):
-        hass, entry = self.environment({'frigate_actor_enabled': True})
-        actor = SimpleNamespace(async_config_entry_first_refresh=AsyncMock(),
-                                async_add_listener=Mock(return_value=Mock()), async_shutdown=AsyncMock())
-        with patch('custom_components.service_route_sync.FrigateActorCoordinator', return_value=actor):
+        hass, entry = self.environment({"frigate_actor_enabled": True})
+        actor = SimpleNamespace(
+            async_config_entry_first_refresh=AsyncMock(),
+            async_add_listener=Mock(return_value=Mock()),
+            async_shutdown=AsyncMock(),
+        )
+        with patch(
+            "custom_components.service_route_sync.FrigateActorCoordinator", return_value=actor
+        ):
             self.assertTrue(await async_setup_entry(hass, entry))
         self.assertIs(entry.runtime_data.frigate_actor, actor)
         self.assertIsNone(entry.runtime_data.clients)
@@ -26,17 +31,25 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
         actor.async_shutdown.assert_awaited_once()
 
     async def test_invalid_frigate_profile_does_not_block_wan(self):
-        with patch('custom_components.service_route_sync.FrigateActorCoordinator', side_effect=ValueError('synthetic')):
-            result, _, entry, _, network = await self.run_setup({'network_enabled': True, 'frigate_actor_enabled': True})
+        with patch(
+            "custom_components.service_route_sync.FrigateActorCoordinator",
+            side_effect=ValueError("synthetic"),
+        ):
+            result, _, entry, _, network = await self.run_setup(
+                {"network_enabled": True, "frigate_actor_enabled": True}
+            )
         self.assertTrue(result)
         self.assertIs(entry.runtime_data.network, network)
         self.assertIsNone(entry.runtime_data.frigate_actor)
 
     async def test_wifi_history_polls_and_unloads_without_gaming_or_cloud(self):
-        hass, entry = self.environment({'wifi_history_enabled': True, 'unifi_entry_id': 'parent'})
-        wifi = SimpleNamespace(async_config_entry_first_refresh=AsyncMock(),
-                               async_add_listener=Mock(return_value=Mock()), async_shutdown=AsyncMock())
-        with patch('custom_components.service_route_sync.prepare_wifi', return_value=wifi):
+        hass, entry = self.environment({"wifi_history_enabled": True, "unifi_entry_id": "parent"})
+        wifi = SimpleNamespace(
+            async_config_entry_first_refresh=AsyncMock(),
+            async_add_listener=Mock(return_value=Mock()),
+            async_shutdown=AsyncMock(),
+        )
+        with patch("custom_components.service_route_sync.prepare_wifi", return_value=wifi):
             self.assertTrue(await async_setup_entry(hass, entry))
         self.assertIs(entry.runtime_data.wifi, wifi)
         self.assertIsNone(entry.runtime_data.clients)
@@ -46,31 +59,47 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
         wifi.async_shutdown.assert_awaited_once()
 
     async def test_wifi_initial_failure_keeps_retry_without_blocking_wan(self):
-        wifi = SimpleNamespace(async_config_entry_first_refresh=AsyncMock(side_effect=ConfigEntryNotReady()),
-                               async_add_listener=Mock(return_value=Mock()), async_shutdown=AsyncMock())
-        with patch('custom_components.service_route_sync.prepare_wifi', return_value=wifi):
+        wifi = SimpleNamespace(
+            async_config_entry_first_refresh=AsyncMock(side_effect=ConfigEntryNotReady()),
+            async_add_listener=Mock(return_value=Mock()),
+            async_shutdown=AsyncMock(),
+        )
+        with patch("custom_components.service_route_sync.prepare_wifi", return_value=wifi):
             result, _, entry, _, network = await self.run_setup(
-                {'wifi_history_enabled': True, 'network_enabled': True, 'unifi_entry_id': 'parent'})
+                {"wifi_history_enabled": True, "network_enabled": True, "unifi_entry_id": "parent"}
+            )
         self.assertTrue(result)
         self.assertIs(entry.runtime_data.network, network)
         wifi.async_add_listener.assert_called_once()
         wifi.async_shutdown.assert_not_awaited()
 
     async def test_lady_source_setup_failure_does_not_block_existing_wan(self):
-        with patch("custom_components.service_route_sync.prepare_lady", AsyncMock(side_effect=ConfigEntryNotReady())):
-            result, _, entry, _, network = await self.run_setup({'network_enabled': True, 'lady_enabled': True})
+        with patch(
+            "custom_components.service_route_sync.prepare_lady",
+            AsyncMock(side_effect=ConfigEntryNotReady()),
+        ):
+            result, _, entry, _, network = await self.run_setup(
+                {"network_enabled": True, "lady_enabled": True}
+            )
         self.assertTrue(result)
         self.assertIs(entry.runtime_data.network, network)
         self.assertIsNone(entry.runtime_data.lady)
 
     async def test_lady_polling_and_shutdown_are_independent_of_gaming(self):
-        hass, entry = self.environment({'lady_enabled': True})
+        hass, entry = self.environment({"lady_enabled": True})
+
         def coordinator():
-            return SimpleNamespace(async_config_entry_first_refresh=AsyncMock(),
-                                   async_add_listener=Mock(return_value=Mock()), async_shutdown=AsyncMock())
+            return SimpleNamespace(
+                async_config_entry_first_refresh=AsyncMock(),
+                async_add_listener=Mock(return_value=Mock()),
+                async_shutdown=AsyncMock(),
+            )
+
         clients, incidents = coordinator(), coordinator()
         lady = SimpleNamespace(clients=clients, incidents=incidents, active=False)
-        with patch("custom_components.service_route_sync.prepare_lady", AsyncMock(return_value=lady)):
+        with patch(
+            "custom_components.service_route_sync.prepare_lady", AsyncMock(return_value=lady)
+        ):
             self.assertTrue(await async_setup_entry(hass, entry))
         self.assertIsNone(entry.runtime_data.clients)
         clients.async_add_listener.assert_called_once()
@@ -78,6 +107,7 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await async_unload_entry(hass, entry))
         clients.async_shutdown.assert_awaited_once()
         incidents.async_shutdown.assert_awaited_once()
+
     def environment(self, data):
         entry = SimpleNamespace(
             data=data,

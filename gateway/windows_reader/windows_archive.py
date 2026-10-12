@@ -74,7 +74,12 @@ def read_daily_page(root: Path, cursor: DailyCursor, today: date, *, maximum_byt
     progress instead of silently skipping data. Persist the returned cursor
     atomically with extracted events, never before accepting the page.
     """
-    if not isinstance(cursor, DailyCursor) or type(today) is not date or type(maximum_bytes) is not int or not 1 <= maximum_bytes <= 1048576:
+    if (
+        not isinstance(cursor, DailyCursor)
+        or type(today) is not date
+        or type(maximum_bytes) is not int
+        or not 1 <= maximum_bytes <= 1048576
+    ):
         raise WindowsSourceError("Invalid Windows archive request")
     day = date.fromisoformat(cursor.day)
     if day > today:
@@ -106,7 +111,9 @@ def read_daily_page(root: Path, cursor: DailyCursor, today: date, *, maximum_byt
             position = cursor.offset
             records, malformed, partial, eof = [], 0, False, False
             while position - cursor.offset < maximum_bytes and len(records) < 1000:
-                budget = min(maximum_bytes - (position - cursor.offset), MAX_DECOMPRESSED - position)
+                budget = min(
+                    maximum_bytes - (position - cursor.offset), MAX_DECOMPRESSED - position
+                )
                 if budget <= 0:
                     raise WindowsSourceError("Windows decompression bound reached")
                 line = stream.readline(budget + 1)
@@ -132,7 +139,11 @@ def read_daily_page(root: Path, cursor: DailyCursor, today: date, *, maximum_byt
                     continue
                 records.append(record)
             advance = eof and day < today
-            next_cursor = DailyCursor((day + timedelta(days=1)).isoformat(), 0) if advance else DailyCursor(cursor.day, position)
+            next_cursor = (
+                DailyCursor((day + timedelta(days=1)).isoformat(), 0)
+                if advance
+                else DailyCursor(cursor.day, position)
+            )
             return DailyPage(next_cursor, tuple(records), malformed, partial, advance)
         except (OSError, EOFError, zlib.error):
             raise WindowsSourceError("Corrupt Windows archive") from None

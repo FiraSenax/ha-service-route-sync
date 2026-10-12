@@ -23,7 +23,8 @@ class RouteCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self.settings = {**entry.data, **entry.options}
         self.backend = UniFiBackend(
-            hass, self.settings["unifi_entry_id"],
+            hass,
+            self.settings["unifi_entry_id"],
             tls_pin_sha256=self.settings.get("unifi_tls_pin_sha256"),
             route_api_key=self.settings.get("unifi_route_api_key"),
         )
@@ -72,8 +73,12 @@ class RouteCoordinator(DataUpdateCoordinator):
                 plans = build_plans(routes, prefixes, self.settings["bindings"])
                 changed = [plan for plan in plans if plan.changed]
                 active = self.settings.get("automatic_apply", False)
-                if active and (self.backend.tls_pin_sha256 is None or self.backend.route_api_key is None):
-                    raise SyncError("Verified UniFi TLS trust and route API key are required for route writes")
+                if active and (
+                    self.backend.tls_pin_sha256 is None or self.backend.route_api_key is None
+                ):
+                    raise SyncError(
+                        "Verified UniFi TLS trust and route API key are required for route writes"
+                    )
                 if active and changed and not self.write_blocked:
                     # Revalidate all removal limits before the first write.
                     build_plans(
@@ -127,8 +132,12 @@ class RouteCoordinator(DataUpdateCoordinator):
 
     async def set_automatic(self, enabled):
         async with self.lock:
-            if enabled and (self.backend.tls_pin_sha256 is None or self.backend.route_api_key is None):
-                raise SyncError("Configure verified UniFi TLS trust and route API key before route writes")
+            if enabled and (
+                self.backend.tls_pin_sha256 is None or self.backend.route_api_key is None
+            ):
+                raise SyncError(
+                    "Configure verified UniFi TLS trust and route API key before route writes"
+                )
             self.settings["automatic_apply"] = enabled
             if enabled:
                 self.write_blocked = False  # Explicit user acknowledgement, not an automatic retry.

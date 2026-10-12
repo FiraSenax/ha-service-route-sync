@@ -28,20 +28,31 @@ class WindowsReaderPagingTests(unittest.TestCase):
             archive.parent.mkdir(parents=True)
             with archive.open("w") as output:
                 for index in range(300):
-                    json.dump({
-                        "agent": {"id": "013"},
-                        "data": {"win": {"system": {
-                            "systemTime": "2026-10-12T12:00:00Z",
-                            "providerName": "Test", "eventID": str(index),
-                            "level": "2", "message": "x" * 1000,
-                        }}},
-                    }, output)
+                    json.dump(
+                        {
+                            "agent": {"id": "013"},
+                            "data": {
+                                "win": {
+                                    "system": {
+                                        "systemTime": "2026-10-12T12:00:00Z",
+                                        "providerName": "Test",
+                                        "eventID": str(index),
+                                        "level": "2",
+                                        "message": "x" * 1000,
+                                    }
+                                }
+                            },
+                        },
+                        output,
+                    )
                     output.write("\n")
             cursor = DailyCursor(day.isoformat(), 0)
             seen = []
             pages = 0
-            with patch("windows_reader.windows_source.read_heartbeat",
-                       return_value={"last_keepalive": int(time.time())}):
+            with patch(
+                "windows_reader.windows_source.read_heartbeat",
+                return_value={"last_keepalive": int(time.time())},
+            ):
                 while cursor.offset < archive.stat().st_size:
                     response = observer.bounded_archive_response(root, root / "db", cursor, day)
                     self.assertLessEqual(len(response), 65536)

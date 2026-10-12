@@ -34,11 +34,21 @@ async def await_durable(operation):
 
 def validate_checkpoint(raw):
     fields = {"engine", "cursor", "outbox", "tracked_port", "deferred_events"}
-    if not isinstance(raw, dict) or not fields <= set(raw) or not set(raw) <= fields | {"history_revision", "history_epoch"}:
+    if (
+        not isinstance(raw, dict)
+        or not fields <= set(raw)
+        or not set(raw) <= fields | {"history_revision", "history_epoch"}
+    ):
         raise LadyCheckpointError("Unexpected checkpoint fields")
-    if "history_revision" in raw and (type(raw["history_revision"]) is not int or not 0 <= raw["history_revision"] <= 2**63 - 1):
+    if "history_revision" in raw and (
+        type(raw["history_revision"]) is not int or not 0 <= raw["history_revision"] <= 2**63 - 1
+    ):
         raise LadyCheckpointError("Invalid history revision")
-    if "history_epoch" in raw and (not isinstance(raw["history_epoch"], str) or not re.fullmatch(r"[0-9a-f]{64}", raw["history_epoch"]) or not raw.get("history_revision")):
+    if "history_epoch" in raw and (
+        not isinstance(raw["history_epoch"], str)
+        or not re.fullmatch(r"[0-9a-f]{64}", raw["history_epoch"])
+        or not raw.get("history_revision")
+    ):
         raise LadyCheckpointError("Invalid imported history epoch")
     if not isinstance(raw["engine"], dict):
         raise LadyCheckpointError("Invalid incident state")
@@ -61,7 +71,13 @@ def validate_checkpoint(raw):
         validate_engine(raw["engine"])
         validate_queues(raw["outbox"], raw["deferred_events"])
         port = raw["tracked_port"]
-        if port is not None and (set(port) != {"switch", "port"} or not isinstance(port["switch"], str) or not 1 <= len(port["switch"]) <= 200 or type(port["port"]) is not int or not 1 <= port["port"] <= 65535):
+        if port is not None and (
+            set(port) != {"switch", "port"}
+            or not isinstance(port["switch"], str)
+            or not 1 <= len(port["switch"]) <= 200
+            or type(port["port"]) is not int
+            or not 1 <= port["port"] <= 65535
+        ):
             raise ValueError
     except (ValueError, TypeError):
         raise LadyCheckpointError("Invalid persisted state schema") from None
@@ -130,7 +146,12 @@ class LadyCheckpointStore:
             persisted = await self.store.async_load()
             if persisted is None:
                 disk_revision = 0
-            elif isinstance(persisted, dict) and set(persisted) == {"revision", "checkpoint"} and type(persisted["revision"]) is int and persisted["revision"] >= 0:
+            elif (
+                isinstance(persisted, dict)
+                and set(persisted) == {"revision", "checkpoint"}
+                and type(persisted["revision"]) is int
+                and persisted["revision"] >= 0
+            ):
                 validate_checkpoint(persisted["checkpoint"])
                 disk_revision = persisted["revision"]
             else:
@@ -145,12 +166,14 @@ class LadyCheckpointStore:
                 # lock. A stale writer cannot prune an accepted history batch.
                 if await await_durable(before_save()):
                     raise asyncio.CancelledError
+
             async def save_checked():
                 # HA Store defers saves initiated during stopping. Do not
                 # mistake that deferred write for a durable accepted cursor.
                 if self.hass.state is CoreState.stopping:
                     raise LadyCheckpointError("Checkpoint cannot change during shutdown")
                 await self.store.async_save({"revision": revision, "checkpoint": candidate})
+
             cancelled = await await_durable(save_checked())
             # A failed save must leave the accepted cursor and queues unchanged.
             self._revision, self._state = revision, candidate

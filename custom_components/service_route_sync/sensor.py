@@ -22,27 +22,47 @@ FIELDS = {
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    if coordinator := getattr(entry.runtime_data, 'ipv6_actor', None):
-        async_add_entities(IPv6PolicySensor(coordinator, key, name) for key, name in (
-            ("mode", "IPv6 policy mode"), ("decision", "IPv6 policy decision"),
-            ("target", "IPv6 policy target"), ("observed_at", "IPv6 policy observed"),
-            ("preview_target", "IPv6 policy preview target"),
-            ("preview_reason", "IPv6 policy preview reason"),
-        ))
-    if coordinator := getattr(entry.runtime_data, 'frigate_actor', None):
-        async_add_entities(FrigateTimestampSensor(coordinator, key) for key in ('last_observation', 'started'))
-    if coordinator := getattr(entry.runtime_data, 'wifi', None):
-        async_add_entities(WifiStatusSensor(coordinator, key) for key in ('client_count', 'last_observation'))
+    if coordinator := getattr(entry.runtime_data, "ipv6_actor", None):
+        async_add_entities(
+            IPv6PolicySensor(coordinator, key, name)
+            for key, name in (
+                ("mode", "IPv6 policy mode"),
+                ("decision", "IPv6 policy decision"),
+                ("target", "IPv6 policy target"),
+                ("observed_at", "IPv6 policy observed"),
+                ("preview_target", "IPv6 policy preview target"),
+                ("preview_reason", "IPv6 policy preview reason"),
+            )
+        )
+    if coordinator := getattr(entry.runtime_data, "frigate_actor", None):
+        async_add_entities(
+            FrigateTimestampSensor(coordinator, key) for key in ("last_observation", "started")
+        )
+    if coordinator := getattr(entry.runtime_data, "wifi", None):
+        async_add_entities(
+            WifiStatusSensor(coordinator, key) for key in ("client_count", "last_observation")
+        )
     if lady := getattr(entry.runtime_data, "lady", None):
-        async_add_entities(LadyStatusSensor(lady, key) for key in ("mode", "pending", "active_incidents", "last_observation"))
-        async_add_entities(ClientPortSensor(lady.clients, "ladyofgames", key) for key in (
-            "speed_mbit_s", "rx_errors", "tx_errors", "rx_dropped", "tx_dropped",
-            "rx_bytes", "tx_bytes", "link_down_count",
-        ))
+        async_add_entities(
+            LadyStatusSensor(lady, key)
+            for key in ("mode", "pending", "active_incidents", "last_observation")
+        )
+        async_add_entities(
+            ClientPortSensor(lady.clients, "ladyofgames", key)
+            for key in (
+                "speed_mbit_s",
+                "rx_errors",
+                "tx_errors",
+                "rx_dropped",
+                "tx_dropped",
+                "rx_bytes",
+                "tx_bytes",
+                "link_down_count",
+            )
+        )
     if coordinator := entry.runtime_data.clients:
         async_add_entities(
-            ClientConnectionSensor(coordinator, profile_id)
-            for profile_id in coordinator.profiles
+            ClientConnectionSensor(coordinator, profile_id) for profile_id in coordinator.profiles
         )
         async_add_entities(
             ClientPortSensor(coordinator, profile_id, key)
@@ -134,7 +154,11 @@ class LadyStatusSensor(LadyEntity, SensorEntity):
             return datetime.fromtimestamp(data["observed_at"], timezone.utc)
         if self.key == "active_incidents":
             state = self.coordinator.transaction.store.state
-            return sum(row["active"] for row in state["engine"].get("incidents", {}).values()) if state else None
+            return (
+                sum(row["active"] for row in state["engine"].get("incidents", {}).values())
+                if state
+                else None
+            )
         return data["pending"]
 
 

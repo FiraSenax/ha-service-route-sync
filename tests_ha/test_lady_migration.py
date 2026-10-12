@@ -9,9 +9,12 @@ from custom_components.service_route_sync.lady_store import LadyCheckpointError
 
 class MigrationTests(unittest.TestCase):
     def state(self):
-        return {"engine": {"incidents": {"test": {"active": True, "since": None, "good": None}}},
-                "cursor": {"inode": 1, "offset": 10}, "tracked_port": {"switch": "synthetic", "port": 3},
-                "outbox": [{"key": "test", "message": "synthetic", "time": 10, "recovery": False}]}
+        return {
+            "engine": {"incidents": {"test": {"active": True, "since": None, "good": None}}},
+            "cursor": {"inode": 1, "offset": 10},
+            "tracked_port": {"switch": "synthetic", "port": 3},
+            "outbox": [{"key": "test", "message": "synthetic", "time": 10, "recovery": False}],
+        }
 
     def files(self):
         return [{"day": "2026-10-12", "inode": 1, "size": 100, "compressed": False}]
@@ -28,7 +31,11 @@ class MigrationTests(unittest.TestCase):
         self.assertTrue(source["engine"]["incidents"])
 
     def test_no_guessed_mapping_or_truncation(self):
-        for files in ([], [dict(self.files()[0], compressed=True)], [dict(self.files()[0], size=5)],
-                      self.files() + [dict(self.files()[0], day="2026-10-11")]):
+        for files in (
+            [],
+            [dict(self.files()[0], compressed=True)],
+            [dict(self.files()[0], size=5)],
+            self.files() + [dict(self.files()[0], day="2026-10-11")],
+        ):
             with self.assertRaises(LadyCheckpointError):
                 migrate_legacy_checkpoint(self.state(), files)

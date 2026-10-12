@@ -17,17 +17,22 @@ DSL_MARK = str(0x21940000)
 
 
 async def route_is_dsl(target):
-    code, output, _ = await run(["ip", "-j", "-4", "route", "get", target,
-                                 "mark", DSL_MARK, "oif", "ppp0"], timeout=2)
+    code, output, _ = await run(
+        ["ip", "-j", "-4", "route", "get", target, "mark", DSL_MARK, "oif", "ppp0"], timeout=2
+    )
     if code != 0 or len(output) > 8192:
         return False
     try:
         routes = json.loads(output)
     except ValueError:
         return False
-    return (isinstance(routes, list) and len(routes) == 1 and isinstance(routes[0], dict)
-            and routes[0].get("dev") == "ppp0"
-            and routes[0].get("type", "unicast") == "unicast")
+    return (
+        isinstance(routes, list)
+        and len(routes) == 1
+        and isinstance(routes[0], dict)
+        and routes[0].get("dev") == "ppp0"
+        and routes[0].get("type", "unicast") == "unicast"
+    )
 
 
 async def sample(target):
@@ -36,8 +41,23 @@ async def sample(target):
         if not await route_is_dsl(target):
             return dict(missing, error="dsl_route_unavailable")
         code, output, error = await run(
-            ["ping", "-4", "-n", "-c", "3", "-i", "0.4", "-W", "1",
-             "-I", "ppp0", "-m", DSL_MARK, target], timeout=5,
+            [
+                "ping",
+                "-4",
+                "-n",
+                "-c",
+                "3",
+                "-i",
+                "0.4",
+                "-W",
+                "1",
+                "-I",
+                "ppp0",
+                "-m",
+                DSL_MARK,
+                target,
+            ],
+            timeout=5,
         )
         if not await route_is_dsl(target):
             return dict(missing, error="dsl_route_changed")
@@ -46,16 +66,24 @@ async def sample(target):
         value = parse_ping(code, output.decode("ascii"), error.decode("ascii"))
         if value is None:
             return dict(missing, error="invalid_probe")
-        return {"loss": value["loss"], "avg": value["average_ms"],
-                "max": value["maximum_ms"], "rc": code, "error": None}
+        return {
+            "loss": value["loss"],
+            "avg": value["average_ms"],
+            "max": value["maximum_ms"],
+            "rc": code,
+            "error": None,
+        }
     except (OSError, TimeoutError, UnicodeError, ObservationError):
         return dict(missing, error="probe_unavailable")
 
 
 async def observe():
     values = await asyncio.gather(*(sample(target) for target in TARGETS.values()))
-    return {"schema": 1, "observed_at_ms": int(time.time() * 1000),
-            "probes": dict(zip(TARGETS, values, strict=True))}
+    return {
+        "schema": 1,
+        "observed_at_ms": int(time.time() * 1000),
+        "probes": dict(zip(TARGETS, values, strict=True)),
+    }
 
 
 def main():
@@ -74,9 +102,11 @@ def main():
         os.lseek(fd, 0, 0)
         os.ftruncate(fd, 0)
         os.write(fd, str(now).encode())
+
         async def bounded():
             async with asyncio.timeout(10):
                 return await observe()
+
         print(json.dumps(asyncio.run(bounded()), separators=(",", ":")))
     finally:
         os.close(fd)

@@ -179,12 +179,17 @@ def bind_existing_gateway_host(observer: Path, trusted: Path, host: str) -> bool
 
     GatewaySSHConfig(host, observer).validate_files()
     GatewaySSHConfig(host, trusted).validate_files()
+
     def pinned_lines(path: Path) -> list[str]:
         fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
         with os.fdopen(fd, "rb") as stream:
             info = os.fstat(stream.fileno())
-            if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
-                    or info.st_mode & 0o022 or info.st_nlink != 1):
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.geteuid()
+                or info.st_mode & 0o022
+                or info.st_nlink != 1
+            ):
                 raise GatewayTransportError("Unsafe gateway trust material")
             content = stream.read(4097)
         if len(content) > 4096:
@@ -192,7 +197,7 @@ def bind_existing_gateway_host(observer: Path, trusted: Path, host: str) -> bool
         lines = content.decode("ascii").splitlines()
         if not 1 <= len(lines) <= 2 or any(len(line.split()) != 3 for line in lines):
             raise GatewayTransportError("Invalid gateway trust material")
-        keys = {validate_host_key(' '.join(line.split()[1:])) for line in lines}
+        keys = {validate_host_key(" ".join(line.split()[1:])) for line in lines}
         if len(keys) != 1 or len({line.split()[0] for line in lines}) != len(lines):
             raise GatewayTransportError("Ambiguous gateway trust material")
         return lines
@@ -202,7 +207,9 @@ def bind_existing_gateway_host(observer: Path, trusted: Path, host: str) -> bool
     if len(source_lines) != 1:
         raise GatewayTransportError("Ambiguous management identity")
     source = source_lines[0]
-    if validate_host_key(' '.join(old[0].split()[1:])) != validate_host_key(' '.join(source.split()[1:])):
+    if validate_host_key(" ".join(old[0].split()[1:])) != validate_host_key(
+        " ".join(source.split()[1:])
+    ):
         raise GatewayTransportError("Gateway identity mismatch")
     if source.split()[0] != host:
         raise GatewayTransportError("Gateway management address mismatch")

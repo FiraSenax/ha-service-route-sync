@@ -18,8 +18,8 @@ class WifiEntityTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.hass = HomeAssistant(self.temp.name)
-        self.coordinator = WifiCoordinator(self.hass, None, 'parent')
-        self.coordinator.config_entry = SimpleNamespace(entry_id='wifi-test')
+        self.coordinator = WifiCoordinator(self.hass, None, "parent")
+        self.coordinator.config_entry = SimpleNamespace(entry_id="wifi-test")
         self.now = dt_util.utcnow()
         self.coordinator.data = WirelessSnapshot(self.now, ())
 
@@ -29,21 +29,26 @@ class WifiEntityTests(unittest.IsolatedAsyncioTestCase):
         self.temp.cleanup()
 
     async def test_empty_success_is_zero_without_client_attributes(self):
-        sensor = WifiStatusSensor(self.coordinator, 'client_count')
+        sensor = WifiStatusSensor(self.coordinator, "client_count")
         self.assertTrue(sensor.available)
         self.assertEqual(sensor.native_value, 0)
         self.assertIsNone(sensor.extra_state_attributes)
-        self.assertEqual(WifiStatusSensor(self.coordinator, 'last_observation').native_value, self.now)
+        self.assertEqual(
+            WifiStatusSensor(self.coordinator, "last_observation").native_value, self.now
+        )
 
     async def test_diagnostics_contain_only_aggregate_status(self):
         entry = SimpleNamespace(runtime_data=RuntimeData(wifi=self.coordinator))
         report = await async_get_config_entry_diagnostics(self.hass, entry)
-        self.assertTrue(report['wifi_history_enabled'])
-        self.assertEqual(set(report['wifi']), {'last_update_success', 'observed_at', 'client_count', 'history_enabled'})
-        self.assertEqual(report['wifi']['client_count'], 0)
+        self.assertTrue(report["wifi_history_enabled"])
+        self.assertEqual(
+            set(report["wifi"]),
+            {"last_update_success", "observed_at", "client_count", "history_enabled"},
+        )
+        self.assertEqual(report["wifi"]["client_count"], 0)
 
     async def test_failed_stale_future_and_missing_snapshots_are_unavailable(self):
-        sensor = WifiStatusSensor(self.coordinator, 'client_count')
+        sensor = WifiStatusSensor(self.coordinator, "client_count")
         self.coordinator.last_update_success = False
         self.assertFalse(sensor.available)
         self.coordinator.last_update_success = True

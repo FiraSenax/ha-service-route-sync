@@ -20,7 +20,13 @@ def map_legacy_cursor(raw, daily_files):
         if not isinstance(row, dict) or set(row) != {"day", "inode", "size", "compressed"}:
             raise LadyCheckpointError("Invalid daily-file metadata")
         day = DailyCursor(row["day"], 0).day
-        if type(row["inode"]) is not int or row["inode"] < 0 or type(row["size"]) is not int or row["size"] < 0 or type(row["compressed"]) is not bool:
+        if (
+            type(row["inode"]) is not int
+            or row["inode"] < 0
+            or type(row["size"]) is not int
+            or row["size"] < 0
+            or type(row["compressed"]) is not bool
+        ):
             raise LadyCheckpointError("Invalid daily-file metadata values")
         if not row["compressed"] and row["inode"] == cursor.inode:
             if cursor.offset > row["size"]:
@@ -45,11 +51,22 @@ def migrate_legacy_checkpoint(raw, daily_files):
     for index, event in enumerate(raw["outbox"]):
         if not isinstance(event, dict) or set(event) != {"key", "message", "time", "recovery"}:
             raise LadyCheckpointError("Unsupported legacy notification")
-        if not isinstance(event["key"], str) or not 1 <= len(event["key"]) <= 200 or not isinstance(event["message"], str) or len(event["message"]) > 8192 or type(event["recovery"]) is not bool or type(event["time"]) not in (int, float) or not math.isfinite(event["time"]):
+        if (
+            not isinstance(event["key"], str)
+            or not 1 <= len(event["key"]) <= 200
+            or not isinstance(event["message"], str)
+            or len(event["message"]) > 8192
+            or type(event["recovery"]) is not bool
+            or type(event["time"]) not in (int, float)
+            or not math.isfinite(event["time"])
+        ):
             raise LadyCheckpointError("Invalid legacy notification fields")
-        identity = hashlib.sha256(json.dumps(
-            {"legacy": True, "cursor": candidate["cursor"], "index": index, "event": event},
-            sort_keys=True, allow_nan=False,
-        ).encode()).hexdigest()
+        identity = hashlib.sha256(
+            json.dumps(
+                {"legacy": True, "cursor": candidate["cursor"], "index": index, "event": event},
+                sort_keys=True,
+                allow_nan=False,
+            ).encode()
+        ).hexdigest()
         candidate["outbox"].append({"delivery_id": identity, "event": copy.deepcopy(event)})
     return validate_checkpoint(candidate)

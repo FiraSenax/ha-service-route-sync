@@ -36,7 +36,11 @@ class AlertPage:
 
 
 def read_alert_page(
-    path: Path, cursor: AlertCursor | None, *, maximum_bytes=1048576, maximum_records=1000,
+    path: Path,
+    cursor: AlertCursor | None,
+    *,
+    maximum_bytes=1048576,
+    maximum_records=1000,
     require_continuity=False,
 ) -> AlertPage:
     """Read at most one page; caller checkpoints only after processing succeeds.
@@ -46,8 +50,7 @@ def read_alert_page(
     """
     if (
         type(require_continuity) is not bool
-        or
-        type(maximum_bytes) is not int
+        or type(maximum_bytes) is not int
         or not 1 <= maximum_bytes <= 1048576
         or type(maximum_records) is not int
         or not 1 <= maximum_records <= 1000

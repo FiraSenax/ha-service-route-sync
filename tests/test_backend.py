@@ -12,9 +12,15 @@ from service_route_sync.core import SyncError
 
 class UniFiTests(unittest.IsolatedAsyncioTestCase):
     async def test_pinned_controller_uses_parent_credentials_but_separate_verified_session(self):
-        native = SimpleNamespace(host="192.0.2.1", username="test", password="secret",
-                                 port=443, site="default", totp_secret=None,
-                                 session=object())
+        native = SimpleNamespace(
+            host="192.0.2.1",
+            username="test",
+            password="secret",
+            port=443,
+            site="default",
+            totp_secret=None,
+            session=object(),
+        )
         parent_api = SimpleNamespace(connectivity=SimpleNamespace(config=native))
         parent = SimpleNamespace(domain="unifi", runtime_data=SimpleNamespace(api=parent_api))
         hass = SimpleNamespace(config_entries=SimpleNamespace(async_get_entry=lambda _: parent))

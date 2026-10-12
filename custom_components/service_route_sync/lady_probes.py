@@ -30,18 +30,28 @@ class LadyPCProbeReader:
         await self.hass.async_add_executor_job(self.config.validate_files)
         data = self.clients.data
         now = dt_util.utcnow()
-        valid = self.clients.last_update_success and data is not None and fresh(data.observed_at, now, 45)
+        valid = (
+            self.clients.last_update_success
+            and data is not None
+            and fresh(data.observed_at, now, 45)
+        )
         client = data.clients.get("ladyofgames") if valid else None
         address = client.ipv4_address if client is not None and client.online else None
-        frame = json.dumps({"schema": 1, "addresses": {"ladyofgames": address}}, separators=(",", ":")).encode()
+        frame = json.dumps(
+            {"schema": 1, "addresses": {"ladyofgames": address}}, separators=(",", ":")
+        ).encode()
         raw = await read_gateway(self.config, timeout=20, input_data=frame)
         now = dt_util.utcnow()
         snapshot = parse_client_probes(raw, now, ("ladyofgames",))
         result = {}
         probe = snapshot.probes.get("ladyofgames")
         if probe is not None and fresh(probe.observed_at, now, 45):
-            result["lan"] = {"loss": probe.loss, "avg": probe.average_ms,
-                             "max": probe.maximum_ms, "rc": 1 if probe.loss == 100 else 0}
+            result["lan"] = {
+                "loss": probe.loss,
+                "avg": probe.average_ms,
+                "max": probe.maximum_ms,
+                "rc": 1 if probe.loss == 100 else 0,
+            }
         route = snapshot.routes.get("ladyofgames")
         if route is not None and route.valid and fresh(route.observed_at, now, 45):
             result["routing"] = {"rc": 0, "counts": dict(route.connections)}
@@ -56,8 +66,17 @@ class LadyProbeReader:
         async def isolated(reader):
             try:
                 return await reader()
-            except (HomeAssistantError, GatewayTransportError, ClientDataError, DSLDataError, NetworkDataError, OSError, TimeoutError):
+            except (
+                HomeAssistantError,
+                GatewayTransportError,
+                ClientDataError,
+                DSLDataError,
+                NetworkDataError,
+                OSError,
+                TimeoutError,
+            ):
                 return None
+
         values = await asyncio.gather(isolated(self.dsl), isolated(self.pc))
         now = dt_util.utcnow().timestamp()
         result, stamps = {}, []

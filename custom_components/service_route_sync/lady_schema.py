@@ -19,8 +19,22 @@ def text(value, limit=200):
 
 
 def validate_engine(engine):
-    times = {"up_since", "down_since", "wake_replies_since", "power_off", "power_on", "switch_uptime"}
-    allowed = times | {"incidents", "port_identity", "port", "expected_power_off", "last_pulse", "link_flap_window"}
+    times = {
+        "up_since",
+        "down_since",
+        "wake_replies_since",
+        "power_off",
+        "power_on",
+        "switch_uptime",
+    }
+    allowed = times | {
+        "incidents",
+        "port_identity",
+        "port",
+        "expected_power_off",
+        "last_pulse",
+        "link_flap_window",
+    }
     if not isinstance(engine, dict) or not set(engine) <= allowed:
         raise ValueError("Unexpected incident state fields")
     for key in times & engine.keys():
@@ -34,7 +48,12 @@ def validate_engine(engine):
         raise ValueError("Invalid incident map")
     for key, row in incidents.items():
         text(key)
-        if not isinstance(row, dict) or not {"active", "since", "good"} <= set(row) or not set(row) <= {"active", "since", "good", "last_sent"} or type(row["active"]) is not bool:
+        if (
+            not isinstance(row, dict)
+            or not {"active", "since", "good"} <= set(row)
+            or not set(row) <= {"active", "since", "good", "last_sent"}
+            or type(row["active"]) is not bool
+        ):
             raise ValueError("Invalid incident record")
         for field in set(row) - {"active"}:
             number(row[field], nullable=field in {"since", "good"})
@@ -46,7 +65,17 @@ def validate_engine(engine):
         number(value)
     port = engine.get("port")
     if port is not None:
-        fields = {"up", "speed", "link_down_count", "rx_errors", "tx_errors", "rx_dropped", "tx_dropped", "rx_bytes", "tx_bytes"}
+        fields = {
+            "up",
+            "speed",
+            "link_down_count",
+            "rx_errors",
+            "tx_errors",
+            "rx_dropped",
+            "tx_dropped",
+            "rx_bytes",
+            "tx_bytes",
+        }
         if not isinstance(port, dict) or not set(port) <= fields:
             raise ValueError("Invalid port snapshot")
         for key, value in port.items():
@@ -57,7 +86,14 @@ def validate_engine(engine):
                 number(value, nullable=True)
     window = engine.get("link_flap_window")
     if window is not None:
-        if not isinstance(window, dict) or set(window) != {"port", "count", "uptime", "time", "deltas", "last_change"}:
+        if not isinstance(window, dict) or set(window) != {
+            "port",
+            "count",
+            "uptime",
+            "time",
+            "deltas",
+            "last_change",
+        }:
             raise ValueError("Invalid link window")
         text(window["port"])
         for key in ("count", "uptime", "time", "last_change"):
@@ -74,7 +110,11 @@ def validate_engine(engine):
 def validate_queues(outbox, replay):
     identities = set()
     for row in outbox:
-        if set(row) != {"delivery_id", "event"} or not isinstance(row["delivery_id"], str) or not re.fullmatch(r"[0-9a-f]{64}", row["delivery_id"]):
+        if (
+            set(row) != {"delivery_id", "event"}
+            or not isinstance(row["delivery_id"], str)
+            or not re.fullmatch(r"[0-9a-f]{64}", row["delivery_id"])
+        ):
             raise ValueError("Invalid notification identity")
         if row["delivery_id"] in identities:
             raise ValueError("Duplicate notification identity")

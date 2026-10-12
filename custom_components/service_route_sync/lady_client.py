@@ -10,7 +10,12 @@ def incident_port(client):
     if client.port_ambiguous or port is None:
         return {}
     switch, index = port.identity.rsplit(":", 1)
-    if canonical_mac(switch) != switch or not index.isascii() or not index.isdigit() or not 1 <= int(index) <= 65535:
+    if (
+        canonical_mac(switch) != switch
+        or not index.isascii()
+        or not index.isdigit()
+        or not 1 <= int(index) <= 65535
+    ):
         raise ClientDataError("Invalid Lady port identity")
     # Legacy incidents use the display identity; preserve it during migration.
     # The tracked MAC/index remains separate and is the authoritative location.
@@ -19,11 +24,15 @@ def incident_port(client):
         "tracked_port": {"switch": switch, "port": int(index)},
         "switch_uptime": port.switch_uptime_s,
         "port": {
-            "up": port.up, "speed": port.speed_mbit_s,
+            "up": port.up,
+            "speed": port.speed_mbit_s,
             "link_down_count": port.link_down_count,
-            "rx_errors": port.rx_errors, "tx_errors": port.tx_errors,
-            "rx_dropped": port.rx_dropped, "tx_dropped": port.tx_dropped,
-            "rx_bytes": port.rx_bytes, "tx_bytes": port.tx_bytes,
+            "rx_errors": port.rx_errors,
+            "tx_errors": port.tx_errors,
+            "rx_dropped": port.rx_dropped,
+            "tx_dropped": port.tx_dropped,
+            "rx_bytes": port.rx_bytes,
+            "tx_bytes": port.tx_bytes,
         },
     }
 
@@ -39,6 +48,7 @@ class LadyClientReader:
 
     async def __call__(self):
         from .lady_coordinator import TimedObservation
+
         if not self.coordinator.last_update_success or self.coordinator.data is None:
             raise ClientDataError("Lady client source unavailable")
         snapshot = self.coordinator.data

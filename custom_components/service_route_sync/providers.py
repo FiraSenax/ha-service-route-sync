@@ -48,7 +48,8 @@ def select_prefixes(service_id, payload, options):
         result = ["52.23.121.216/32"]
         for key, prefix_key in (("prefixes", "ip_prefix"), ("ipv6_prefixes", "ipv6_prefix")):
             result.extend(
-                item[prefix_key] for item in payload.get(key, [])
+                item[prefix_key]
+                for item in payload.get(key, [])
                 if item.get("region") == "eu-central-1" and item.get("service") == "EC2"
             )
         return result

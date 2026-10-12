@@ -7,10 +7,29 @@ from service_route_sync.lady_client import incident_port
 
 class LadyClientTests(unittest.TestCase):
     def client(self, ambiguous=False, port=True):
-        p = PortObservation("02:00:00:00:00:01:3", "Synthetic Switch Port 3", True, 2500,
-                            None, 2, None, 3, 4, 5, None, 100)
-        return ClientObservation(datetime.now(timezone.utc), True, "wired", "172.20.1.10",
-                                 p if port else None, ambiguous, None)
+        p = PortObservation(
+            "02:00:00:00:00:01:3",
+            "Synthetic Switch Port 3",
+            True,
+            2500,
+            None,
+            2,
+            None,
+            3,
+            4,
+            5,
+            None,
+            100,
+        )
+        return ClientObservation(
+            datetime.now(timezone.utc),
+            True,
+            "wired",
+            "172.20.1.10",
+            p if port else None,
+            ambiguous,
+            None,
+        )
 
     def test_missing_counters_stay_unknown_and_identity_is_preserved(self):
         result = incident_port(self.client())

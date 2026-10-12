@@ -30,5 +30,8 @@ class IPv6Entity(CoordinatorEntity[IPv6Coordinator]):
     @property
     def available(self) -> bool:
         data = self.coordinator.data
-        return bool(super().available and data is not None
-                    and timedelta(0) <= dt_util.utcnow() - data.observed_at <= timedelta(seconds=25))
+        return bool(
+            super().available
+            and data is not None
+            and timedelta(0) <= dt_util.utcnow() - data.observed_at <= timedelta(seconds=25)
+        )

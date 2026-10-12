@@ -46,14 +46,15 @@ class UniFiBackend:
         self.hass = hass
         self.parent_entry_id = parent_entry_id
         if tls_pin_sha256 is not None and (
-            not isinstance(tls_pin_sha256, str)
-            or not re.fullmatch(r"[0-9a-f]{64}", tls_pin_sha256)
+            not isinstance(tls_pin_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", tls_pin_sha256)
         ):
             raise SyncError("Invalid UniFi certificate pin")
         self.tls_pin_sha256 = tls_pin_sha256
-        if route_api_key is not None and (not isinstance(route_api_key, str)
-                or not 16 <= len(route_api_key) <= 512
-                or any(ord(ch) < 33 or ord(ch) > 126 for ch in route_api_key)):
+        if route_api_key is not None and (
+            not isinstance(route_api_key, str)
+            or not 16 <= len(route_api_key) <= 512
+            or any(ord(ch) < 33 or ord(ch) > 126 for ch in route_api_key)
+        ):
             raise SyncError("Invalid dedicated UniFi route API key")
         self.route_api_key = route_api_key
         self._pinned_session = None
@@ -88,16 +89,18 @@ class UniFiBackend:
                 await self._pinned_session.close()
             self._pinned_session = ClientSession(cookie_jar=CookieJar(unsafe=True), trust_env=False)
             native = parent.connectivity.config
-            controller = Controller(Configuration(
-                self._pinned_session,
-                host=native.host,
-                username=native.username,
-                password=native.password,
-                port=native.port,
-                site=native.site,
-                ssl_context=Fingerprint(bytes.fromhex(self.tls_pin_sha256)),
-                totp_secret=native.totp_secret,
-            ))
+            controller = Controller(
+                Configuration(
+                    self._pinned_session,
+                    host=native.host,
+                    username=native.username,
+                    password=native.password,
+                    port=native.port,
+                    site=native.site,
+                    ssl_context=Fingerprint(bytes.fromhex(self.tls_pin_sha256)),
+                    totp_secret=native.totp_secret,
+                )
+            )
             try:
                 async with asyncio.timeout(15):
                     await controller.login()
@@ -126,6 +129,7 @@ class UniFiBackend:
         Cancellation is deliberately not caught.
         """
         from aiounifi.errors import AiounifiException
+
         if self.route_api_key is not None and request.path.startswith("/trafficroutes"):
             return await self._route_key_request(request)
 
@@ -142,13 +146,18 @@ class UniFiBackend:
         if request.method == "get" and request.path != "/trafficroutes":
             raise SyncError("Unexpected UniFi route path")
         if request.method == "put" and not re.fullmatch(
-                r"/trafficroutes/[0-9a-f-]{36}", request.path):
+            r"/trafficroutes/[0-9a-f-]{36}", request.path
+        ):
             raise SyncError("Unexpected UniFi route path")
         native = self._api().connectivity.config
         host, site, port = native.host, native.site, native.port
-        if (not isinstance(host, str) or not isinstance(site, str)
-                or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", site)
-                or type(port) is not int or not 1 <= port <= 65535):
+        if (
+            not isinstance(host, str)
+            or not isinstance(site, str)
+            or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", site)
+            or type(port) is not int
+            or not 1 <= port <= 65535
+        ):
             raise SyncError("Invalid trusted UniFi endpoint")
         try:
             ipaddress.ip_address(host)
@@ -160,14 +169,18 @@ class UniFiBackend:
         url = f"https://{host}:{port}/proxy/network/v2/api/site/{site}{request.path}"
         try:
             async with self._pinned_session.request(
-                request.method.upper(), url,
+                request.method.upper(),
+                url,
                 headers={"X-API-KEY": self.route_api_key},
                 json=deepcopy(request.data) if request.method == "put" else None,
                 ssl=Fingerprint(bytes.fromhex(self.tls_pin_sha256)),
-                timeout=ClientTimeout(total=15), allow_redirects=False,
+                timeout=ClientTimeout(total=15),
+                allow_redirects=False,
             ) as response:
                 if response.status not in (200, 201, 204):
-                    _LOGGER.warning("Dedicated UniFi route API rejected request (HTTP %s)", response.status)
+                    _LOGGER.warning(
+                        "Dedicated UniFi route API rejected request (HTTP %s)", response.status
+                    )
                     raise SyncError("The dedicated UniFi route API request failed")
                 if request.method == "put":
                     return None
@@ -196,7 +209,9 @@ class UniFiBackend:
         from aiounifi.models.traffic_route import TrafficRouteSaveRequest
 
         if self.tls_pin_sha256 is None or self.route_api_key is None:
-            raise SyncError("A pinned certificate and dedicated API key are required for route writes")
+            raise SyncError(
+                "A pinned certificate and dedicated API key are required for route writes"
+            )
         await self._request(TrafficRouteSaveRequest.create(deepcopy(route)))
 
     async def read_gateways(self) -> dict[str, dict]:

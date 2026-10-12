@@ -75,15 +75,19 @@ def removed_coverage_percentage(previous, desired):
     """Compare actual address coverage, not CIDR spelling after safe collapse."""
     largest = 0.0
     for version in (4, 6):
-        old = list(ipaddress.collapse_addresses(
-            ipaddress.ip_network(value) for value in previous
-            if ipaddress.ip_network(value).version == version
-        ))
+        old = list(
+            ipaddress.collapse_addresses(
+                ipaddress.ip_network(value)
+                for value in previous
+                if ipaddress.ip_network(value).version == version
+            )
+        )
         if not old:
             continue
         remaining = old
         covers = ipaddress.collapse_addresses(
-            ipaddress.ip_network(value) for value in desired
+            ipaddress.ip_network(value)
+            for value in desired
             if ipaddress.ip_network(value).version == version
         )
         for cover in covers:
@@ -112,12 +116,16 @@ def build_plan(service, route, prefixes, *, maximum_removal=0.5):
             ("v4", "185.25.180.0", "185.25.183.255"),
         }
         observed_ranges = route.get("ip_ranges")
-        if (not isinstance(observed_ranges, list)
-                or len(observed_ranges) != 2
-                or any(not isinstance(row, dict) or set(row) != {"ip_version", "ip_start", "ip_stop"}
-                       for row in observed_ranges)
-                or {(row["ip_version"], row["ip_start"], row["ip_stop"])
-                    for row in observed_ranges} != expected_ranges):
+        if (
+            not isinstance(observed_ranges, list)
+            or len(observed_ranges) != 2
+            or any(
+                not isinstance(row, dict) or set(row) != {"ip_version", "ip_start", "ip_stop"}
+                for row in observed_ranges
+            )
+            or {(row["ip_version"], row["ip_start"], row["ip_stop"]) for row in observed_ranges}
+            != expected_ranges
+        ):
             raise SyncError("Fortnite route anchor ranges differ from the reviewed policy")
     before = deepcopy(route)
     previous = route_prefixes(before)
@@ -139,8 +147,16 @@ def build_plan(service, route, prefixes, *, maximum_removal=0.5):
         }
         for value in prefixes
     ]
-    return Plan(service, str(before["_id"]), before, after, len(desired - previous),
-                len(removed), removed_coverage_pct, added_coverage_pct)
+    return Plan(
+        service,
+        str(before["_id"]),
+        before,
+        after,
+        len(desired - previous),
+        len(removed),
+        removed_coverage_pct,
+        added_coverage_pct,
+    )
 
 
 def policy(route):

@@ -11,23 +11,23 @@ async def async_get_config_entry_diagnostics(hass, entry):
         "client_monitoring_enabled": runtime.clients is not None,
         "client_probe_enabled": runtime.client_probes is not None,
         "work_probe_enabled": runtime.work_probes is not None,
-        "wifi_history_enabled": getattr(runtime, 'wifi', None) is not None,
+        "wifi_history_enabled": getattr(runtime, "wifi", None) is not None,
     }
-    if wifi := getattr(runtime, 'wifi', None):
+    if wifi := getattr(runtime, "wifi", None):
         data = wifi.data
-        report['wifi'] = {
-            'last_update_success': wifi.last_update_success,
-            'observed_at': data.observed_at.isoformat() if data else None,
-            'client_count': len(data.clients) if data else None,
-            'history_enabled': wifi.history is not None,
+        report["wifi"] = {
+            "last_update_success": wifi.last_update_success,
+            "observed_at": data.observed_at.isoformat() if data else None,
+            "client_count": len(data.clients) if data else None,
+            "history_enabled": wifi.history is not None,
         }
-    if frigate := getattr(runtime, 'frigate_actor', None):
+    if frigate := getattr(runtime, "frigate_actor", None):
         data = frigate.data
-        report['frigate'] = {
-            'last_update_success': frigate.last_update_success,
-            'observed_at': data.observed_at.isoformat() if data else None,
-            'running': data.running if data else None,
-            'restart_enabled': frigate.restart_enabled,
+        report["frigate"] = {
+            "last_update_success": frigate.last_update_success,
+            "observed_at": data.observed_at.isoformat() if data else None,
+            "running": data.running if data else None,
+            "restart_enabled": frigate.restart_enabled,
         }
     if lady := getattr(runtime, "lady", None):
         data = lady.incidents.data

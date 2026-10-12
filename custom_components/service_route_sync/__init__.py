@@ -55,7 +55,14 @@ async def async_setup_entry(hass, entry):
             try:
                 runtime.ipv6_actor = IPv6Coordinator(hass, entry, runtime.gateway)
                 await runtime.ipv6_actor.async_initialize()
-            except (KeyError, ValueError, OSError, GatewayTransportError, ConfigEntryNotReady, UpdateFailed):
+            except (
+                KeyError,
+                ValueError,
+                OSError,
+                GatewayTransportError,
+                ConfigEntryNotReady,
+                UpdateFailed,
+            ):
                 runtime.ipv6_actor = None
                 failures.append(ConfigEntryNotReady("IPv6 policy trust is not ready"))
     if settings.get("client_profiles"):
@@ -66,11 +73,11 @@ async def async_setup_entry(hass, entry):
         runtime.work_probes = WorkProbeCoordinator(hass, entry)
     if settings.get("wifi_history_enabled"):
         runtime.wifi = prepare_wifi(hass, entry, settings)
-    if settings.get('frigate_actor_enabled') is True:
+    if settings.get("frigate_actor_enabled") is True:
         try:
             runtime.frigate_actor = FrigateActorCoordinator(hass, entry)
         except (ValueError, OSError, GatewayTransportError):
-            failures.append(ConfigEntryNotReady('Frigate peer trust is not ready'))
+            failures.append(ConfigEntryNotReady("Frigate peer trust is not ready"))
     if settings.get("lady_enabled"):
         try:
             runtime.lady = await prepare_lady(hass, entry, settings)
@@ -114,9 +121,15 @@ async def async_setup_entry(hass, entry):
         raise
     # These observations also feed the compatibility exporter. Keep them polling
     # even with disabled entities, and retry a failed initial probe handshake.
-    for coordinator in (runtime.clients, runtime.client_probes, runtime.work_probes, runtime.wifi, runtime.frigate_actor,
-                        runtime.lady.clients if runtime.lady else None,
-                        runtime.lady.incidents if runtime.lady else None):
+    for coordinator in (
+        runtime.clients,
+        runtime.client_probes,
+        runtime.work_probes,
+        runtime.wifi,
+        runtime.frigate_actor,
+        runtime.lady.clients if runtime.lady else None,
+        runtime.lady.incidents if runtime.lady else None,
+    ):
         if coordinator is not None:
             entry.async_on_unload(coordinator.async_add_listener(lambda: None))
     if settings.get("network_metrics_enabled"):

@@ -15,12 +15,25 @@ from custom_components.service_route_sync.work_probes import WorkProbe
 
 class MetricsViewTests(unittest.IsolatedAsyncioTestCase):
     async def test_lady_permissions_do_not_widen_gaming_endpoint_scope(self):
-        self.user.permissions.check_entity.side_effect = lambda entity, policy: entity == 'binary_sensor.pc_connected'
-        rows = [SimpleNamespace(entity_id='binary_sensor.pc_connected', unique_id='entry_client_pc_online'),
-                SimpleNamespace(entity_id='binary_sensor.lady_connected', unique_id='entry_client_ladyofgames_online')]
-        with patch('custom_components.service_route_sync.metrics_view.er.async_entries_for_config_entry', return_value=rows):
-            response = await self.view.get({KEY_HASS_USER: self.user}, 'entry')
+        self.user.permissions.check_entity.side_effect = lambda entity, policy: (
+            entity == "binary_sensor.pc_connected"
+        )
+        rows = [
+            SimpleNamespace(
+                entity_id="binary_sensor.pc_connected", unique_id="entry_client_pc_online"
+            ),
+            SimpleNamespace(
+                entity_id="binary_sensor.lady_connected",
+                unique_id="entry_client_ladyofgames_online",
+            ),
+        ]
+        with patch(
+            "custom_components.service_route_sync.metrics_view.er.async_entries_for_config_entry",
+            return_value=rows,
+        ):
+            response = await self.view.get({KEY_HASS_USER: self.user}, "entry")
         self.assertEqual(response.status, 200)
+
     def setUp(self):
         now = dt_util.utcnow()
         mac = "02:00:00:00:00:01"

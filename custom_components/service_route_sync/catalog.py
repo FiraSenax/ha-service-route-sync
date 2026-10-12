@@ -18,7 +18,9 @@ CATALOG = {
     "pubg": Service("PUBG / Krafton", "ripe", "18321", "KRAFTON"),
     "destiny": Service("Destiny / Bungie", "ripe", "394073", "BUNGIE"),
     "i3d": Service("i3D.net game hosting", "ripe", "49544", "I3DNET"),
-    "fortnite": Service("Fortnite (AWS Frankfurt + Epic anchors)", "aws_fortnite", "eu-central-1:EC2"),
+    "fortnite": Service(
+        "Fortnite (AWS Frankfurt + Epic anchors)", "aws_fortnite", "eu-central-1:EC2"
+    ),
     "m365": Service("Microsoft 365 (all service areas)", "m365", "all"),
     "teams": Service("Microsoft Teams / Skype + Common", "m365", "Skype"),
     "exchange": Service("Exchange Online + Common", "m365", "Exchange"),

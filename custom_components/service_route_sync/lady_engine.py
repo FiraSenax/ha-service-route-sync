@@ -209,7 +209,9 @@ class LadyIncidentEngine:
         # the active diagnosis intact until fresh measurements can recover it.
         unknown = set()
         if port is None or port.get("up") is not True:
-            unknown.update(("LAN-Geschwindigkeit", "LAN-Paketverlust", "LAN-Latenz", "Windows-Agent"))
+            unknown.update(
+                ("LAN-Geschwindigkeit", "LAN-Paketverlust", "LAN-Latenz", "Windows-Agent")
+            )
         else:
             if port.get("speed") is None:
                 unknown.add("LAN-Geschwindigkeit")

@@ -7,8 +7,11 @@ from unittest.mock import patch
 
 from gateway import ipv6_actor as actor
 from gateway.ipv6_policy import (
-    PolicyError, PolicySnapshot, classify, expected_nat, expected_policy,
-    expected_sab, parse_config, normalized_policy,
+    PolicyError,
+    PolicySnapshot,
+    classify,
+    parse_config,
+    normalized_policy,
 )
 from tests_gateway.test_ipv6_policy import RAW, PD, snapshot as healthy_snapshot
 
@@ -94,8 +97,10 @@ def run(initial, desired, *, fail_at=None):
 
 class ActorTests(TestCase):
     def test_insert_index_after_chain(self):
-        self.assertEqual(actor.insert_rule("ip6tables", "nat", "-A IOB_V6_NAT -j MASQUERADE"),
-                         ["ip6tables", "-w", "5", "-t", "nat", "-I", "IOB_V6_NAT", "1", "-j", "MASQUERADE"])
+        self.assertEqual(
+            actor.insert_rule("ip6tables", "nat", "-A IOB_V6_NAT -j MASQUERADE"),
+            ["ip6tables", "-w", "5", "-t", "nat", "-I", "IOB_V6_NAT", "1", "-j", "MASQUERADE"],
+        )
 
     def test_exact_switch_and_all_single_command_failures_rollback(self):
         before = healthy_snapshot("dsl")
@@ -170,7 +175,9 @@ class ActorTests(TestCase):
 
     def test_policy_parser_refuses_extra_selectors(self):
         with self.assertRaises(PolicyError):
-            normalized_policy(["31010: from fd12:3456:789a:bc00::/56 lookup 201.ppp0 fwmark 0x1"], 31010)
+            normalized_policy(
+                ["31010: from fd12:3456:789a:bc00::/56 lookup 201.ppp0 fwmark 0x1"], 31010
+            )
 
     def test_concurrent_policy_edit_latches_without_overwriting_it(self):
         before = healthy_snapshot("dsl")
@@ -185,12 +192,13 @@ class ActorTests(TestCase):
                 raise actor.PolicyError("injected_write_failure")
             return original_command(args, **kwargs)
 
-        call = {"transaction_id": "b" * 32, "expected_digest": before.digest(),
-                "mode": "starlink"}
-        with patch.object(actor, "command", concurrent_command), \
-                patch.object(actor, "snapshot", router.snapshot), \
-                patch.object(actor, "atomic_journal", router.store), \
-                patch.object(actor, "default_route", return_value=True):
+        call = {"transaction_id": "b" * 32, "expected_digest": before.digest(), "mode": "starlink"}
+        with (
+            patch.object(actor, "command", concurrent_command),
+            patch.object(actor, "snapshot", router.snapshot),
+            patch.object(actor, "atomic_journal", router.store),
+            patch.object(actor, "default_route", return_value=True),
+        ):
             with self.assertRaisesRegex(actor.PolicyError, "review_required"):
                 actor.apply(config, call, before, None)
         self.assertIn(foreign, router.state.policy)

@@ -6,7 +6,8 @@ from pathlib import Path
 
 from custom_components.service_route_sync.backends.gateway_ssh import GatewayTransportError
 from custom_components.service_route_sync.backends.ipv6_actor_ssh import (
-    IPv6ActorSSHConfig, parse_actor_response,
+    IPv6ActorSSHConfig,
+    parse_actor_response,
 )
 
 
@@ -21,27 +22,50 @@ class IPv6ActorTransportTests(unittest.TestCase):
             self.assertIn("IdentitiesOnly=yes", args)
 
     def test_inspect_response_is_closed(self):
-        valid = {"schema": 1, "operation": "inspect", "mode": "dsl", "writable": False, "owned_mode": "dsl",
-                 "repairable": True, "blank": False, "healthy": True,
-                 "digest": "a" * 64, "delegation_ready": True, "dsl_default": True,
-                 "starlink_default": True, "review_required": False}
+        valid = {
+            "schema": 1,
+            "operation": "inspect",
+            "mode": "dsl",
+            "writable": False,
+            "owned_mode": "dsl",
+            "repairable": True,
+            "blank": False,
+            "healthy": True,
+            "digest": "a" * 64,
+            "delegation_ready": True,
+            "dsl_default": True,
+            "starlink_default": True,
+            "review_required": False,
+        }
         parsed = parse_actor_response(valid, "inspect")
         self.assertEqual(parsed.mode, "dsl")
-        for changed in ({**valid, "public_prefix": "2001:db8::/56"},
-                        {**valid, "healthy": False},
-                        {**valid, "digest": "secret"},
-                        {**valid, "dsl_default": 1},
-                        {**valid, "writable": 1},
-                        {**valid, "owned_mode": "starlink"},
-                        {**valid, "blank": True}):
+        for changed in (
+            {**valid, "public_prefix": "2001:db8::/56"},
+            {**valid, "healthy": False},
+            {**valid, "digest": "secret"},
+            {**valid, "dsl_default": 1},
+            {**valid, "writable": 1},
+            {**valid, "owned_mode": "starlink"},
+            {**valid, "blank": True},
+        ):
             with self.subTest(changed=changed), self.assertRaises(GatewayTransportError):
                 parse_actor_response(changed, "inspect")
 
     def test_apply_response_is_closed(self):
-        valid = {"schema": 1, "operation": "apply", "mode": "starlink", "applied": True,
-                 "digest": "b" * 64, "review_required": False}
+        valid = {
+            "schema": 1,
+            "operation": "apply",
+            "mode": "starlink",
+            "applied": True,
+            "digest": "b" * 64,
+            "review_required": False,
+        }
         self.assertTrue(parse_actor_response(valid, "apply").applied)
-        for changed in ({**valid, "mode": "unknown"}, {**valid, "review_required": True},
-                        {**valid, "applied": 1}, {**valid, "error_code": "secret"}):
+        for changed in (
+            {**valid, "mode": "unknown"},
+            {**valid, "review_required": True},
+            {**valid, "applied": 1},
+            {**valid, "error_code": "secret"},
+        ):
             with self.subTest(changed=changed), self.assertRaises(GatewayTransportError):
                 parse_actor_response(changed, "apply")

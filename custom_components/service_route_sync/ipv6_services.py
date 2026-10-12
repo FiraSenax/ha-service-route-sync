@@ -16,8 +16,12 @@ def register_ipv6_services(hass):
     async def acknowledge(call):
         entry = hass.config_entries.async_get_entry(call.data["entry_id"])
         actor = getattr(getattr(entry, "runtime_data", None), "ipv6_actor", None)
-        if (entry is None or entry.domain != DOMAIN or actor is None
-                or entry.state is not ConfigEntryState.LOADED):
+        if (
+            entry is None
+            or entry.domain != DOMAIN
+            or actor is None
+            or entry.state is not ConfigEntryState.LOADED
+        ):
             raise ServiceValidationError("IPv6 policy actor is unavailable")
         try:
             await actor.async_acknowledge_review(call.data["digest"], call.data["mode"])
@@ -25,10 +29,15 @@ def register_ipv6_services(hass):
             raise ServiceValidationError("IPv6 policy acknowledgement was refused") from None
 
     async_register_admin_service(
-        hass, DOMAIN, "acknowledge_ipv6_policy_review", acknowledge,
-        schema=vol.Schema({
-            vol.Required("entry_id"): str,
-            vol.Required("digest"): vol.Match(r"[0-9a-f]{64}"),
-            vol.Required("mode"): vol.In(("dsl", "starlink")),
-        }),
+        hass,
+        DOMAIN,
+        "acknowledge_ipv6_policy_review",
+        acknowledge,
+        schema=vol.Schema(
+            {
+                vol.Required("entry_id"): str,
+                vol.Required("digest"): vol.Match(r"[0-9a-f]{64}"),
+                vol.Required("mode"): vol.In(("dsl", "starlink")),
+            }
+        ),
     )

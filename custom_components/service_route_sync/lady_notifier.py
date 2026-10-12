@@ -30,11 +30,16 @@ class LadyNotifier:
                 event = row["event"]
                 if not self.hass.services.has_service("notify", "pushover"):
                     raise HomeAssistantError("Lady notification service unavailable")
-                title = "LadyOfGames · Netzwerk wieder unauffällig" if event["recovery"] else "LadyOfGames · Netzwerkdiagnose"
+                title = (
+                    "LadyOfGames · Netzwerk wieder unauffällig"
+                    if event["recovery"]
+                    else "LadyOfGames · Netzwerkdiagnose"
+                )
                 # Use the configured integration; no credentials or HTTP client.
                 async with asyncio.timeout(20):
                     await self.hass.services.async_call(
-                        "notify", "pushover",
+                        "notify",
+                        "pushover",
                         {"title": title, "message": event["message"], "data": {"priority": 0}},
                         blocking=True,
                     )

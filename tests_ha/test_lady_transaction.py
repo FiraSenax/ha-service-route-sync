@@ -16,50 +16,69 @@ from custom_components.service_route_sync.lady_history import LadyHistory
 
 class TransactionTests(unittest.IsolatedAsyncioTestCase):
     async def test_history_prepare_then_store_failure_is_invisible_after_restart(self):
-        history = LadyHistory(Path(self.directory.name) / 'history' / 'events.sqlite')
+        history = LadyHistory(Path(self.directory.name) / "history" / "events.sqlite")
         transaction = LadyTransaction(self.store, history)
-        await transaction.async_sample({'api_ok': False}, self.batch(), self.now)
-        with patch.object(self.store.store, 'async_save', AsyncMock(side_effect=OSError('synthetic'))):
+        await transaction.async_sample({"api_ok": False}, self.batch(), self.now)
+        with patch.object(
+            self.store.store, "async_save", AsyncMock(side_effect=OSError("synthetic"))
+        ):
             with self.assertRaises(OSError):
-                await transaction.async_sample({'api_ok': False}, self.batch(20), self.now + 121)
-        fresh = LadyCheckpointStore(self.hass, 'transaction')
+                await transaction.async_sample({"api_ok": False}, self.batch(20), self.now + 121)
+        fresh = LadyCheckpointStore(self.hass, "transaction")
         await fresh.async_load()
-        self.assertEqual(fresh.state['cursor']['offset'], 10)
-        self.assertEqual(history.snapshot(fresh.state['history_revision'], self.now + 121)['counts'], {})
+        self.assertEqual(fresh.state["cursor"]["offset"], 10)
+        self.assertEqual(
+            history.snapshot(fresh.state["history_revision"], self.now + 121)["counts"], {}
+        )
         restored = LadyTransaction(fresh, history)
-        await restored.async_sample({'api_ok': False}, self.batch(30), self.now + 122)
-        result = history.snapshot(fresh.state['history_revision'], self.now + 122)
-        self.assertEqual(result['counts'], {'Messquelle api': 1})
-        self.assertEqual(len(fresh.state['outbox']), 1)
-        marker = fresh.state['history_revision']
-        await restored.async_acknowledge(fresh.state['outbox'][0]['delivery_id'])
-        self.assertEqual(fresh.state['history_revision'], marker)
+        await restored.async_sample({"api_ok": False}, self.batch(30), self.now + 122)
+        result = history.snapshot(fresh.state["history_revision"], self.now + 122)
+        self.assertEqual(result["counts"], {"Messquelle api": 1})
+        self.assertEqual(len(fresh.state["outbox"]), 1)
+        marker = fresh.state["history_revision"]
+        await restored.async_acknowledge(fresh.state["outbox"][0]["delivery_id"])
+        self.assertEqual(fresh.state["history_revision"], marker)
 
     async def test_history_failure_never_advances_accepted_cursor(self):
-        history = LadyHistory(Path(self.directory.name) / 'history' / 'events.sqlite')
+        history = LadyHistory(Path(self.directory.name) / "history" / "events.sqlite")
         transaction = LadyTransaction(self.store, history)
         await transaction.async_sample({}, self.batch(), self.now)
         before = self.store.state
-        with patch.object(history, 'prepare', side_effect=OSError('synthetic')):
+        with patch.object(history, "prepare", side_effect=OSError("synthetic")):
             with self.assertRaises(OSError):
                 await transaction.async_sample({}, self.batch(20), self.now + 5)
         self.assertEqual(self.store.state, before)
+
     async def test_daily_cursor_and_pending_future_event_restore_together(self):
         batch = self.batch(events=(self.event,))
-        batch = WindowsBatch(DailyCursor("2026-10-12", 25), batch.events,
-                             batch.agent, batch.heartbeat_ok, False, 0, False)
+        batch = WindowsBatch(
+            DailyCursor("2026-10-12", 25),
+            batch.events,
+            batch.agent,
+            batch.heartbeat_ok,
+            False,
+            0,
+            False,
+        )
         await self.transaction.async_sample({}, batch, self.now)
         fresh = LadyCheckpointStore(self.hass, "transaction")
         await fresh.async_load()
         self.assertEqual(fresh.state["cursor"], {"day": "2026-10-12", "offset": 25})
         self.assertFalse(fresh.state["deferred_events"][0]["delivered"])
+
     async def asyncSetUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.hass = HomeAssistant(self.directory.name)
         self.store = LadyCheckpointStore(self.hass, "transaction")
         self.transaction = LadyTransaction(self.store)
         self.now = 1791763200
-        self.event = {"time": "2026-10-12T00:01:00Z", "provider": "User32", "id": "1074", "level": "4", "message": "synthetic"}
+        self.event = {
+            "time": "2026-10-12T00:01:00Z",
+            "provider": "User32",
+            "id": "1074",
+            "level": "4",
+            "message": "synthetic",
+        }
 
     async def asyncTearDown(self):
         await self.hass.async_stop(force=True)
@@ -81,9 +100,13 @@ class TransactionTests(unittest.IsolatedAsyncioTestCase):
     async def test_failed_save_keeps_engine_cursor_and_outbox_unchanged(self):
         await self.transaction.async_sample({}, self.batch(), self.now)
         before = self.store.state
-        with patch.object(self.store.store, "async_save", AsyncMock(side_effect=OSError("synthetic"))):
+        with patch.object(
+            self.store.store, "async_save", AsyncMock(side_effect=OSError("synthetic"))
+        ):
             with self.assertRaises(OSError):
-                await self.transaction.async_sample({}, self.batch(20, (self.event,)), self.now + 60)
+                await self.transaction.async_sample(
+                    {}, self.batch(20, (self.event,)), self.now + 60
+                )
         self.assertEqual(self.store.state, before)
 
     async def test_incident_outbox_persists_until_explicit_ack(self):

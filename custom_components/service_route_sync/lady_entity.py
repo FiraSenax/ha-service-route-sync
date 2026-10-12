@@ -17,12 +17,18 @@ class LadyEntity(CoordinatorEntity):
         entry_id = self.coordinator.config_entry.entry_id
         self._attr_unique_id = f"{entry_id}_lady_{key}"
         self._attr_translation_key = f"lady_{key}"
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, f"{entry_id}_lady")},
-                                           name="LadyOfGames", manufacturer="Service Route Sync",
-                                           model="Network diagnostics")
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry_id}_lady")},
+            name="LadyOfGames",
+            manufacturer="Service Route Sync",
+            model="Network diagnostics",
+        )
 
     @property
     def available(self):
         data = self.coordinator.data
-        return bool(super().available and data is not None
-                    and 0 <= dt_util.utcnow().timestamp() - data["observed_at"] <= 75)
+        return bool(
+            super().available
+            and data is not None
+            and 0 <= dt_util.utcnow().timestamp() - data["observed_at"] <= 75
+        )

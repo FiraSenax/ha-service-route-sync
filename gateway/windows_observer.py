@@ -38,8 +38,12 @@ def bounded_archive_response(root, database, cursor, today):
     page_bytes = 1048576
     while True:
         batch = read_windows_archive_batch(
-            root, database, cursor or DailyCursor(today.isoformat(), 0),
-            today, "013", maximum_bytes=page_bytes,
+            root,
+            database,
+            cursor or DailyCursor(today.isoformat(), 0),
+            today,
+            "013",
+            maximum_bytes=page_bytes,
         )
         raw = dataclasses.asdict(batch)
         raw["schema"] = 2
@@ -67,11 +71,15 @@ def main():
             # Null is bootstrap only. Migration must supply the mapped old day.
             today = date.today()
             encoded = bounded_archive_response(
-                Path("/var/ossec/logs/alerts"), database, cursor, today)
+                Path("/var/ossec/logs/alerts"), database, cursor, today
+            )
         else:
             batch = read_windows_batch(
-                Path("/var/ossec/logs/alerts/alerts.json"), database,
-                cursor, "013", maximum_bytes=32768,
+                Path("/var/ossec/logs/alerts/alerts.json"),
+                database,
+                cursor,
+                "013",
+                maximum_bytes=32768,
             )
             raw = dataclasses.asdict(batch)
             raw["schema"] = schema

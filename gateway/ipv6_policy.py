@@ -23,9 +23,22 @@ class PolicyConfig:
 
 
 def parse_config(raw):
-    fields = {"schema", "ula_prefix", "dsl_table", "starlink_table", "dsl_mark",
-              "starlink_mark", "sab_dsl_ip", "sab_starlink_ip"}
-    if not isinstance(raw, dict) or set(raw) != fields or type(raw["schema"]) is not int or raw["schema"] != 1:
+    fields = {
+        "schema",
+        "ula_prefix",
+        "dsl_table",
+        "starlink_table",
+        "dsl_mark",
+        "starlink_mark",
+        "sab_dsl_ip",
+        "sab_starlink_ip",
+    }
+    if (
+        not isinstance(raw, dict)
+        or set(raw) != fields
+        or type(raw["schema"]) is not int
+        or raw["schema"] != 1
+    ):
         raise PolicyError("invalid_configuration")
     try:
         ula = ipaddress.IPv6Network(raw["ula_prefix"], strict=True)
@@ -33,22 +46,37 @@ def parse_config(raw):
         star_ip = ipaddress.IPv4Address(raw["sab_starlink_ip"])
     except (ValueError, TypeError):
         raise PolicyError("invalid_configuration") from None
-    if (not ula.is_private or ula.prefixlen != 56 or ula.is_multicast or dsl_ip == star_ip
-            or not dsl_ip.is_private or not star_ip.is_private):
+    if (
+        not ula.is_private
+        or ula.prefixlen != 56
+        or ula.is_multicast
+        or dsl_ip == star_ip
+        or not dsl_ip.is_private
+        or not star_ip.is_private
+    ):
         raise PolicyError("invalid_configuration")
-    for key, expected in (("dsl_table", "201.ppp0"),
-                          ("starlink_table", "202.eth1")):
+    for key, expected in (("dsl_table", "201.ppp0"), ("starlink_table", "202.eth1")):
         if raw[key] != expected:
             raise PolicyError("invalid_configuration")
     for key in ("dsl_mark", "starlink_mark"):
-        if (not isinstance(raw[key], str) or not re.fullmatch(r"0x[0-9a-f]{1,8}/0x7e0000", raw[key])
-                or not 0 < int(raw[key].split("/")[0], 16) <= 0x7e0000
-                or int(raw[key].split("/")[0], 16) & ~0x7e0000):
+        if (
+            not isinstance(raw[key], str)
+            or not re.fullmatch(r"0x[0-9a-f]{1,8}/0x7e0000", raw[key])
+            or not 0 < int(raw[key].split("/")[0], 16) <= 0x7E0000
+            or int(raw[key].split("/")[0], 16) & ~0x7E0000
+        ):
             raise PolicyError("invalid_configuration")
     if raw["dsl_mark"] == raw["starlink_mark"]:
         raise PolicyError("invalid_configuration")
-    return PolicyConfig(ula, raw["dsl_table"], raw["starlink_table"],
-                        raw["dsl_mark"], raw["starlink_mark"], dsl_ip, star_ip)
+    return PolicyConfig(
+        ula,
+        raw["dsl_table"],
+        raw["starlink_table"],
+        raw["dsl_mark"],
+        raw["starlink_mark"],
+        dsl_ip,
+        star_ip,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,24 +103,26 @@ def expected_nat(config, mode, delegation):
             raise PolicyError("delegation_unavailable") from None
         if not prefix.is_global or prefix.prefixlen != 56:
             raise PolicyError("delegation_unavailable")
-        return ("-N IOB_V6_NAT",
-                f"-A IOB_V6_NAT -s {source} -o ppp0 -j NETMAP --to {prefix}")
+        return ("-N IOB_V6_NAT", f"-A IOB_V6_NAT -s {source} -o ppp0 -j NETMAP --to {prefix}")
     if mode == "starlink":
-        return ("-N IOB_V6_NAT",
-                f"-A IOB_V6_NAT -s {source} -o eth1 -j MASQUERADE")
+        return ("-N IOB_V6_NAT", f"-A IOB_V6_NAT -s {source} -o eth1 -j MASQUERADE")
     raise PolicyError("invalid_mode")
 
 
 def expected_sab(config):
     rules = ["-N IOB_SAB_PBR"]
-    for address, mark in ((config.sab_starlink_ip, config.starlink_mark),
-                          (config.sab_dsl_ip, config.dsl_mark)):
+    for address, mark in (
+        (config.sab_starlink_ip, config.starlink_mark),
+        (config.sab_dsl_ip, config.dsl_mark),
+    ):
         source = f"{address}/32"
-        rules.extend((
-            f"-A IOB_SAB_PBR -s {source} -j MARK --set-xmark {mark}",
-            f"-A IOB_SAB_PBR -s {source} -j CONNMARK --save-mark --nfmask 0x7e0000 --ctmask 0x7e0000",
-            f"-A IOB_SAB_PBR -s {source} -j RETURN",
-        ))
+        rules.extend(
+            (
+                f"-A IOB_SAB_PBR -s {source} -j MARK --set-xmark {mark}",
+                f"-A IOB_SAB_PBR -s {source} -j CONNMARK --save-mark --nfmask 0x7e0000 --ctmask 0x7e0000",
+                f"-A IOB_SAB_PBR -s {source} -j RETURN",
+            )
+        )
     return tuple(rules)
 
 
@@ -126,15 +156,25 @@ def classify(snapshot, config):
 
 def owned_mode(snapshot, config):
     """Recognize exact old ownership even when its delegated prefix rotated."""
-    if snapshot.temporary_policy or snapshot.nat_hook != (
-        "-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",) or snapshot.sab_hook != (
-        "-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",) or snapshot.sab_chain != expected_sab(config):
+    if (
+        snapshot.temporary_policy
+        or snapshot.nat_hook != ("-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",)
+        or snapshot.sab_hook != ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",)
+        or snapshot.sab_chain != expected_sab(config)
+    ):
         return "unknown", None
-    if snapshot.nat_chain == expected_nat(config, "starlink", None) and snapshot.policy == expected_policy(config, "starlink"):
+    if snapshot.nat_chain == expected_nat(
+        config, "starlink", None
+    ) and snapshot.policy == expected_policy(config, "starlink"):
         return "starlink", None
-    if len(snapshot.nat_chain) == 2 and snapshot.nat_chain[0] == "-N IOB_V6_NAT" and snapshot.policy == expected_policy(config, "dsl"):
-        match = re.fullmatch(r"-A IOB_V6_NAT -s (\S+) -o ppp0 -j NETMAP --to (\S+)",
-                             snapshot.nat_chain[1])
+    if (
+        len(snapshot.nat_chain) == 2
+        and snapshot.nat_chain[0] == "-N IOB_V6_NAT"
+        and snapshot.policy == expected_policy(config, "dsl")
+    ):
+        match = re.fullmatch(
+            r"-A IOB_V6_NAT -s (\S+) -o ppp0 -j NETMAP --to (\S+)", snapshot.nat_chain[1]
+        )
         if match and match[1] == str(config.ula):
             try:
                 mapped = ipaddress.IPv6Network(match[2], strict=True)
@@ -158,7 +198,9 @@ def recoverable(snapshot, config):
     known_nat = snapshot.nat_chain in ((), expected_nat(config, "starlink", None))
     nat_mode = "starlink" if snapshot.nat_chain == expected_nat(config, "starlink", None) else None
     if not known_nat and len(snapshot.nat_chain) == 2 and snapshot.nat_chain[0] == "-N IOB_V6_NAT":
-        match = re.fullmatch(r"-A IOB_V6_NAT -s (\S+) -o ppp0 -j NETMAP --to (\S+)", snapshot.nat_chain[1])
+        match = re.fullmatch(
+            r"-A IOB_V6_NAT -s (\S+) -o ppp0 -j NETMAP --to (\S+)", snapshot.nat_chain[1]
+        )
         if match and match[1] == str(config.ula):
             try:
                 mapped = ipaddress.IPv6Network(match[2], strict=True)
@@ -168,7 +210,11 @@ def recoverable(snapshot, config):
                 pass
     if not known_nat:
         return False
-    if snapshot.policy not in ((), expected_policy(config, "dsl"), expected_policy(config, "starlink")):
+    if snapshot.policy not in (
+        (),
+        expected_policy(config, "dsl"),
+        expected_policy(config, "starlink"),
+    ):
         return False
     if nat_mode and snapshot.policy and snapshot.policy != expected_policy(config, nat_mode):
         return False

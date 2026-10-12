@@ -39,21 +39,28 @@ class FlowHarness(Steps):
 class NetworkFlowTests(unittest.IsolatedAsyncioTestCase):
     async def test_wifi_only_is_valid_without_routes_or_wan(self):
         result = await self.flow.async_step_user(
-            {'unifi_entry_id': 'parent', 'services': [], 'wifi_history_enabled': True})
-        self.assertEqual(result['type'], 'create_entry')
-        self.assertTrue(result['data']['wifi_history_enabled'])
+            {"unifi_entry_id": "parent", "services": [], "wifi_history_enabled": True}
+        )
+        self.assertEqual(result["type"], "create_entry")
+        self.assertTrue(result["data"]["wifi_history_enabled"])
         self.backend.read_gateways.assert_not_awaited()
 
     async def test_wifi_option_preserves_existing_choice_and_can_be_disabled(self):
-        self.flow.defaults['wifi_history_enabled'] = True
+        self.flow.defaults["wifi_history_enabled"] = True
         result = await self.flow.async_step_user(
-            {'unifi_entry_id': 'parent', 'services': [], 'network_enabled': True})
-        self.assertEqual(result['step_id'], 'network')
-        self.assertTrue(self.flow.settings['wifi_history_enabled'])
+            {"unifi_entry_id": "parent", "services": [], "network_enabled": True}
+        )
+        self.assertEqual(result["step_id"], "network")
+        self.assertTrue(self.flow.settings["wifi_history_enabled"])
         await self.flow.async_step_user(
-            {'unifi_entry_id': 'parent', 'services': [], 'network_enabled': True,
-             'wifi_history_enabled': False})
-        self.assertFalse(self.flow.settings['wifi_history_enabled'])
+            {
+                "unifi_entry_id": "parent",
+                "services": [],
+                "network_enabled": True,
+                "wifi_history_enabled": False,
+            }
+        )
+        self.assertFalse(self.flow.settings["wifi_history_enabled"])
 
     async def asyncSetUp(self):
         self.flow = FlowHarness()
@@ -115,27 +122,45 @@ class NetworkFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.flow.async_step_network())["reason"], "router_unavailable")
 
     async def test_scoped_route_options_preserve_network_and_other_features(self):
-        self.flow.defaults.update(services=['blizzard'], wifi_history_enabled=True,
-                                  gateway_observer_enabled=True, network_enabled=True)
+        self.flow.defaults.update(
+            services=["blizzard"],
+            wifi_history_enabled=True,
+            gateway_observer_enabled=True,
+            network_enabled=True,
+        )
         self.backend.read_routes.return_value = {
-            'r1': {'_id': 'r1', 'description': 'Blizzard', 'matching_target': 'IP', 'domains': [], 'regions': []},
-            'r2': {'_id': 'r2', 'description': 'Riot', 'matching_target': 'IP', 'domains': [], 'regions': []},
+            "r1": {
+                "_id": "r1",
+                "description": "Blizzard",
+                "matching_target": "IP",
+                "domains": [],
+                "regions": [],
+            },
+            "r2": {
+                "_id": "r2",
+                "description": "Riot",
+                "matching_target": "IP",
+                "domains": [],
+                "regions": [],
+            },
         }
-        result = await OptionsFlow.async_step_route_services(self.flow, {'services': ['blizzard', 'riot']})
-        self.assertEqual(result['step_id'], 'routes')
-        self.assertEqual(result['type'], 'form')
-        result = await self.flow.async_step_routes({'blizzard': 'r1', 'riot': 'r2'})
-        self.assertEqual(result['type'], 'create_entry')
-        self.assertEqual(result['data']['services'], ['blizzard', 'riot'])
-        self.assertEqual(result['data']['bindings'], {'blizzard': 'r1', 'riot': 'r2'})
-        self.assertTrue(result['data']['wifi_history_enabled'])
-        self.assertTrue(result['data']['gateway_observer_enabled'])
+        result = await OptionsFlow.async_step_route_services(
+            self.flow, {"services": ["blizzard", "riot"]}
+        )
+        self.assertEqual(result["step_id"], "routes")
+        self.assertEqual(result["type"], "form")
+        result = await self.flow.async_step_routes({"blizzard": "r1", "riot": "r2"})
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["data"]["services"], ["blizzard", "riot"])
+        self.assertEqual(result["data"]["bindings"], {"blizzard": "r1", "riot": "r2"})
+        self.assertTrue(result["data"]["wifi_history_enabled"])
+        self.assertTrue(result["data"]["gateway_observer_enabled"])
         self.backend.read_gateways.assert_not_awaited()
 
     async def test_scoped_route_options_reject_unknown_and_can_clear(self):
-        invalid = await OptionsFlow.async_step_route_services(self.flow, {'services': ['unknown']})
-        self.assertEqual(invalid['errors']['base'], 'invalid_configuration')
-        cleared = await OptionsFlow.async_step_route_services(self.flow, {'services': []})
-        self.assertEqual(cleared['type'], 'create_entry')
-        self.assertEqual(cleared['data']['services'], [])
+        invalid = await OptionsFlow.async_step_route_services(self.flow, {"services": ["unknown"]})
+        self.assertEqual(invalid["errors"]["base"], "invalid_configuration")
+        cleared = await OptionsFlow.async_step_route_services(self.flow, {"services": []})
+        self.assertEqual(cleared["type"], "create_entry")
+        self.assertEqual(cleared["data"]["services"], [])
         self.backend.read_gateways.assert_not_awaited()

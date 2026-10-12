@@ -12,8 +12,10 @@ def fresh(stamp, now, bound):
 
 def render_lady(snapshot, now, bandwidth=None):
     writer = MetricWriter()
+
     def metric(name, value, **labels):
         writer.add("lady_" + name, value, **labels)
+
     stamp = snapshot["observed_at"]
     current = fresh(stamp, now, 45)
     row, engine = snapshot["row"], snapshot["engine"]
@@ -29,7 +31,10 @@ def render_lady(snapshot, now, bandwidth=None):
     metric("pc_state", state)
     metric("pc_expected_off", off if current else None)
     incidents = engine.get("incidents", {})
-    metric("active_incidents", sum(value["active"] for value in incidents.values()) if current else None)
+    metric(
+        "active_incidents",
+        sum(value["active"] for value in incidents.values()) if current else None,
+    )
     for category, value in incidents.items():
         metric("incident_active", value["active"] if current else None, category=category)
     local = datetime.fromtimestamp(now, ZoneInfo("Europe/Berlin"))
@@ -39,7 +44,9 @@ def render_lady(snapshot, now, bandwidth=None):
         maximum = 45 if name in ("api", "probe") else 100
         available = fresh(source["observed_at"], now, maximum)
         metric("source_ok", source["ok"] and available, source=name)
-        metric("source_age_seconds", now - source["observed_at"] if available else None, source=name)
+        metric(
+            "source_age_seconds", now - source["observed_at"] if available else None, source=name
+        )
     if current:
         for target in ("lan", "wan_cf", "wan_google"):
             probe = row.get("probes", {}).get(target)
@@ -52,7 +59,17 @@ def render_lady(snapshot, now, bandwidth=None):
         if port is not None:
             label = row["port_identity"]
             metric("port_info", 1, port=label)
-            for name in ("up", "speed", "rx_errors", "tx_errors", "rx_dropped", "tx_dropped", "link_down_count", "rx_bytes", "tx_bytes"):
+            for name in (
+                "up",
+                "speed",
+                "rx_errors",
+                "tx_errors",
+                "rx_dropped",
+                "tx_dropped",
+                "link_down_count",
+                "rx_bytes",
+                "tx_bytes",
+            ):
                 metric("port_" + name, port.get(name), port=label)
         for resolver, value in row.get("dns", {}).items():
             metric("dns_ok", value.get("ok"), resolver=resolver)
@@ -77,10 +94,24 @@ def render_lady(snapshot, now, bandwidth=None):
     emitted = set()
     for event in history["recent"]:
         message = event["message"].replace("\r\n", "\n").replace("\r", "\n")
-        message = "".join(char if ord(char) >= 32 or char in "\n\t" else "\ufffd" for char in message)[:500]
-        labels = (event["key"], "Entwarnung" if event["recovery"] else "Hinweis", message, str(event["time"]))
+        message = "".join(
+            char if ord(char) >= 32 or char in "\n\t" else "\ufffd" for char in message
+        )[:500]
+        labels = (
+            event["key"],
+            "Entwarnung" if event["recovery"] else "Hinweis",
+            message,
+            str(event["time"]),
+        )
         if labels in emitted:
             continue
         emitted.add(labels)
-        metric("event_timestamp_seconds", event["time"], category=labels[0], status=labels[1], message=labels[2], event=labels[3])
+        metric(
+            "event_timestamp_seconds",
+            event["time"],
+            category=labels[0],
+            status=labels[1],
+            message=labels[2],
+            event=labels[3],
+        )
     return writer.render()

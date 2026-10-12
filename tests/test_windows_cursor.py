@@ -56,7 +56,7 @@ class CursorTests(unittest.TestCase):
     def test_strict_reader_rejects_truncation_and_invalid_policy(self):
         self.path.write_bytes(b'{"id":1}\n')
         first = read_alert_page(self.path, None)
-        self.path.write_bytes(b'')
+        self.path.write_bytes(b"")
         with self.assertRaises(WindowsSourceError):
             read_alert_page(self.path, first.cursor, require_continuity=True)
         with self.assertRaises(WindowsSourceError):

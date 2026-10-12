@@ -3,7 +3,6 @@
 
 import fcntl
 from dataclasses import asdict, replace
-import ipaddress
 import json
 import os
 from pathlib import Path
@@ -14,8 +13,17 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ipv6_policy import (PolicyError, PolicySnapshot, classify, expected_nat, expected_policy,
-                         expected_sab, normalized_policy, owned_mode, parse_config)
+from ipv6_policy import (
+    PolicyError,
+    PolicySnapshot,
+    classify,
+    expected_nat,
+    expected_policy,
+    expected_sab,
+    normalized_policy,
+    owned_mode,
+    parse_config,
+)
 from observer import delegation
 
 
@@ -34,8 +42,14 @@ def private_json(path, *, required=True):
         if not required:
             return None
         raise PolicyError("missing_private_state") from None
-    if (not stat.S_ISDIR(directory.st_mode) or directory.st_uid != 0 or directory.st_mode & 0o077
-            or not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o077):
+    if (
+        not stat.S_ISDIR(directory.st_mode)
+        or directory.st_uid != 0
+        or directory.st_mode & 0o077
+        or not stat.S_ISREG(info.st_mode)
+        or info.st_uid != 0
+        or info.st_mode & 0o077
+    ):
         raise PolicyError("unsafe_private_state")
     with path.open("rb") as source:
         value = source.read(65537)
@@ -80,9 +94,13 @@ def current_delegation():
         raise PolicyError("gateway_observation_invalid") from None
     if not isinstance(rows, list):
         raise PolicyError("gateway_observation_invalid")
-    selected = [row for row in rows if isinstance(row, dict)
-                and isinstance(row.get("identification"), dict)
-                and row["identification"].get("id") == "ppp0"]
+    selected = [
+        row
+        for row in rows
+        if isinstance(row, dict)
+        and isinstance(row.get("identification"), dict)
+        and row["identification"].get("id") == "ppp0"
+    ]
     if len(selected) != 1:
         raise PolicyError("ambiguous_dsl_interface")
     known, prefix = delegation(selected[0], 56)
@@ -99,10 +117,13 @@ def default_route(table, interface):
         raise PolicyError("route_observation_invalid") from None
     if not isinstance(rows, list):
         raise PolicyError("route_observation_invalid")
-    return any(isinstance(row, dict) and row.get("dev") == interface
-               and row.get("dst") == "default"
-               and row.get("type") not in ("unreachable", "blackhole", "prohibit", "throw")
-               for row in rows)
+    return any(
+        isinstance(row, dict)
+        and row.get("dev") == interface
+        and row.get("dst") == "default"
+        and row.get("type") not in ("unreachable", "blackhole", "prohibit", "throw")
+        for row in rows
+    )
 
 
 def snapshot(config):
@@ -137,13 +158,21 @@ def request():
         raise PolicyError("operation_denied")
     if value.get("operation") == "inspect" and set(value) == {"schema", "operation"}:
         return value
-    if value.get("operation") != "apply" or set(value) != {"schema", "operation", "transaction_id", "expected_digest", "mode"}:
+    if value.get("operation") != "apply" or set(value) != {
+        "schema",
+        "operation",
+        "transaction_id",
+        "expected_digest",
+        "mode",
+    }:
         raise PolicyError("operation_denied")
-    if (not isinstance(value["transaction_id"], str)
-            or not re.fullmatch(r"[0-9a-f]{32}", value["transaction_id"])
-            or not isinstance(value["expected_digest"], str)
-            or not re.fullmatch(r"[0-9a-f]{64}", value["expected_digest"])
-            or value["mode"] not in ("dsl", "starlink")):
+    if (
+        not isinstance(value["transaction_id"], str)
+        or not re.fullmatch(r"[0-9a-f]{32}", value["transaction_id"])
+        or not isinstance(value["expected_digest"], str)
+        or not re.fullmatch(r"[0-9a-f]{64}", value["expected_digest"])
+        or value["mode"] not in ("dsl", "starlink")
+    ):
         raise PolicyError("operation_denied")
     return value
 
@@ -153,7 +182,9 @@ def atomic_journal(value):
     if len(encoded) > 16384:
         raise PolicyError("journal_oversized")
     temporary = JOURNAL.with_name(JOURNAL.name + f".{os.getpid()}.tmp")
-    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+    fd = os.open(
+        temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600
+    )
     try:
         os.write(fd, encoded)
         os.fsync(fd)
@@ -181,14 +212,22 @@ def insert_rule(tool, table, line):
 
 
 def policy_command(action, priority, source, table):
-    if action not in ("add", "del") or priority not in (31009, 31010) or table not in ("201.ppp0", "202.eth1"):
+    if (
+        action not in ("add", "del")
+        or priority not in (31009, 31010)
+        or table not in ("201.ppp0", "202.eth1")
+    ):
         raise PolicyError("invalid_managed_policy")
     return ["ip", "-6", "rule", action, "pref", str(priority), "from", source, "lookup", table]
 
 
 def policy_parts(line, priority, config):
     match = re.fullmatch(rf"{priority}: from (\S+) lookup (\S+)", line)
-    if not match or match[1] != str(config.ula) or match[2] not in (config.dsl_table, config.starlink_table):
+    if (
+        not match
+        or match[1] != str(config.ula)
+        or match[2] not in (config.dsl_table, config.starlink_table)
+    ):
         raise PolicyError("unknown_policy_rule")
     return match[1], match[2]
 
@@ -197,7 +236,10 @@ def expected_mutation(before, args):
     """Calculate the single managed edit; reject a command-shaped surprise."""
     if args[:3] == ["ip", "-6", "rule"] and len(args) == 10:
         action, priority, source, table = args[3], args[5], args[7], args[9]
-        if (args[4], args[6], args[8]) != ("pref", "from", "lookup") or action not in ("add", "del"):
+        if (args[4], args[6], args[8]) != ("pref", "from", "lookup") or action not in (
+            "add",
+            "del",
+        ):
             raise PolicyError("invalid_managed_rule")
         field = {"31009": "temporary_policy", "31010": "policy"}.get(priority)
         if field is None:
@@ -228,7 +270,12 @@ def expected_mutation(before, args):
     rows = list(getattr(before, field))
     if action == "-N" and len(args) == 7 and field.endswith("chain") and not rows:
         rows = [f"-N {chain}"]
-    elif action == "-F" and len(args) == 7 and field.endswith("chain") and rows[:1] == [f"-N {chain}"]:
+    elif (
+        action == "-F"
+        and len(args) == 7
+        and field.endswith("chain")
+        and rows[:1] == [f"-N {chain}"]
+    ):
         rows = rows[:1]
     elif action == "-X" and len(args) == 7 and rows == [f"-N {chain}"]:
         rows = []
@@ -264,20 +311,37 @@ def mutate(config, args):
 
 
 def blank(snapshot_value):
-    return not any((snapshot_value.nat_chain, snapshot_value.nat_hook, snapshot_value.sab_chain,
-                    snapshot_value.sab_hook, snapshot_value.policy, snapshot_value.temporary_policy))
+    return not any(
+        (
+            snapshot_value.nat_chain,
+            snapshot_value.nat_hook,
+            snapshot_value.sab_chain,
+            snapshot_value.sab_hook,
+            snapshot_value.policy,
+            snapshot_value.temporary_policy,
+        )
+    )
 
 
 def hooks_only_missing(snapshot_value, config):
     if snapshot_value.temporary_policy or snapshot_value.sab_chain != expected_sab(config):
         return False
-    mode, mapped = owned_mode(PolicySnapshot(snapshot_value.nat_chain,
-        ("-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",), snapshot_value.sab_chain,
-        ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",), snapshot_value.policy, (),
-        snapshot_value.delegation), config)
-    return mode != "unknown" and (snapshot_value.nat_hook in ((), (
-        "-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",)) and snapshot_value.sab_hook in
-        ((), ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",)))
+    mode, mapped = owned_mode(
+        PolicySnapshot(
+            snapshot_value.nat_chain,
+            ("-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",),
+            snapshot_value.sab_chain,
+            ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",),
+            snapshot_value.policy,
+            (),
+            snapshot_value.delegation,
+        ),
+        config,
+    )
+    return mode != "unknown" and (
+        snapshot_value.nat_hook in ((), ("-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",))
+        and snapshot_value.sab_hook in ((), ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",))
+    )
 
 
 def ensure_target(config, mode, observed):
@@ -333,29 +397,61 @@ def repair_hooks(config, before):
     if not hooks_only_missing(before, config):
         raise PolicyError("unknown_managed_state")
     if not before.nat_hook:
-        mutate(config, ["ip6tables", "-w", "5", "-t", "nat", "-I", "UBIOS_POSTROUTING_USER_HOOK", "1", "-j", "IOB_V6_NAT"])
+        mutate(
+            config,
+            [
+                "ip6tables",
+                "-w",
+                "5",
+                "-t",
+                "nat",
+                "-I",
+                "UBIOS_POSTROUTING_USER_HOOK",
+                "1",
+                "-j",
+                "IOB_V6_NAT",
+            ],
+        )
     if not before.sab_hook:
-        mutate(config, ["iptables", "-w", "5", "-t", "mangle", "-I", "UBIOS_PREROUTING_PBR", "1", "-j", "IOB_SAB_PBR"])
+        mutate(
+            config,
+            [
+                "iptables",
+                "-w",
+                "5",
+                "-t",
+                "mangle",
+                "-I",
+                "UBIOS_PREROUTING_PBR",
+                "1",
+                "-j",
+                "IOB_SAB_PBR",
+            ],
+        )
 
 
 def restore(config, before, current, desired):
     """Rollback only if every observed intermediate rule belongs to this transaction."""
     old_mode, _ = owned_mode(before, config)
-    permitted_nat = set(before.nat_chain[1:]) | set(expected_nat(config, desired, before.delegation)[1:])
+    permitted_nat = set(before.nat_chain[1:]) | set(
+        expected_nat(config, desired, before.delegation)[1:]
+    )
     expected_sab_rules = expected_sab(config)
-    sab_is_owned_prefix = current.sab_chain == expected_sab_rules[:len(current.sab_chain)]
+    sab_is_owned_prefix = current.sab_chain == expected_sab_rules[: len(current.sab_chain)]
     target_policy = expected_policy(config, desired)
     target_temporary = (target_policy[0].replace("31010:", "31009:", 1),)
     permitted_policy = (before.policy, (), target_policy)
-    if (any(line not in permitted_nat for line in current.nat_chain[1:])
-            or len(current.nat_chain[1:]) != len(set(current.nat_chain[1:]))
-            or current.nat_chain[:1] not in ((), ("-N IOB_V6_NAT",))
-            or not sab_is_owned_prefix
-            or current.delegation != before.delegation
-            or current.policy not in permitted_policy
-            or current.temporary_policy not in ((), target_temporary)
-            or current.nat_hook not in ((), ("-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",))
-            or current.sab_hook not in ((), ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",))):
+    if (
+        any(line not in permitted_nat for line in current.nat_chain[1:])
+        or len(current.nat_chain[1:]) != len(set(current.nat_chain[1:]))
+        or current.nat_chain[:1] not in ((), ("-N IOB_V6_NAT",))
+        or not sab_is_owned_prefix
+        or current.delegation != before.delegation
+        or current.policy not in permitted_policy
+        or current.temporary_policy not in ((), target_temporary)
+        or current.nat_hook not in ((), ("-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",))
+        or current.sab_hook not in ((), ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",))
+    ):
         raise PolicyError("rollback_state_ambiguous")
     for line in current.temporary_policy:
         source, table = policy_parts(line, 31009, config)
@@ -389,9 +485,37 @@ def restore(config, before, current, desired):
         source, table = policy_parts(line, 31010, config)
         mutate(config, policy_command("add", 31010, source, table))
     for line in before.nat_hook:
-        mutate(config, ["ip6tables", "-w", "5", "-t", "nat", "-I", "UBIOS_POSTROUTING_USER_HOOK", "1", "-j", "IOB_V6_NAT"])
+        mutate(
+            config,
+            [
+                "ip6tables",
+                "-w",
+                "5",
+                "-t",
+                "nat",
+                "-I",
+                "UBIOS_POSTROUTING_USER_HOOK",
+                "1",
+                "-j",
+                "IOB_V6_NAT",
+            ],
+        )
     for line in before.sab_hook:
-        mutate(config, ["iptables", "-w", "5", "-t", "mangle", "-I", "UBIOS_PREROUTING_PBR", "1", "-j", "IOB_SAB_PBR"])
+        mutate(
+            config,
+            [
+                "iptables",
+                "-w",
+                "5",
+                "-t",
+                "mangle",
+                "-I",
+                "UBIOS_PREROUTING_PBR",
+                "1",
+                "-j",
+                "IOB_SAB_PBR",
+            ],
+        )
 
 
 def apply(config, call, before, journal):
@@ -401,15 +525,27 @@ def apply(config, call, before, journal):
         raise PolicyError("state_changed")
     current_mode = classify(before, config)
     if current_mode == call["mode"]:
-        return {"schema": 1, "operation": "apply", "applied": False,
-                "mode": current_mode, "digest": before.digest(), "review_required": False}
+        return {
+            "schema": 1,
+            "operation": "apply",
+            "applied": False,
+            "mode": current_mode,
+            "digest": before.digest(),
+            "review_required": False,
+        }
     old_mode, _ = owned_mode(before, config)
     if old_mode == "unknown" and not blank(before) and not hooks_only_missing(before, config):
         raise PolicyError("unknown_managed_state")
     ensure_target(config, call["mode"], before)
-    atomic_journal({"phase": "intent", "transaction_id": call["transaction_id"],
-                    "before_digest": before.digest(), "before": asdict(before),
-                    "desired": call["mode"]})
+    atomic_journal(
+        {
+            "phase": "intent",
+            "transaction_id": call["transaction_id"],
+            "before_digest": before.digest(),
+            "before": asdict(before),
+            "desired": call["mode"],
+        }
+    )
     try:
         if old_mode != "unknown":
             switch_exact(config, before, call["mode"], old_mode)
@@ -426,20 +562,45 @@ def apply(config, call, before, journal):
         after = snapshot(config)
         if classify(after, config) != call["mode"]:
             raise PolicyError("post_apply_mismatch")
-        atomic_journal({"phase": "complete", "transaction_id": call["transaction_id"],
-                        "mode": call["mode"], "digest": after.digest()})
-        return {"schema": 1, "operation": "apply", "applied": True,
-                "mode": call["mode"], "digest": after.digest(), "review_required": False}
+        atomic_journal(
+            {
+                "phase": "complete",
+                "transaction_id": call["transaction_id"],
+                "mode": call["mode"],
+                "digest": after.digest(),
+            }
+        )
+        return {
+            "schema": 1,
+            "operation": "apply",
+            "applied": True,
+            "mode": call["mode"],
+            "digest": after.digest(),
+            "review_required": False,
+        }
     except Exception:
         try:
             restore(config, before, snapshot(config), call["mode"])
             if snapshot(config).digest() != before.digest():
                 raise PolicyError("rollback_mismatch")
-            atomic_journal({"phase": "complete", "transaction_id": call["transaction_id"],
-                            "mode": old_mode, "digest": before.digest(), "rolled_back": True})
+            atomic_journal(
+                {
+                    "phase": "complete",
+                    "transaction_id": call["transaction_id"],
+                    "mode": old_mode,
+                    "digest": before.digest(),
+                    "rolled_back": True,
+                }
+            )
         except Exception:
-            atomic_journal({"phase": "blocked", "transaction_id": call["transaction_id"],
-                            "before_digest": before.digest(), "desired": call["mode"]})
+            atomic_journal(
+                {
+                    "phase": "blocked",
+                    "transaction_id": call["transaction_id"],
+                    "before_digest": before.digest(),
+                    "desired": call["mode"],
+                }
+            )
             raise PolicyError("review_required") from None
         raise PolicyError("apply_rolled_back") from None
 
@@ -453,7 +614,10 @@ def main():
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         config = parse_config(private_json(CONFIG))
         journal = private_json(JOURNAL, required=False)
-        if journal is not None and (not isinstance(journal, dict) or journal.get("phase") not in ("complete", "intent", "blocked")):
+        if journal is not None and (
+            not isinstance(journal, dict)
+            or journal.get("phase") not in ("complete", "intent", "blocked")
+        ):
             raise PolicyError("review_required")
         observed = snapshot(config)
         if call["operation"] == "apply":
@@ -461,17 +625,22 @@ def main():
         mode = classify(observed, config)
         recognized, _ = owned_mode(observed, config)
         return {
-            "schema": 1, "operation": "inspect", "mode": mode,
+            "schema": 1,
+            "operation": "inspect",
+            "mode": mode,
             "writable": True,
             "owned_mode": recognized,
-            "repairable": bool(recognized != "unknown" or blank(observed) or hooks_only_missing(observed, config)),
+            "repairable": bool(
+                recognized != "unknown" or blank(observed) or hooks_only_missing(observed, config)
+            ),
             "blank": blank(observed),
             "healthy": mode in ("dsl", "starlink"),
             "digest": observed.digest(),
             "delegation_ready": observed.delegation is not None,
             "dsl_default": default_route(config.dsl_table, "ppp0"),
             "starlink_default": default_route(config.starlink_table, "eth1"),
-            "review_required": journal is not None and journal.get("phase") in ("intent", "blocked"),
+            "review_required": journal is not None
+            and journal.get("phase") in ("intent", "blocked"),
         }
     except BlockingIOError:
         raise PolicyError("busy") from None

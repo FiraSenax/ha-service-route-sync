@@ -2,7 +2,6 @@
 """Restricted gateway IPv6 policy actor. Raw UDAPI/rules never leave the router."""
 
 import fcntl
-import ipaddress
 import json
 import os
 from pathlib import Path
@@ -11,8 +10,15 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ipv6_policy import (PolicyError, PolicySnapshot, classify, expected_sab,
-                         normalized_policy, owned_mode, parse_config)
+from ipv6_policy import (
+    PolicyError,
+    PolicySnapshot,
+    classify,
+    expected_sab,
+    normalized_policy,
+    owned_mode,
+    parse_config,
+)
 from observer import delegation
 
 
@@ -31,8 +37,14 @@ def private_json(path, *, required=True):
         if not required:
             return None
         raise PolicyError("missing_private_state") from None
-    if (not stat.S_ISDIR(directory.st_mode) or directory.st_uid != 0 or directory.st_mode & 0o077
-            or not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o077):
+    if (
+        not stat.S_ISDIR(directory.st_mode)
+        or directory.st_uid != 0
+        or directory.st_mode & 0o077
+        or not stat.S_ISREG(info.st_mode)
+        or info.st_uid != 0
+        or info.st_mode & 0o077
+    ):
         raise PolicyError("unsafe_private_state")
     with path.open("rb") as source:
         value = source.read(65537)
@@ -77,9 +89,13 @@ def current_delegation():
         raise PolicyError("gateway_observation_invalid") from None
     if not isinstance(rows, list):
         raise PolicyError("gateway_observation_invalid")
-    selected = [row for row in rows if isinstance(row, dict)
-                and isinstance(row.get("identification"), dict)
-                and row["identification"].get("id") == "ppp0"]
+    selected = [
+        row
+        for row in rows
+        if isinstance(row, dict)
+        and isinstance(row.get("identification"), dict)
+        and row["identification"].get("id") == "ppp0"
+    ]
     if len(selected) != 1:
         raise PolicyError("ambiguous_dsl_interface")
     known, prefix = delegation(selected[0], 56)
@@ -96,10 +112,13 @@ def default_route(table, interface):
         raise PolicyError("route_observation_invalid") from None
     if not isinstance(rows, list):
         raise PolicyError("route_observation_invalid")
-    return any(isinstance(row, dict) and row.get("dev") == interface
-               and row.get("dst") == "default"
-               and row.get("type") not in ("unreachable", "blackhole", "prohibit", "throw")
-               for row in rows)
+    return any(
+        isinstance(row, dict)
+        and row.get("dev") == interface
+        and row.get("dst") == "default"
+        and row.get("type") not in ("unreachable", "blackhole", "prohibit", "throw")
+        for row in rows
+    )
 
 
 def snapshot(config):
@@ -130,27 +149,49 @@ def request():
         value = json.loads(raw)
     except (ValueError, UnicodeError):
         raise PolicyError("invalid_request") from None
-    if not isinstance(value, dict) or set(value) != {"schema", "operation"} or type(value["schema"]) is not int or value["schema"] != 1 or value["operation"] != "inspect":
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"schema", "operation"}
+        or type(value["schema"]) is not int
+        or value["schema"] != 1
+        or value["operation"] != "inspect"
+    ):
         raise PolicyError("operation_denied")
     return value
 
 
 def blank(snapshot_value):
-    return not any((snapshot_value.nat_chain, snapshot_value.nat_hook,
-                    snapshot_value.sab_chain, snapshot_value.sab_hook,
-                    snapshot_value.policy, snapshot_value.temporary_policy))
+    return not any(
+        (
+            snapshot_value.nat_chain,
+            snapshot_value.nat_hook,
+            snapshot_value.sab_chain,
+            snapshot_value.sab_hook,
+            snapshot_value.policy,
+            snapshot_value.temporary_policy,
+        )
+    )
 
 
 def hooks_only_missing(snapshot_value, config):
     if snapshot_value.temporary_policy or snapshot_value.sab_chain != expected_sab(config):
         return False
-    mode, _ = owned_mode(PolicySnapshot(snapshot_value.nat_chain,
-        ("-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",), snapshot_value.sab_chain,
-        ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",), snapshot_value.policy, (),
-        snapshot_value.delegation), config)
-    return mode != "unknown" and (snapshot_value.nat_hook in ((), (
-        "-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",)) and snapshot_value.sab_hook in
-        ((), ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",)))
+    mode, _ = owned_mode(
+        PolicySnapshot(
+            snapshot_value.nat_chain,
+            ("-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",),
+            snapshot_value.sab_chain,
+            ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",),
+            snapshot_value.policy,
+            (),
+            snapshot_value.delegation,
+        ),
+        config,
+    )
+    return mode != "unknown" and (
+        snapshot_value.nat_hook in ((), ("-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT",))
+        and snapshot_value.sab_hook in ((), ("-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR",))
+    )
 
 
 def main():
@@ -162,23 +203,31 @@ def main():
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         config = parse_config(private_json(CONFIG))
         journal = private_json(JOURNAL, required=False)
-        if journal is not None and (not isinstance(journal, dict) or journal.get("phase") not in ("complete", "intent", "blocked")):
+        if journal is not None and (
+            not isinstance(journal, dict)
+            or journal.get("phase") not in ("complete", "intent", "blocked")
+        ):
             raise PolicyError("review_required")
         observed = snapshot(config)
         mode = classify(observed, config)
         recognized, _ = owned_mode(observed, config)
         return {
-            "schema": 1, "operation": "inspect", "mode": mode,
+            "schema": 1,
+            "operation": "inspect",
+            "mode": mode,
             "writable": False,
             "owned_mode": recognized,
-            "repairable": bool(recognized != "unknown" or blank(observed) or hooks_only_missing(observed, config)),
+            "repairable": bool(
+                recognized != "unknown" or blank(observed) or hooks_only_missing(observed, config)
+            ),
             "blank": blank(observed),
             "healthy": mode in ("dsl", "starlink"),
             "digest": observed.digest(),
             "delegation_ready": observed.delegation is not None,
             "dsl_default": default_route(config.dsl_table, "ppp0"),
             "starlink_default": default_route(config.starlink_table, "eth1"),
-            "review_required": journal is not None and journal.get("phase") in ("intent", "blocked"),
+            "review_required": journal is not None
+            and journal.get("phase") in ("intent", "blocked"),
         }
     except BlockingIOError:
         raise PolicyError("busy") from None
