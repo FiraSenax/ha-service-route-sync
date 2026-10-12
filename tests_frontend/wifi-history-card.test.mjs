@@ -52,7 +52,7 @@ test("malformed replies show bounded generic error", async () => {
   value._hass = { user: { is_admin: true }, callWS: async () => ({ ...page, after: -1 }) };
   await value.load();
   assert.equal(value.page, null);
-  assert.match(value.error, /nicht geladen/);
+  assert.equal(value.error, "load");
 });
 
 test("source reset waits for the obsolete request before starting another", async () => {
@@ -89,5 +89,5 @@ test("busy retries are bounded and permission errors are not retried", async () 
   value._hass.callWS = async () => { requests++; throw { code: "unauthorized" }; };
   await value.load();
   assert.equal(requests, 1);
-  assert.match(value.error, /nicht geladen/);
+  assert.equal(value.error, "load");
 });

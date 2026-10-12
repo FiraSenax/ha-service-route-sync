@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+- Wi-Fi history card now follows the Home Assistant language for English and German, including errors, controls, and access messages.
+- Unknown languages use English card text; changing HA language rerenders the card without refetching private history.
+
 ## 0.2.1
 
 - English README for international HACS readers, with the German version kept separately.

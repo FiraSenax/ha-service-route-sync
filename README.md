@@ -89,7 +89,7 @@ Active IPv6 policy control and additional host observers are separate opt-in fea
 
 ## Languages
 
-The Home Assistant interface includes complete English (`en`) and German (`de`) translation files. Home Assistant uses the user's selected language and falls back to English for languages without a translation. Additional translations can be contributed as BCP 47-named files in [`translations/`](custom_components/service_route_sync/translations/); keep every key and placeholder from `en.json`. HACS lists the repository once, independently of interface language.
+The Home Assistant setup and entities include complete English (`en`) and German (`de`) translation files. The bundled Wi-Fi history card also follows the user's HA language for English and German. Other locales use English until a translation is added. Additional translations can be contributed as BCP 47-named files in [`translations/`](custom_components/service_route_sync/translations/); keep every key and placeholder from `en.json`, and add the card's text and column labels in `frontend/wifi-history-card.js`. HACS lists the repository once, independently of interface language.
 
 ## Development
 

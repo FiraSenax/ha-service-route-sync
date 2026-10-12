@@ -28,7 +28,7 @@ class WifiCardBrowserTests(unittest.TestCase):
                 window.calls = [];
                 const card = document.createElement('service-route-sync-wifi-history');
                 card.setConfig({entry_id: 'synthetic'});
-                card.hass = {user: {is_admin: true}, callWS: async request => {
+                card.hass = {language: 'en', user: {is_admin: true}, callWS: async request => {
                     window.calls.push(request);
                     const columns = ['ts','mac','name','essid','ap_mac','radio','channel','width','signal','noise','tx_rate','rx_rate','nss','retry_pct','tx_retries','wifi_tx_attempts','satisfaction'];
                     const row = [1000, '02:00:00:00:00:01', '<img src=x onerror="window.injected=true">', 'Synthetic Wi-Fi', null, '5GHz', 36, 80, -53, -94, 100, 100, 2, 0, null, 0, 99];
@@ -41,23 +41,33 @@ class WifiCardBrowserTests(unittest.TestCase):
             self.assertEqual(page.locator("service-route-sync-wifi-history img").count(), 0)
             self.assertFalse(page.evaluate("Boolean(window.injected)"))
             self.assertEqual(page.get_by_role("cell", name="—", exact=True).count(), 2)
-            page.get_by_role("button", name="Weiter", exact=True).click()
+            page.get_by_role("heading", name="Wi-Fi history").wait_for()
+            page.get_by_role("columnheader", name="Device").wait_for()
+            page.get_by_role("button", name="Next", exact=True).click()
             page.wait_for_function("window.calls.length === 2 && !window.card.loading")
             self.assertEqual(page.evaluate("window.calls[1].ceiling"), 2)
-            self.assertTrue(page.get_by_role("button", name="Weiter", exact=True).is_disabled())
-            page.get_by_role("button", name="Zurück", exact=True).click()
+            self.assertTrue(page.get_by_role("button", name="Next", exact=True).is_disabled())
+            page.get_by_role("button", name="Previous", exact=True).click()
             page.wait_for_function("window.calls.length === 3 && !window.card.loading")
             self.assertEqual(page.evaluate("window.calls[2].after"), 0)
-            page.get_by_label("Historienquelle").select_option("legacy")
+            page.get_by_label("History source").select_option("legacy")
             page.wait_for_function("window.calls.length === 4 && !window.card.loading")
             self.assertEqual(page.evaluate("window.calls[3].source"), "legacy")
+            page.evaluate("window.card.hass = {...window.card._hass, language: 'de'}")
+            page.get_by_role("heading", name="WLAN-Historie").wait_for()
+            page.get_by_role("button", name="Aktualisieren", exact=True).wait_for()
+            page.get_by_role("columnheader", name="Gerät").wait_for()
             page.screenshot(path="/tmp/service-route-sync-wifi-card-synthetic.png", full_page=True)
-            page.evaluate("window.card.hass = {user: {is_admin: false}}")
+            page.evaluate("window.card.hass = {language: 'de', user: {is_admin: false}}")
             page.get_by_text(
                 "Diese Gerätehistorie ist nur für Administratoren verfügbar."
             ).wait_for()
             self.assertEqual(page.get_by_role("table").count(), 0)
             self.assertEqual(page.evaluate("window.calls.length"), 4)
+            page.evaluate("window.card.hass = {language: 'en', user: {is_admin: false}}")
+            page.get_by_text("Device history is available to administrators only.").wait_for()
+            page.evaluate("window.card.hass = {language: 'fr', user: {is_admin: false}}")
+            page.get_by_role("heading", name="Wi-Fi history").wait_for()
             print(
                 json.dumps(
                     {

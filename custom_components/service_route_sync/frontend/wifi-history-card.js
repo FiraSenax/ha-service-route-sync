@@ -1,4 +1,62 @@
-/* Private WLAN history: authenticated HA websocket, text-only DOM rendering. */
+/* Private Wi-Fi history: authenticated HA websocket, text-only DOM rendering. */
+const TEXT = {
+  en: {
+    title: "Wi-Fi history",
+    adminOnly: "Device history is available to administrators only.",
+    source: "History source",
+    observations: "New Home Assistant observations",
+    legacy: "Imported historical data",
+    refresh: "Refresh",
+    previous: "Previous",
+    next: "Next",
+    loading: "Loading…",
+    loadError: "History could not be loaded. Please try again.",
+    empty: "No records available.",
+    count: number => `${number} records on this page`,
+    description: "Protected Wi-Fi history from Service Route Sync",
+  },
+  de: {
+    title: "WLAN-Historie",
+    adminOnly: "Diese Gerätehistorie ist nur für Administratoren verfügbar.",
+    source: "Historienquelle",
+    observations: "Neue HA-Messungen",
+    legacy: "Importierte Bestandsdaten",
+    refresh: "Aktualisieren",
+    previous: "Zurück",
+    next: "Weiter",
+    loading: "Wird geladen …",
+    loadError: "Historie konnte nicht geladen werden. Bitte erneut versuchen.",
+    empty: "Keine Datensätze vorhanden.",
+    count: number => `${number} Datensätze auf dieser Seite`,
+    description: "Geschützte WLAN-Historie von Service Route Sync",
+  },
+};
+
+const HEADERS = {
+  en: {
+    ts: "Time", mac: "MAC", name: "Device", essid: "SSID", ap_mac: "AP MAC",
+    radio: "Radio", channel: "Channel", width: "Width (MHz)", signal: "Signal (dBm)",
+    noise: "Noise (dBm)", tx_rate: "TX rate", rx_rate: "RX rate", nss: "Streams",
+    retry_pct: "Retries (%)", tx_retries: "TX retries", wifi_tx_attempts: "TX attempts",
+    satisfaction: "Satisfaction",
+  },
+  de: {
+    ts: "Zeit", mac: "MAC", name: "Gerät", essid: "SSID", ap_mac: "AP-MAC",
+    radio: "Funkband", channel: "Kanal", width: "Breite (MHz)", signal: "Signal (dBm)",
+    noise: "Rauschen (dBm)", tx_rate: "TX-Rate", rx_rate: "RX-Rate", nss: "Streams",
+    retry_pct: "Wiederholungen (%)", tx_retries: "TX-Wiederholungen", wifi_tx_attempts: "TX-Versuche",
+    satisfaction: "Zufriedenheit",
+  },
+};
+
+function languageCode(language) {
+  return typeof language === "string" ? language.toLowerCase().split(/[-_]/, 1)[0] : "";
+}
+
+function copyFor(language) {
+  return TEXT[languageCode(language)] || TEXT.en;
+}
+
 export class WifiHistoryCard extends HTMLElement {
   constructor() {
     super();
@@ -16,7 +74,7 @@ export class WifiHistoryCard extends HTMLElement {
 
   setConfig(config) {
     if (typeof config.entry_id !== "string" || !config.entry_id.trim()) {
-      throw new Error("Service Route Sync: entry_id fehlt");
+      throw new Error("Service Route Sync: entry_id is required");
     }
     this.config = { entry_id: config.entry_id };
     this.reset();
@@ -24,6 +82,7 @@ export class WifiHistoryCard extends HTMLElement {
 
   set hass(value) {
     const adminChanged = this._hass?.user?.is_admin !== value?.user?.is_admin;
+    const languageChanged = this._hass?.language !== value?.language;
     this._hass = value;
     if (!value?.user?.is_admin) {
       this.generation++;
@@ -33,6 +92,7 @@ export class WifiHistoryCard extends HTMLElement {
       return;
     }
     if (adminChanged) this.reset();
+    else if (languageChanged) this.render();
     else if (this.isConnected && !this.page && !this.loading && !this.error) this.load();
   }
 
@@ -86,7 +146,7 @@ export class WifiHistoryCard extends HTMLElement {
     } catch {
       if (generation === this.generation) {
         this.page = null;
-        this.error = "Historie konnte nicht geladen werden. Bitte erneut versuchen.";
+        this.error = "load";
       }
     } finally {
       this.inFlight = false;
@@ -100,6 +160,8 @@ export class WifiHistoryCard extends HTMLElement {
   }
 
   render() {
+    const message = copyFor(this._hass?.language);
+    const headers = HEADERS[languageCode(this._hass?.language)] || HEADERS.en;
     const root = this.shadowRoot;
     root.replaceChildren();
     const style = document.createElement("style");
@@ -108,11 +170,11 @@ export class WifiHistoryCard extends HTMLElement {
     const card = document.createElement("ha-card");
     root.append(card);
     const title = document.createElement("h2");
-    title.textContent = "WLAN-Historie";
+    title.textContent = message.title;
     card.append(title);
     if (!this._hass?.user?.is_admin) {
       const note = document.createElement("p");
-      note.textContent = "Diese Gerätehistorie ist nur für Administratoren verfügbar.";
+      note.textContent = message.adminOnly;
       card.append(note);
       return;
     }
@@ -120,8 +182,8 @@ export class WifiHistoryCard extends HTMLElement {
     controls.className = "controls";
     card.append(controls);
     const select = document.createElement("select");
-    select.setAttribute("aria-label", "Historienquelle");
-    for (const [value, name] of [["observations", "Neue HA-Messungen"], ["legacy", "Importierte Bestandsdaten"]]) {
+    select.setAttribute("aria-label", message.source);
+    for (const [value, name] of [["observations", message.observations], ["legacy", message.legacy]]) {
       const option = document.createElement("option");
       option.value = value; option.textContent = name; select.append(option);
     }
@@ -133,16 +195,16 @@ export class WifiHistoryCard extends HTMLElement {
       element.textContent = name; element.disabled = disabled; element.onclick = action;
       controls.append(element);
     };
-    button("Aktualisieren", this.loading, () => this.reset());
-    button("Zurück", this.loading || !this.previous.length, () => {
+    button(message.refresh, this.loading, () => this.reset());
+    button(message.previous, this.loading || !this.previous.length, () => {
       this.after = this.previous.pop(); this.load();
     });
-    button("Weiter", this.loading || !this.page?.more || this.previous.length >= 10000, () => {
+    button(message.next, this.loading || !this.page?.more || this.previous.length >= 10000, () => {
       this.previous.push(this.after); this.after = this.page.after; this.load();
     });
     const note = document.createElement("p");
-    note.textContent = this.loading ? "Wird geladen …" : this.error ||
-      (this.page?.rows.length ? `${this.page.rows.length} Datensätze auf dieser Seite` : "Keine Datensätze vorhanden.");
+    note.textContent = this.loading ? message.loading : this.error ? message.loadError :
+      (this.page?.rows.length ? message.count(this.page.rows.length) : message.empty);
     note.setAttribute("role", "status");
     card.append(note);
     if (!this.page || this.loading) return;
@@ -150,7 +212,7 @@ export class WifiHistoryCard extends HTMLElement {
     const table = document.createElement("table"); scroll.append(table); card.append(scroll);
     const header = document.createElement("tr");
     for (const column of this.page.columns) {
-      const cell = document.createElement("th"); cell.textContent = String(column); header.append(cell);
+      const cell = document.createElement("th"); cell.textContent = headers[column] || String(column); header.append(cell);
     }
     table.append(header);
     for (const row of this.page.rows) {
@@ -168,6 +230,7 @@ if (!customElements.get("service-route-sync-wifi-history")) {
 }
 window.customCards = window.customCards || [];
 if (!window.customCards.some(card => card.type === "service-route-sync-wifi-history")) {
-  window.customCards.push({ type: "service-route-sync-wifi-history", name: "WLAN-Historie",
-    description: "Geschützte WLAN-Historie von Service Route Sync" });
+  const message = copyFor(globalThis.navigator?.language);
+  window.customCards.push({ type: "service-route-sync-wifi-history", name: message.title,
+    description: message.description });
 }

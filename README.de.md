@@ -105,10 +105,12 @@ Aktive IPv6-Policy-Steuerung und weitere Host-Beobachter sind getrennte, ausdrü
 
 ## Entwicklung
 
-Die HA-Oberfläche ist vollständig auf Englisch und Deutsch übersetzt. Weitere
+Die HA-Einrichtung und die WLAN-Historienkarte sind auf Englisch und Deutsch
+übersetzt. Weitere
 Sprachen können als BCP-47-Dateien unter
 [`translations/`](custom_components/service_route_sync/translations/) ergänzt
-werden; Schlüssel und Platzhalter müssen mit `en.json` übereinstimmen.
+werden; Schlüssel und Platzhalter müssen mit `en.json` übereinstimmen. Für die
+WLAN-Karte sind zusätzlich die Texte in `frontend/wifi-history-card.js` zu ergänzen.
 
 ```sh
 python -m venv .venv
