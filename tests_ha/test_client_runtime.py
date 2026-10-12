@@ -17,7 +17,7 @@ from custom_components.service_route_sync.client_observation import ClientDataEr
 from custom_components.service_route_sync.core import SyncError
 from custom_components.service_route_sync.diagnostics import async_get_config_entry_diagnostics
 from custom_components.service_route_sync.runtime import RuntimeData
-from custom_components.service_route_sync.sensor import ClientPortSensor
+from custom_components.service_route_sync.sensor import ClientConnectionSensor, ClientPortSensor
 from custom_components.service_route_sync.binary_sensor import ClientOnlineSensor
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.util import dt as dt_util
@@ -71,6 +71,23 @@ class ClientRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.coordinator.backend.read_clients.return_value = []
         result = await self.coordinator._async_update_data()
         self.assertFalse(result.clients["pc"].online)
+
+    async def test_connection_sensor_explains_wired_diagnostics(self):
+        sensor = ClientConnectionSensor(self.coordinator, "pc")
+        await self.coordinator.async_config_entry_first_refresh()
+        self.assertTrue(sensor.available)
+        self.assertEqual(sensor.native_value, "wired")
+        self.coordinator.backend.read_clients.return_value = [
+            {"mac": MAC, "last_seen": dt_util.utcnow().timestamp(), "is_wired": False}
+        ]
+        await self.coordinator.async_refresh()
+        self.assertEqual(sensor.native_value, "wifi")
+        self.coordinator.backend.read_clients.return_value = []
+        await self.coordinator.async_refresh()
+        self.assertEqual(sensor.native_value, "offline")
+        self.coordinator.backend.read_clients.side_effect = SyncError("private")
+        await self.coordinator.async_refresh()
+        self.assertFalse(sensor.available)
 
     async def test_entities_reject_stale_future_and_failed_samples(self):
         sensor = ClientOnlineSensor(self.coordinator, "pc", "online")

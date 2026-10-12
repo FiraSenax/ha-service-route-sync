@@ -349,6 +349,15 @@
       "network_updated": {
         "name": "Last WAN observation"
       },
+      "client_connection": {
+        "name": "Connection type",
+        "state": {
+          "wired": "Wired",
+          "wifi": "Wi-Fi",
+          "offline": "Offline",
+          "unknown": "Unknown"
+        }
+      },
       "client_speed_mbit_s": {
         "name": "Link speed"
       },

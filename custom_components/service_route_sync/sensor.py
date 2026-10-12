@@ -41,6 +41,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
         ))
     if coordinator := entry.runtime_data.clients:
         async_add_entities(
+            ClientConnectionSensor(coordinator, profile_id)
+            for profile_id in coordinator.profiles
+        )
+        async_add_entities(
             ClientPortSensor(coordinator, profile_id, key)
             for profile_id in coordinator.profiles
             for key in (
@@ -167,6 +171,24 @@ class ClientPortSensor(ClientEntity, SensorEntity):
     def native_value(self):
         row = self.observation
         return getattr(row.port, self.key, None) if row is not None and row.port else None
+
+
+class ClientConnectionSensor(ClientEntity, SensorEntity):
+    """Show why wired-only port diagnostics may be unavailable."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["wired", "wifi", "offline", "unknown"]
+
+    def __init__(self, coordinator, profile_id):
+        super().__init__(coordinator, profile_id, "connection")
+
+    @property
+    def native_value(self):
+        row = self.observation
+        if row is None:
+            return None
+        return row.connection if row.online else "offline"
 
 
 class NetworkMetricSensor(NetworkEntity, SensorEntity):

@@ -349,6 +349,15 @@
       "network_updated": {
         "name": "Letzte WAN-Messung"
       },
+      "client_connection": {
+        "name": "Verbindungstyp",
+        "state": {
+          "wired": "Kabelgebunden",
+          "wifi": "WLAN",
+          "offline": "Offline",
+          "unknown": "Unbekannt"
+        }
+      },
       "client_speed_mbit_s": {
         "name": "Linkgeschwindigkeit"
       },
