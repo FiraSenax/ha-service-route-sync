@@ -1,20 +1,20 @@
 {
   "domain": "service_route_sync",
   "name": "Service Route Sync",
+  "after_dependencies": [
+    "unifi"
+  ],
   "codeowners": [
     "@FiraSenax"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/FiraSenax/ha-service-route-sync",
-  "issue_tracker": "https://github.com/FiraSenax/ha-service-route-sync/issues",
-  "after_dependencies": [
-    "unifi"
-  ],
-  "iot_class": "cloud_polling",
-  "requirements": [],
-  "version": "0.2.0dev0",
   "dependencies": [
     "http",
     "websocket_api"
-  ]
+  ],
+  "documentation": "https://github.com/FiraSenax/ha-service-route-sync",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/FiraSenax/ha-service-route-sync/issues",
+  "requirements": [],
+  "version": "0.2.0dev0"
 }

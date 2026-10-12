@@ -1,9 +1,10 @@
 """Maintain explicitly selected service destinations in existing router policies."""
 
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from .const import PLATFORMS
+from .const import DOMAIN, PLATFORMS
 from .coordinator import RouteCoordinator
 from .network_coordinator import NetworkCoordinator
 from .gateway_coordinator import GatewayCoordinator
@@ -23,6 +24,8 @@ from .frigate_services import register_frigate_services
 from .frigate_coordinator import FrigateActorCoordinator
 from .ipv6_coordinator import IPv6Coordinator
 from .ipv6_services import register_ipv6_services
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass, config):
