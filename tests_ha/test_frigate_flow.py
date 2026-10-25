@@ -8,6 +8,7 @@ import tempfile
 from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests_ha import CONNECTION
 from tests_ha.test_wifi_flow import Harness
 from custom_components.service_route_sync.frigate_flow import discover_frigate_scopes
 
@@ -33,7 +34,7 @@ class FrigateFlowTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.flow = Harness()
         self.flow.entry = SimpleNamespace(
-            data={"unifi_entry_id": "parent"}, options={"gateway_observer_key_id": "preserved"}
+            data={**CONNECTION}, options={"gateway_observer_key_id": "preserved"}
         )
         self.flow.hass = SimpleNamespace(
             config=SimpleNamespace(path=lambda *parts: str(Path("/test") / Path(*parts))),

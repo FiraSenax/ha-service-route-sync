@@ -15,8 +15,23 @@ import sys
 import time
 
 from observer import ObservationError, run
+from configuration import read_private_config
 
-ROUTES = {0x21940000: "dsl", 0x21960000: "starlink", 0x21660000: "vpn2", 0x20040000: "vpn1"}
+
+def load_route_marks():
+    raw = read_private_config("/data/service-route-sync/routes.json")
+    if (
+        not {"primary", "secondary"} <= set(raw) <= {"primary", "secondary", "vpn1", "vpn2"}
+        or any(
+            type(value) is not int or not 0 < value <= 0x3FFE0000 or value & ~0x3FFE0000
+            for value in raw.values()
+        )
+        or len(set(raw.values())) != len(raw)
+    ):
+        raise ObservationError("invalid_route_marks")
+    return {value: role for role, value in raw.items()}
+
+
 PRIVATE_NETWORKS = tuple(
     ipaddress.IPv4Network(value) for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
 )
@@ -212,10 +227,10 @@ def parse_ping(code, output, stderr):
     }
 
 
-def parse_connections(code, output, source):
+def parse_connections(code, output, source, route_marks):
     if code != 0:
         return None
-    counts = {key: 0 for key in ("dsl", "starlink", "vpn1", "vpn2", "other")}
+    counts = {key: 0 for key in ("primary", "secondary", "vpn1", "vpn2", "other")}
     for line in output.splitlines():
         origins = re.findall(r"\bsrc=(\S+)", line)
         destinations = re.findall(r"\bdst=(\S+)", line)
@@ -230,7 +245,7 @@ def parse_connections(code, output, source):
         if not 0 <= mark <= 0xFFFFFFFF:
             raise ObservationError("invalid_connection_response")
         if destination.is_global and not destination.is_multicast:
-            counts[ROUTES.get(mark & 0x3FFE0000, "other")] += 1
+            counts[route_marks.get(mark & 0x3FFE0000, "other")] += 1
     return counts
 
 
@@ -269,7 +284,7 @@ def unknown_sample():
     }
 
 
-async def sample(identity, target, semaphore):
+async def sample(identity, target, semaphore, route_marks):
     async with semaphore:
         if target["address"] is None:
             return identity, unknown_sample()
@@ -290,7 +305,7 @@ async def sample(identity, target, semaphore):
             code, output, _ = await run(
                 ["conntrack", "-L", "-s", address, "-o", "extended"], timeout=4
             )
-            routes = parse_connections(code, output.decode("ascii"), address)
+            routes = parse_connections(code, output.decode("ascii"), address, route_marks)
         except (OSError, UnicodeError, asyncio.TimeoutError, ObservationError):
             pass
         if not await check_identity(target):
@@ -305,6 +320,7 @@ async def sample(identity, target, semaphore):
 
 
 async def observe_clients(configured_targets, selection=None):
+    route_marks = load_route_marks()
     targets = validate_targets(configured_targets)
     if selection is not None:
         targets = select_targets(targets, selection)
@@ -317,7 +333,9 @@ async def observe_clients(configured_targets, selection=None):
         targets = resolve_targets(targets, neighbors)
     semaphore = asyncio.Semaphore(4)
     return dict(
-        await asyncio.gather(*(sample(key, address, semaphore) for key, address in targets.items()))
+        await asyncio.gather(
+            *(sample(key, address, semaphore, route_marks) for key, address in targets.items())
+        )
     )
 
 

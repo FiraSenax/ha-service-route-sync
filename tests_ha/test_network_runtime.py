@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests_ha import CONNECTION
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -26,7 +27,7 @@ class NetworkRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.hass = HomeAssistant(self.directory.name)
         self.entry = ConfigEntry(
-            data={"unifi_entry_id": "parent", "network_gateway_id": "gateway"},
+            data={**CONNECTION, "network_gateway_id": "gateway"},
             options={},
             domain="service_route_sync",
             title="Test",

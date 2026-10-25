@@ -8,7 +8,7 @@ import voluptuous as vol
 from homeassistant.helpers import selector
 from homeassistant.util import dt as dt_util
 
-from .backends.unifi import UniFiBackend
+from .backends.unifi import UniFiBackend, read_controller
 from .backends.dsl_ssh import DSLSSHConfig
 from .backends.gateway_ssh import GatewayTransportError, read_gateway
 from .backends.windows_ssh import WindowsArchiveSSHConfig, read_windows_archive
@@ -38,14 +38,16 @@ class LadyFlowSteps:
         choices = {}
         if existing:
             try:
-                if tuple(validate_profiles([existing])) != ("ladyofgames",):
+                if len(validate_profiles([existing])) != 1:
                     raise ValueError
             except ValueError:
                 return self.async_abort(reason="invalid_lady_configuration")
-            choices.update({mac: existing.get("name", "LadyOfGames") for mac in existing["macs"]})
+            choices.update({mac: existing.get("name", existing["id"]) for mac in existing["macs"]})
         try:
             async with asyncio.timeout(8):
-                rows = await UniFiBackend(self.hass, self.settings["unifi_entry_id"]).read_clients()
+                rows = await read_controller(
+                    self.hass, self.settings, "read_clients", backend_factory=UniFiBackend
+                )
             for row in rows:
                 mac = canonical_mac(row.get("mac"))
                 if mac is not None and mac not in assigned:
@@ -57,6 +59,38 @@ class LadyFlowSteps:
                 return self.async_abort(reason="router_unavailable")
         schema = vol.Schema(
             {
+                vol.Required(
+                    "lady_profile_id", default=existing["id"] if existing else "client"
+                ): str,
+                vol.Required(
+                    "lady_profile_name",
+                    default=existing.get("name", existing["id"]) if existing else "Client",
+                ): vol.All(str, vol.Length(min=1, max=128)),
+                vol.Required(
+                    "lady_expected_speed", default=self.settings.get("lady_expected_speed", 1000)
+                ): vol.All(int, vol.Range(min=1, max=100000)),
+                vol.Required(
+                    "lady_maintenance_hour", default=self.settings.get("lady_maintenance_hour", -1)
+                ): vol.All(int, vol.Range(min=-1, max=23)),
+                vol.Required(
+                    "lady_maintenance_minutes",
+                    default=self.settings.get("lady_maintenance_minutes", 2),
+                ): vol.All(int, vol.Range(min=1, max=60)),
+                vol.Required(
+                    "lady_windows_enabled", default=self.settings.get("lady_windows_enabled", False)
+                ): bool,
+                vol.Optional(
+                    "lady_notify_service", default=self.settings.get("lady_notify_service", "")
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[{"value": "", "label": "Disabled"}]
+                        + [
+                            {"value": name, "label": "notify." + name}
+                            for name in self.hass.services.async_services().get("notify", {})
+                            if name != "send_message"
+                        ]
+                    )
+                ),
                 vol.Optional(
                     "lady_clients", default=existing["macs"] if existing else []
                 ): selector.SelectSelector(
@@ -87,16 +121,40 @@ class LadyFlowSteps:
                     macs.append(parsed)
                 if not 1 <= len(macs) <= 16 or len(set(macs)) != len(macs):
                     raise ValueError
-                profile = {"id": "ladyofgames", "name": "LadyOfGames", "macs": macs}
+                profile = {
+                    "id": values["lady_profile_id"],
+                    "name": values["lady_profile_name"],
+                    "macs": macs,
+                }
                 validate_profiles([profile])
-                changed = existing is None or set(existing["macs"]) != set(macs)
+                changed = existing != profile or values[
+                    "lady_windows_enabled"
+                ] != self.settings.get("lady_windows_enabled", False)
+                if any(
+                    row["id"] == profile["id"] for row in self.settings.get("client_profiles", [])
+                ):
+                    raise ValueError("Duplicate client profile")
+                for key in (
+                    "lady_expected_speed",
+                    "lady_maintenance_hour",
+                    "lady_maintenance_minutes",
+                ):
+                    self.settings[key] = values[key]
+                self.settings["lady_windows_enabled"] = values["lady_windows_enabled"]
+                self.settings["lady_notify_service"] = values["lady_notify_service"]
+                if not values["lady_notify_service"]:
+                    self.settings["lady_active"] = False
                 self.settings["lady_profile"] = profile
                 if (
                     changed
                     or values["lady_reconfigure"]
                     or not all(
                         self.settings.get("lady_" + role + "_key_id")
-                        for role in ("dsl", "pc", "windows")
+                        for role in (
+                            ("dsl", "pc", "windows")
+                            if self.settings.get("lady_windows_enabled")
+                            else ("dsl", "pc")
+                        )
                     )
                 ):
                     self.settings["lady_active"] = False
@@ -113,15 +171,23 @@ class LadyFlowSteps:
     async def async_step_lady_sources(self, user_input=None):
         public = {}
         try:
-            for role in ("dsl", "pc", "windows"):
+            for role in (
+                ("dsl", "pc", "windows")
+                if self.settings.get("lady_windows_enabled")
+                else ("dsl", "pc")
+            ):
                 key_id = self.settings.setdefault("lady_" + role + "_key_id", uuid4().hex)
                 public[role + "_public_key"] = await prepare_observer_key(self.hass, key_id)
-            if (
-                len(
-                    {self.settings["lady_" + role + "_key_id"] for role in ("dsl", "pc", "windows")}
-                )
-                != 3
-            ):
+            if len(
+                {
+                    self.settings["lady_" + role + "_key_id"]
+                    for role in (
+                        ("dsl", "pc", "windows")
+                        if self.settings.get("lady_windows_enabled")
+                        else ("dsl", "pc")
+                    )
+                }
+            ) != (3 if self.settings.get("lady_windows_enabled") else 2):
                 raise ValueError
         except (OSError, ValueError, GatewayTransportError, SyncError, TimeoutError):
             return self.async_abort(reason="observer_key_unavailable")
@@ -146,9 +212,9 @@ class LadyFlowSteps:
                         options=[{"value": host, "label": label} for host, label in hosts.items()]
                     )
                 ),
-                vol.Required("lady_windows_host"): selector.TextSelector(),
+                vol.Optional("lady_windows_host"): selector.TextSelector(),
                 vol.Required("gateway_host_public_key"): selector.TextSelector(),
-                vol.Required("windows_host_public_key"): selector.TextSelector(),
+                vol.Optional("windows_host_public_key"): selector.TextSelector(),
             }
         )
         errors = {}
@@ -165,47 +231,57 @@ class LadyFlowSteps:
                     "pc": LadyClientSSHConfig(
                         host, credential_directory(self.hass, self.settings["lady_pc_key_id"])
                     ),
-                    "windows": WindowsArchiveSSHConfig(
+                }
+                if self.settings.get("lady_windows_enabled"):
+                    configs["windows"] = WindowsArchiveSSHConfig(
                         values["lady_windows_host"],
                         credential_directory(self.hass, self.settings["lady_windows_key_id"]),
-                    ),
-                }
+                    )
                 pins = {
                     "dsl": validate_host_key(values["gateway_host_public_key"]),
                     "pc": validate_host_key(values["gateway_host_public_key"]),
-                    "windows": validate_host_key(values["windows_host_public_key"]),
                 }
+                if "windows" in configs:
+                    pins["windows"] = validate_host_key(values["windows_host_public_key"])
                 for role, config in configs.items():
                     await self.hass.async_add_executor_job(
                         save_known_host, config.credential_directory, config.host, pins[role]
                     )
                     await self.hass.async_add_executor_job(config.validate_files)
-                frame = json.dumps({"schema": 1, "addresses": {"ladyofgames": None}}).encode()
+                frame = json.dumps(
+                    {"schema": 1, "addresses": {self.settings["lady_profile"]["id"]: None}}
+                ).encode()
                 results = await asyncio.gather(
                     read_gateway(configs["dsl"], timeout=14),
                     read_gateway(configs["pc"], timeout=20, input_data=frame),
-                    read_windows_archive(configs["windows"], None),
+                    *(
+                        [read_windows_archive(configs["windows"], None)]
+                        if "windows" in configs
+                        else []
+                    ),
                     return_exceptions=True,
                 )
                 if any(isinstance(result, BaseException) for result in results):
                     raise GatewayTransportError("Lady source verification failed")
                 parse_dsl(results[0], dt_util.utcnow())
-                parse_client_probes(results[1], dt_util.utcnow(), ("ladyofgames",))
+                parse_client_probes(
+                    results[1], dt_util.utcnow(), (self.settings["lady_profile"]["id"],)
+                )
                 self.settings.update(
                     lady_gateway_host=host,
-                    lady_windows_host=values["lady_windows_host"],
+                    lady_windows_host=values.get("lady_windows_host"),
                     lady_active=False,
                 )
                 return await self.async_step_lady_dns()
             except (OSError, GatewayTransportError, TimeoutError):
                 errors["base"] = "observer_unavailable"
-            except (ValueError, vol.Invalid):
+            except (ValueError, KeyError, vol.Invalid):
                 errors["base"] = "invalid_observer_configuration"
         return self.async_show_form(
             step_id="lady_sources",
             data_schema=schema,
             errors=errors,
-            description_placeholders=public,
+            description_placeholders={"windows_public_key": "—", **public},
         )
 
     async def async_step_lady_dns(self, user_input=None):

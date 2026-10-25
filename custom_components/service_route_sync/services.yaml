@@ -24,8 +24,8 @@ acknowledge_ipv6_policy_review:
       selector:
         select:
           options:
-            - dsl
-            - starlink
+            - primary
+            - secondary
     digest:
       name: Audited gateway state digest
       required: true

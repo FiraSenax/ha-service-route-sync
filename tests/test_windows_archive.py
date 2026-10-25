@@ -23,6 +23,37 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(spy.read.call_count, 1)
         self.assertEqual(spy.read.call_args.args, (1,))
 
+    def test_cursor_continues_past_old_64_mib_limit(self):
+        offset = 64 * 1024 * 1024
+        with self.path.open("wb") as output:
+            output.seek(offset - 1)
+            output.write(b'\n{"id":2}\n')
+        page = read_daily_page(self.root, DailyCursor("2026-10-11", offset), self.today)
+        self.assertEqual(page.records, ({"id": 2},))
+        self.assertTrue(page.advanced_day)
+
+    def test_compressed_cursor_continues_past_old_limit(self):
+        offset = 65 * 1024 * 1024
+        with gzip.open(self.path.with_suffix(".json.gz"), "wb") as output:
+            for _ in range(65):
+                output.write(b" " * (1024 * 1024 - 1) + b"\n")
+            output.write(b'{"id":2}\n')
+        page = read_daily_page(self.root, DailyCursor("2026-10-11", offset), self.today)
+        self.assertEqual(page.records, ({"id": 2},))
+        self.assertTrue(page.advanced_day)
+
+    def test_archive_limit_is_explicit_and_exact_eof_can_advance(self):
+        self.path.write_bytes(b"{}\n{}\n")
+        cursor = DailyCursor("2026-10-11", 3)
+        with self.assertRaises(WindowsSourceError):
+            read_daily_page(self.root, cursor, self.today, maximum_archive_bytes=3)
+        page = read_daily_page(self.root, cursor, self.today, maximum_archive_bytes=6)
+        self.assertEqual(page.records, ({},))
+        self.assertTrue(page.advanced_day)
+        for limit in (True, 0, -1, 8 * 1024 * 1024 * 1024 + 1):
+            with self.subTest(limit=limit), self.assertRaises(WindowsSourceError):
+                read_daily_page(self.root, cursor, self.today, maximum_archive_bytes=limit)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

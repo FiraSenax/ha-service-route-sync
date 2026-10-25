@@ -22,9 +22,10 @@ class LadyClientSSHConfig(GatewaySSHConfig):
 
 class LadyPCProbeReader:
     def __init__(self, hass, config, clients):
-        if tuple(clients.profiles) != ("ladyofgames",):
+        if len(clients.profiles) != 1:
             raise ClientDataError("Lady probes require a separate single-client scope")
         self.hass, self.config, self.clients = hass, config, clients
+        self.profile_id = next(iter(clients.profiles))
 
     async def __call__(self):
         await self.hass.async_add_executor_job(self.config.validate_files)
@@ -35,16 +36,16 @@ class LadyPCProbeReader:
             and data is not None
             and fresh(data.observed_at, now, 45)
         )
-        client = data.clients.get("ladyofgames") if valid else None
+        client = data.clients.get(self.profile_id) if valid else None
         address = client.ipv4_address if client is not None and client.online else None
         frame = json.dumps(
-            {"schema": 1, "addresses": {"ladyofgames": address}}, separators=(",", ":")
+            {"schema": 1, "addresses": {self.profile_id: address}}, separators=(",", ":")
         ).encode()
         raw = await read_gateway(self.config, timeout=20, input_data=frame)
         now = dt_util.utcnow()
-        snapshot = parse_client_probes(raw, now, ("ladyofgames",))
+        snapshot = parse_client_probes(raw, now, (self.profile_id,))
         result = {}
-        probe = snapshot.probes.get("ladyofgames")
+        probe = snapshot.probes.get(self.profile_id)
         if probe is not None and fresh(probe.observed_at, now, 45):
             result["lan"] = {
                 "loss": probe.loss,
@@ -52,7 +53,7 @@ class LadyPCProbeReader:
                 "max": probe.maximum_ms,
                 "rc": 1 if probe.loss == 100 else 0,
             }
-        route = snapshot.routes.get("ladyofgames")
+        route = snapshot.routes.get(self.profile_id)
         if route is not None and route.valid and fresh(route.observed_at, now, 45):
             result["routing"] = {"rc": 0, "counts": dict(route.connections)}
         return TimedObservation(result, snapshot.observed_at.timestamp())

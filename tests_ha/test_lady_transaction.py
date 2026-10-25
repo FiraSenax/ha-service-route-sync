@@ -15,15 +15,29 @@ from custom_components.service_route_sync.lady_history import LadyHistory
 
 
 class TransactionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_observation_mode_records_without_queuing_and_optional_windows_has_no_alarm(self):
+        transaction = LadyTransaction(
+            self.store, notifications_enabled=False, windows_enabled=False
+        )
+        await transaction.async_sample(self.active_with_failed_probe(), self.batch(), self.now)
+        await transaction.async_sample(
+            self.active_with_failed_probe(), self.batch(20), self.now + 121
+        )
+        self.assertEqual(self.store.state["outbox"], [])
+        self.assertTrue(self.store.state["engine"]["incidents"]["Messquelle probe"]["active"])
+        self.assertNotIn("Messquelle windows", self.store.state["engine"]["incidents"])
+
     async def test_history_prepare_then_store_failure_is_invisible_after_restart(self):
         history = LadyHistory(Path(self.directory.name) / "history" / "events.sqlite")
         transaction = LadyTransaction(self.store, history)
-        await transaction.async_sample({"api_ok": False}, self.batch(), self.now)
+        await transaction.async_sample(self.active_with_failed_probe(), self.batch(), self.now)
         with patch.object(
             self.store.store, "async_save", AsyncMock(side_effect=OSError("synthetic"))
         ):
             with self.assertRaises(OSError):
-                await transaction.async_sample({"api_ok": False}, self.batch(20), self.now + 121)
+                await transaction.async_sample(
+                    self.active_with_failed_probe(), self.batch(20), self.now + 121
+                )
         fresh = LadyCheckpointStore(self.hass, "transaction")
         await fresh.async_load()
         self.assertEqual(fresh.state["cursor"]["offset"], 10)
@@ -31,9 +45,9 @@ class TransactionTests(unittest.IsolatedAsyncioTestCase):
             history.snapshot(fresh.state["history_revision"], self.now + 121)["counts"], {}
         )
         restored = LadyTransaction(fresh, history)
-        await restored.async_sample({"api_ok": False}, self.batch(30), self.now + 122)
+        await restored.async_sample(self.active_with_failed_probe(), self.batch(30), self.now + 122)
         result = history.snapshot(fresh.state["history_revision"], self.now + 122)
-        self.assertEqual(result["counts"], {"Messquelle api": 1})
+        self.assertEqual(result["counts"], {"Messquelle probe": 1})
         self.assertEqual(len(fresh.state["outbox"]), 1)
         marker = fresh.state["history_revision"]
         await restored.async_acknowledge(fresh.state["outbox"][0]["delivery_id"])
@@ -84,6 +98,14 @@ class TransactionTests(unittest.IsolatedAsyncioTestCase):
         await self.hass.async_stop(force=True)
         self.directory.cleanup()
 
+    def active_with_failed_probe(self):
+        return {
+            "api_ok": True,
+            "probe_ok": False,
+            "port": {"up": True, "speed": 1000},
+            "probes": {"lan": {"loss": 0, "avg": 1}},
+        }
+
     def batch(self, offset=10, events=()):
         return WindowsBatch(AlertCursor(1, offset), events, None, True, False, 0, False)
 
@@ -110,7 +132,7 @@ class TransactionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.store.state, before)
 
     async def test_incident_outbox_persists_until_explicit_ack(self):
-        row = {"api_ok": False}
+        row = self.active_with_failed_probe()
         await self.transaction.async_sample(row, self.batch(), self.now)
         await self.transaction.async_sample(row, self.batch(20), self.now + 121)
         pending = self.store.state["outbox"]

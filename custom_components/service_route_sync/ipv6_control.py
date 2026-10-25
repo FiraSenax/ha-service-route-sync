@@ -23,7 +23,7 @@ class IPv6Controls:
             type(value) is not bool for value in (self.enabled, self.dry_run, self.nat66, self.sab)
         ):
             raise ValueError("IPv6 control must be explicit")
-        if self.override not in ("auto", "dsl", "starlink"):
+        if self.override not in ("auto", "primary", "secondary"):
             raise ValueError("Invalid IPv6 override")
 
 
@@ -36,7 +36,7 @@ class IPv6Plan:
 
 
 def _wan(mode: str) -> Wan:
-    return {"dsl": Wan.PRIMARY, "starlink": Wan.SECONDARY}.get(mode, Wan.UNKNOWN)
+    return {"primary": Wan.PRIMARY, "secondary": Wan.SECONDARY}.get(mode, Wan.UNKNOWN)
 
 
 def plan_ipv6(
@@ -71,7 +71,7 @@ def plan_ipv6(
     ):
         return IPv6Plan(FailoverState(active), None, False, "unknown_health")
 
-    preference = Wan.PRIMARY if controls.override in ("auto", "dsl") else Wan.SECONDARY
+    preference = Wan.PRIMARY if controls.override in ("auto", "primary") else Wan.SECONDARY
     policy = FailoverPolicy(preference=preference)
     preferred, fallback = (
         (primary, secondary) if preference is Wan.PRIMARY else (secondary, primary)
@@ -85,8 +85,8 @@ def plan_ipv6(
     )
     if target is Wan.DOWN:
         return IPv6Plan(FailoverState(active), None, False, "both_down")
-    target_mode = "dsl" if target is Wan.PRIMARY else "starlink"
-    if not (status.dsl_default if target is Wan.PRIMARY else status.starlink_default):
+    target_mode = "primary" if target is Wan.PRIMARY else "secondary"
+    if not (status.primary_default if target is Wan.PRIMARY else status.secondary_default):
         return IPv6Plan(FailoverState(active), None, False, "target_route_unavailable")
 
     if active is Wan.UNKNOWN:
@@ -120,7 +120,7 @@ def plan_ipv6(
     )
     if result.desired is Wan.DOWN:
         return IPv6Plan(result.state, None, False, "both_down")
-    desired_mode = "dsl" if result.desired is Wan.PRIMARY else "starlink"
+    desired_mode = "primary" if result.desired is Wan.PRIMARY else "secondary"
     if result.desired is active and status.mode != status.owned_mode:
         # The actor recognized an older delegated prefix. Its current PD and
         # the independently measured DSL health are both authoritative.

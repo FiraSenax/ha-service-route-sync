@@ -17,7 +17,8 @@ class LadyFlowTests(unittest.IsolatedAsyncioTestCase):
         self.flow = FlowHarness()
         self.flow.settings.update(lady_enabled=True)
         self.backend = SimpleNamespace(
-            read_clients=AsyncMock(return_value=[{"mac": MAC, "name": "Synthetic Lady"}])
+            async_close=AsyncMock(),
+            read_clients=AsyncMock(return_value=[{"mac": MAC, "name": "Synthetic Lady"}]),
         )
         self.patch = patch(
             "custom_components.service_route_sync.lady_flow.UniFiBackend", return_value=self.backend
@@ -32,7 +33,7 @@ class LadyFlowTests(unittest.IsolatedAsyncioTestCase):
         result = await self.flow.async_step_lady({"lady_clients": [MAC]})
         self.assertEqual(result["step_id"], "lady_sources")
         self.assertFalse(self.flow.settings["lady_active"])
-        self.assertEqual(self.flow.settings["lady_profile"]["id"], "ladyofgames")
+        self.assertEqual(self.flow.settings["lady_profile"]["id"], "client")
         self.assertEqual(self.flow.settings.get("client_profiles", []), [])
 
     async def test_unknown_duplicate_and_existing_gaming_clients_are_rejected(self):
@@ -66,6 +67,7 @@ class LadyFlowTests(unittest.IsolatedAsyncioTestCase):
         self.flow.settings.update(
             lady_profile={"id": "ladyofgames", "name": "LadyOfGames", "macs": [MAC, OTHER]},
             lady_active=True,
+            lady_notify_service="test_target",
             lady_dsl_key_id="a" * 32,
             lady_pc_key_id="b" * 32,
             lady_windows_key_id="c" * 32,
@@ -88,7 +90,7 @@ class LadyFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved["data"]["lady_dns_servers"], ["192.168.1.10", "192.168.1.11"])
 
     async def test_invalid_existing_profile_has_sanitized_failure(self):
-        self.flow.settings["lady_profile"] = {"id": "other", "macs": [MAC]}
+        self.flow.settings["lady_profile"] = {"id": "bad id!", "macs": [MAC]}
         result = await self.flow.async_step_lady()
         self.assertEqual(result["reason"], "invalid_lady_configuration")
 

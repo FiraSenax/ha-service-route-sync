@@ -26,6 +26,46 @@ from client_observer import (
 from observer import ObservationError
 
 
+MARKS = {0x21940000: "primary", 0x21960000: "secondary", 0x21660000: "vpn2", 0x20040000: "vpn1"}
+
+
+class ConfiguredObservationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_collection_uses_configured_marks_without_personal_defaults(self):
+        from client_observer import observe_clients
+
+        with (
+            patch(
+                "client_observer.load_route_marks",
+                return_value={131072: "primary", 262144: "secondary"},
+            ),
+            patch("client_observer.check_identity", AsyncMock(return_value=False)),
+        ):
+            rows = await observe_clients(
+                {"office": {"address": "192.168.1.10", "macs": ["02:00:00:00:00:01"]}}
+            )
+        self.assertEqual(set(rows), {"office"})
+        self.assertFalse(rows["office"]["identity_verified"])
+
+    def test_marks_are_validated_and_optional_vpns_are_not_required(self):
+        from client_observer import load_route_marks
+
+        with patch(
+            "client_observer.read_private_config",
+            return_value={"primary": 131072, "secondary": 262144},
+        ):
+            self.assertEqual(load_route_marks(), {131072: "primary", 262144: "secondary"})
+        for values in (
+            {"primary": 1, "secondary": 2},
+            {"primary": 131072, "secondary": 131072},
+            {"primary": "131072", "secondary": 262144},
+        ):
+            with (
+                patch("client_observer.read_private_config", return_value=values),
+                self.assertRaises(ObservationError),
+            ):
+                load_route_marks()
+
+
 class ClientObserverTests(unittest.TestCase):
     def test_targets_cannot_select_public_or_special_addresses(self):
         for address in [
@@ -70,13 +110,13 @@ class ClientObserverTests(unittest.TestCase):
             for mark in [0x21940000, 0x21960000, 0x21660000, 0x20040000, 0]
         )
         self.assertEqual(
-            parse_connections(0, lines, src),
-            {"dsl": 1, "starlink": 1, "vpn1": 1, "vpn2": 1, "other": 1},
+            parse_connections(0, lines, src, MARKS),
+            {"primary": 1, "secondary": 1, "vpn1": 1, "vpn2": 1, "other": 1},
         )
-        self.assertIsNone(parse_connections(1, "", src))
-        self.assertEqual(parse_connections(0, "", src)["dsl"], 0)
+        self.assertIsNone(parse_connections(1, "", src, MARKS))
+        self.assertEqual(parse_connections(0, "", src, MARKS)["primary"], 0)
         with self.assertRaises(ObservationError):
-            parse_connections(0, "tcp src=172.20.1.11 dst=1.1.1.1 mark=0", src)
+            parse_connections(0, "tcp src=172.20.1.11 dst=1.1.1.1 mark=0", src, MARKS)
 
 
 class ResolutionTests(unittest.TestCase):
@@ -199,7 +239,7 @@ class IdentityTests(unittest.IsolatedAsyncioTestCase):
             patch("client_observer.check_identity", AsyncMock(return_value=False)),
             patch("client_observer.run", runner),
         ):
-            _, row = await sample("pc", self.target, asyncio.Semaphore(1))
+            _, row = await sample("pc", self.target, asyncio.Semaphore(1), MARKS)
         runner.assert_not_awaited()
         self.assertFalse(row["identity_verified"])
         self.assertIsNone(row["probe"])
@@ -210,7 +250,7 @@ class IdentityTests(unittest.IsolatedAsyncioTestCase):
             patch("client_observer.check_identity", AsyncMock(side_effect=[True, False])),
             patch("client_observer.run", runner),
         ):
-            _, row = await sample("pc", self.target, asyncio.Semaphore(1))
+            _, row = await sample("pc", self.target, asyncio.Semaphore(1), MARKS)
         self.assertIsNone(row["probe_at_ms"])
         self.assertIsNone(row["connections"])
         self.assertFalse(row["identity_verified"])

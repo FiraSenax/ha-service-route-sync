@@ -20,7 +20,7 @@ def reconcile(transaction_id, digest, mode):
     if (
         not re.fullmatch(r"[0-9a-f]{32}", transaction_id)
         or not re.fullmatch(r"[0-9a-f]{64}", digest)
-        or mode not in ("dsl", "starlink")
+        or mode not in ("primary", "secondary")
     ):
         raise PolicyError("invalid_reconciliation_request")
     fd = os.open(LOCK, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
@@ -32,7 +32,7 @@ def reconcile(transaction_id, digest, mode):
             not isinstance(journal, dict)
             or journal.get("phase") not in ("intent", "blocked")
             or journal.get("transaction_id") != transaction_id
-            or journal.get("desired") not in ("dsl", "starlink")
+            or journal.get("desired") not in ("primary", "secondary")
         ):
             raise PolicyError("journal_does_not_match")
         observed = snapshot(config)
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Close an audited IPv6 gateway intent")
     parser.add_argument("transaction_id")
     parser.add_argument("digest")
-    parser.add_argument("mode", choices=("dsl", "starlink"))
+    parser.add_argument("mode", choices=("primary", "secondary"))
     args = parser.parse_args()
     try:
         print(

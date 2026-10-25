@@ -27,11 +27,11 @@ class ClientMetricTests(unittest.TestCase):
 
     def test_real_probe_zero_and_routing_counts_preserved(self):
         probe = ProbeObservation(NOW, 0, 0, 0)
-        route = RoutingObservation(NOW, True, {"dsl": 0, "starlink": 3})
+        route = RoutingObservation(NOW, True, {"primary": 0, "secondary": 3})
         text = render_clients(("pc",), self.snapshot(), True, {"pc": probe}, {"pc": route}, NOW)
         self.assertIn('gaming_pc_state{pc="pc"} 1.0', text)
         self.assertIn('gaming_probe_avg{pc="pc"} 0.0', text)
-        self.assertIn('gaming_connections{pc="pc",route="starlink"} 3.0', text)
+        self.assertIn('gaming_connections{pc="pc",route="secondary"} 3.0', text)
 
     def test_stale_failed_and_future_api_omits_cached_metrics(self):
         for delta, ok in [(-75, True), (1, True), (0, False)]:
@@ -49,10 +49,10 @@ class ClientMetricTests(unittest.TestCase):
         for value in [-1, 101, True, "0", float("nan")]:
             with self.assertRaises(MetricDataError):
                 ProbeObservation(NOW, value, 0, 0)
-        counts = {"dsl": 1}
+        counts = {"primary": 1}
         route = RoutingObservation(NOW, True, counts)
-        counts["dsl"] = 99
-        self.assertEqual(route.connections["dsl"], 1)
+        counts["primary"] = 99
+        self.assertEqual(route.connections["primary"], 1)
         for stamp in [NOW - timedelta(seconds=20), NOW + timedelta(seconds=1)]:
             text = render_clients(
                 ("pc",), self.snapshot(), True, {"pc": ProbeObservation(stamp, 0, 0, 0)}, {}, NOW

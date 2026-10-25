@@ -4,9 +4,11 @@
 
 [![Tests](https://github.com/FiraSenax/ha-service-route-sync/actions/workflows/tests.yml/badge.svg)](https://github.com/FiraSenax/ha-service-route-sync/actions/workflows/tests.yml)
 
-Service Route Sync keeps the destination IP prefixes of selected games and cloud services in existing UniFi traffic routes up to date. It runs inside Home Assistant, uses an existing UniFi integration, and needs no external scheduler.
+Service Route Sync keeps the destination IP prefixes of selected games and cloud services in existing UniFi traffic routes up to date. It runs inside Home Assistant, uses its own explicitly configured local UniFi API key, and needs no external scheduler.
 
-**Route changes start in preview mode.** The integration runs in a local Home Assistant 2026.10.1 installation. The route write and restore paths have automated tests with a simulated UniFi backend; a live production write of a service route has not yet been performed.
+**Route changes start in preview mode.** Controller access and route write/restore paths have automated tests with simulated backends. This release still requires live validation in your setup before automatic writes.
+
+**Upgrading to 0.3:** enter this integration’s own credentials and configure your control helpers, diagnostic profile and notification target. There is no personal configuration fallback. See [configuration and rollout](docs/CONFIGURATION.md).
 
 ## Services
 
@@ -33,7 +35,7 @@ Microsoft 365 defaults to the **Optimize** category; **Allow** and **Default** c
 
 | Backend | Status |
 | --- | --- |
-| UniFi Network | Implemented; requires the official Home Assistant UniFi integration |
+| UniFi Network | Implemented; independent local UniFi credentials |
 | FRITZ!Box | Not implemented; equivalent traffic-route control has not been established |
 | Other routers | Backend interface exists, but concrete support is pending |
 
@@ -43,12 +45,12 @@ For monitored clients, **Connection type** reports wired, Wi-Fi, or disconnected
 
 ## Installation
 
-You need Home Assistant **2026.9 or newer** and a configured, loaded **UniFi Network** integration. The UniFi account needs access to Traffic Routes and write permission if you intend to enable automatic changes.
+You need Home Assistant **2026.9 or newer** and a reachable **UniFi Network** controller. Use a dedicated local Network API key. Required operations and controller permission limits are documented in [Permissions](docs/PERMISSIONS.md).
 
 1. In HACS, add `https://github.com/FiraSenax/ha-service-route-sync` as a custom **Integration** repository. A [request for inclusion in the default catalog](https://github.com/hacs/default/pull/11881) is pending.
 2. Download **Service Route Sync** and restart Home Assistant.
 3. In **Settings → Devices & services**, add **Service Route Sync**.
-4. Select the UniFi integration, services, and any cloud filters you need.
+4. Enter the controller host, port, site and dedicated local credentials, then select services and cloud filters.
 5. Bind each service to its own existing UniFi IP route. Create those routes in UniFi first, with the intended WAN and device or network scope.
 
 ## Operation
@@ -63,7 +65,7 @@ After setup, Home Assistant provides:
 - **Automatic route updates:** off by default. Enabling it starts a fresh check.
 - **Restore last route update:** restores one saved route update while automation is off, if nobody has changed the route since.
 
-Disable any other script or integration that writes the same UniFi routes before enabling automatic updates. Configure one Service Route Sync entry per UniFi integration.
+Disable any other script or integration that writes the same UniFi routes before enabling automatic updates. Configure one Service Route Sync entry per controller endpoint and site.
 
 The default refresh interval is 24 hours and can be set from one hour to one week. Successfully fetched public feeds are cached for one hour. A refresh during that window reuses the feed but reads the router again. Changing integration options turns automatic route updates off.
 
@@ -103,7 +105,7 @@ python -m venv .venv
 .venv/bin/ruff format --check .
 ```
 
-`core.py` contains router-independent planning and write checks, `providers.py` contains feed selection, and `backends/unifi.py` contains the UniFi adapter. The adapter uses the `aiounifi` API of the official Home Assistant integration, so upstream API changes may require updates. GitHub Actions runs tests, formatting, Python compilation, Hassfest, and HACS validation.
+`core.py` contains router-independent planning and write checks, `providers.py` contains feed selection, and `backends/unifi.py` contains the UniFi adapter. The adapter owns its `aiounifi` client and explicitly configured credentials, so upstream API changes may require updates. GitHub Actions runs tests, formatting, Python compilation, Hassfest, and HACS validation.
 
 ## Sources
 

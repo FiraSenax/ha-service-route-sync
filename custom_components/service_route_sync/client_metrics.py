@@ -41,8 +41,8 @@ class RoutingObservation:
         if self.observed_at.tzinfo is None or type(self.valid) is not bool:
             raise MetricDataError("Invalid routing observation metadata")
         if not isinstance(self.connections, Mapping) or set(self.connections) - {
-            "dsl",
-            "starlink",
+            "primary",
+            "secondary",
             "vpn1",
             "vpn2",
             "other",
@@ -131,6 +131,6 @@ def render_clients(
         valid = bool(route is not None and route.valid and fresh(route.observed_at, now, 75))
         writer.add("gaming_routing_valid", valid, **labels)
         if valid:
-            for key in ("dsl", "starlink", "vpn1", "vpn2", "other"):
+            for key in ("primary", "secondary", "vpn1", "vpn2", "other"):
                 writer.add("gaming_connections", route.connections.get(key), route=key, **labels)
     return writer.render()

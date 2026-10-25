@@ -10,7 +10,7 @@ _load = observer.load_targets
 
 def load_lady(path):
     targets = _load(path)
-    if set(targets) != {"ladyofgames"}:
+    if len(targets) != 1:
         raise ObservationError("invalid_lady_target_scope")
     return targets
 

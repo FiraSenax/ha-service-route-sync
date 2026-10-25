@@ -12,7 +12,8 @@ import zlib
 from .windows_cursor import WindowsSourceError
 
 MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-MAX_DECOMPRESSED = 64 * 1024 * 1024
+DEFAULT_MAX_ARCHIVE_BYTES = 1024 * 1024 * 1024
+MAX_ARCHIVE_BYTES = 8 * 1024 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,7 @@ class DailyCursor:
                 raise ValueError
         except (TypeError, ValueError):
             raise WindowsSourceError("Invalid Windows archive day") from None
-        if type(self.offset) is not int or not 0 <= self.offset <= MAX_DECOMPRESSED:
+        if type(self.offset) is not int or not 0 <= self.offset <= MAX_ARCHIVE_BYTES:
             raise WindowsSourceError("Invalid Windows archive offset")
 
 
@@ -67,10 +68,18 @@ def _open_daily(root, day):
             os.close(descriptor)
 
 
-def read_daily_page(root: Path, cursor: DailyCursor, today: date, *, maximum_bytes=32768):
+def read_daily_page(
+    root: Path,
+    cursor: DailyCursor,
+    today: date,
+    *,
+    maximum_bytes=32768,
+    maximum_archive_bytes=DEFAULT_MAX_ARCHIVE_BYTES,
+):
     """Offset is uncompressed; gzip replacement never invalidates it.
 
-    At most 64 MiB is decompressed per call. Missing or corrupt days block
+    The daily archive bound is independent of the bounded response page.
+    Compressed files replay their prefix in bounded memory. Missing or corrupt days block
     progress instead of silently skipping data. Persist the returned cursor
     atomically with extracted events, never before accepting the page.
     """
@@ -79,8 +88,12 @@ def read_daily_page(root: Path, cursor: DailyCursor, today: date, *, maximum_byt
         or type(today) is not date
         or type(maximum_bytes) is not int
         or not 1 <= maximum_bytes <= 1048576
+        or type(maximum_archive_bytes) is not int
+        or not 1 <= maximum_archive_bytes <= MAX_ARCHIVE_BYTES
     ):
         raise WindowsSourceError("Invalid Windows archive request")
+    if cursor.offset > maximum_archive_bytes:
+        raise WindowsSourceError("Windows archive exceeds configured bound")
     day = date.fromisoformat(cursor.day)
     if day > today:
         raise WindowsSourceError("Windows archive cursor is in the future")
@@ -112,10 +125,13 @@ def read_daily_page(root: Path, cursor: DailyCursor, today: date, *, maximum_byt
             records, malformed, partial, eof = [], 0, False, False
             while position - cursor.offset < maximum_bytes and len(records) < 1000:
                 budget = min(
-                    maximum_bytes - (position - cursor.offset), MAX_DECOMPRESSED - position
+                    maximum_bytes - (position - cursor.offset), maximum_archive_bytes - position
                 )
                 if budget <= 0:
-                    raise WindowsSourceError("Windows decompression bound reached")
+                    if not stream.read(1):
+                        eof = True
+                        break
+                    raise WindowsSourceError("Windows archive exceeds configured bound")
                 line = stream.readline(budget + 1)
                 if not line:
                     eof = True

@@ -70,6 +70,7 @@ class GatewayFlowTests(unittest.IsolatedAsyncioTestCase):
         (active / "known_hosts").write_text("existing trust\n")
         self.flow.settings["gateway_observer_enabled"] = True
         with patch("custom_components.service_route_sync.config_flow.UniFiBackend") as backend:
+            backend.return_value.async_close = AsyncMock()
             backend.return_value.read_gateways = AsyncMock(
                 return_value={"gateway": {"ip": "192.168.1.1"}}
             )

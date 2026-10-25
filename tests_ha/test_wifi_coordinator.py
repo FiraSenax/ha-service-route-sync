@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests_ha import CONNECTION
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from custom_components.service_route_sync.wifi_coordinator import WifiCoordinator
@@ -29,7 +30,7 @@ class WirelessCoordinatorTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.hass = HomeAssistant(self.temp.name)
-        self.coordinator = WifiCoordinator(self.hass, None, "parent")
+        self.coordinator = WifiCoordinator(self.hass, None, CONNECTION)
         self.row = {
             "mac": "02:00:00:00:00:01",
             "is_wired": False,

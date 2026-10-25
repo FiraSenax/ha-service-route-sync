@@ -1,7 +1,7 @@
 """Persistable incident logic. No network calls; deterministic fixture tests."""
 
 import datetime
-import zoneinfo
+from homeassistant.util import dt as dt_util
 import copy
 
 from .network import finite_number
@@ -16,12 +16,36 @@ def counter_delta(current, previous):
     return current - previous
 
 
+def pc_monitoring_status(row, state, now):
+    """Explain why PC-specific notifications are active or suspended."""
+    if state.get("expected_power_off"):
+        return "powered_off"
+    port = row.get("port")
+    if row.get("api_ok") is not True or not isinstance(port, dict):
+        return "source_unavailable"
+    if port.get("up") is False:
+        return "port_disconnected"
+    if port.get("up") is not True:
+        return "source_unavailable"
+    lan = row.get("probes", {}).get("lan", {})
+    agent = row.get("windows", {}).get("agent")
+    heartbeat = agent.get("last_keepalive") if isinstance(agent, dict) else None
+    fresh_heartbeat = type(heartbeat) in (int, float) and 0 <= now - heartbeat <= 90
+    if lan.get("loss") == 0 or fresh_heartbeat:
+        return "active"
+    if row.get("probe_ok") is not True and not fresh_heartbeat:
+        return "source_unavailable"
+    return "no_pc_evidence"
+
+
 class LadyIncidentEngine:
-    def __init__(self, state=None, expected_speed=2500):
+    def __init__(self, state=None, expected_speed=1000, maintenance_hour=-1, maintenance_minutes=2):
         self.s = copy.deepcopy(state) if state is not None else {}
         self.s.setdefault("incidents", {})
         self.events = []
         self.expected_speed = expected_speed
+        self.maintenance_hour = maintenance_hour
+        self.maintenance_minutes = maintenance_minutes
 
     def emit(self, key, message, now, recovery=False):
         self.events.append({"key": key, "message": message, "time": now, "recovery": recovery})
@@ -124,7 +148,8 @@ class LadyIncidentEngine:
                     )
 
     def link_flaps(self, row, now, expected_off, recent_power):
-        # Use fresh controller counters, including samples where the physical link is down.
+        # A disconnected port and delayed switch counters are not evidence of
+        # an unexpected PC link fault.
         if not row.get("api_ok") or "port" not in row:
             return
         p = row["port"]
@@ -146,6 +171,8 @@ class LadyIncidentEngine:
             or now - previous["time"] > 120
             or expected_off
             or recent_power
+            or p.get("up") is not True
+            or now - self.s.get("up_since", now) < 120
             or row.get("planned_link_test", False)
         )
         if reset:
@@ -159,7 +186,12 @@ class LadyIncidentEngine:
             }
             # A measurement gap or switch-counter reset is not proof that a
             # previously active physical-link incident has recovered.
-            if expected_off or recent_power or row.get("planned_link_test", False):
+            if (
+                expected_off
+                or recent_power
+                or p.get("up") is not True
+                or row.get("planned_link_test", False)
+            ):
                 incident.update(active=False, since=None, good=None)
             else:
                 incident.update(since=None, good=None)
@@ -248,38 +280,33 @@ class LadyIncidentEngine:
         else:
             self.s.pop("wake_replies_since", None)
         self.s["expected_power_off"] = expected_off
-        self.wan_dns(row, now)
-        if expected_off:
-            # A Wake-on-LAN link is not an active PC session. Reset silently, including WAN/DNS.
+        agent = row.get("windows", {}).get("agent")
+        heartbeat = agent.get("last_keepalive") if isinstance(agent, dict) else None
+        fresh_heartbeat = type(heartbeat) in (int, float) and 0 <= now - heartbeat <= 90
+        pc_active = (
+            not expected_off
+            and port is not None
+            and port.get("up") is True
+            and (lan.get("loss") == 0 or fresh_heartbeat)
+        )
+        if not pc_active:
+            # Normal shutdown, standby and Wake-on-LAN are not Lady network
+            # incidents. House WAN monitoring remains independent of this PC.
             for key, incident in self.s["incidents"].items():
-                if not key.startswith(("Messquelle ", "DSL-", "DNS ")):
-                    incident.update(active=False, since=None, good=None)
-            self.events = [
-                event
-                for event in self.events
-                if event["key"].startswith(("Messquelle ", "DSL-", "DNS "))
-            ]
+                incident.update(active=False, since=None, good=None)
+            self.events = []
             self.link_flaps(row, now, True, False)
+            self.s["up_since"] = now
             if port is not None:
                 self.s["port"] = dict(port)
                 self.s["switch_uptime"] = row.get("switch_uptime", 0)
             return self.events
+        self.wan_dns(row, now)
         recent_power = now - max(self.s.get("power_off", 0), self.s.get("power_on", 0)) < 120
         self.link_flaps(row, now, expected_off, recent_power)
         if port is not None:
             if port.get("up"):
                 if old and old.get("up") is False:
-                    down = self.s.get("down_since", now)
-                    if (
-                        self.s.get("power_off", 0) < down - 120
-                        and self.s.get("power_on", 0) < down - 120
-                        and now - down <= 120
-                    ):
-                        self.pulse(
-                            "LAN-Unterbrechung",
-                            f"{label}: Verbindung nach etwa {int(now - down)} Sekunden wieder da; kein passendes Ausschalt-/Standby-Ereignis empfangen.",
-                            now,
-                        )
                     self.s["up_since"] = now
                 elif old and old.get("up") is None:
                     self.s["up_since"] = now
@@ -307,7 +334,7 @@ class LadyIncidentEngine:
                     ):
                         self.pulse(
                             "LAN-Linkwechsel",
-                            f"{label} meldet {delta} neue Link-Unterbrechung(en), jetzt wieder verbunden. DSL separat prüfen; Ausschalten/Standby als mögliche Ursache berücksichtigen.",
+                            f"{label} meldet {delta} neue Link-Unterbrechung(en), jetzt wieder verbunden. Primär-WAN separat prüfen; Ausschalten/Standby als mögliche Ursache berücksichtigen.",
                             now,
                         )
                     for f in ["rx_errors", "tx_errors", "rx_dropped", "tx_dropped"]:
@@ -328,17 +355,6 @@ class LadyIncidentEngine:
                 self.s.pop("down_since", None)
             elif port.get("up") is False:
                 self.s.setdefault("down_since", now)
-                # Long off intervals cannot be distinguished from normal shutdown without power context.
-                if (
-                    now - self.s["down_since"] >= 120
-                    and self.s.get("power_off", 0) < self.s["down_since"] - 120
-                ):
-                    self.pulse(
-                        "PC offline",
-                        "LadyofGames seit mindestens 2 Minuten nicht am LAN-Port verbunden. Ausschalten/Standby oder Linkausfall; Ursache nicht bestätigt.",
-                        now,
-                        86400,
-                    )
             else:
                 self.s.pop("down_since", None)
                 self.s["up_since"] = now
@@ -374,11 +390,11 @@ class LadyIncidentEngine:
             )
         r = probe.get("routing")
         if r and r.get("rc") == 0:
-            n = sum(v for k, v in r.get("counts", {}).items() if k != "dsl")
+            n = sum(v for k, v in r.get("counts", {}).items() if k != "primary")
             if n:
                 self.pulse(
                     "Routing-Abweichung",
-                    f"{n} aktuelle öffentliche IPv4-Verbindungen von LadyofGames laufen über andere Markierungen als DSL: "
+                    f"{n} aktuelle öffentliche IPv4-Verbindungen des überwachten Clients laufen über andere Markierungen als Primär-WAN: "
                     + str(r["counts"])
                     + ". Anwendung noch nicht zugeordnet.",
                     now,
@@ -388,13 +404,15 @@ class LadyIncidentEngine:
 
     def wan_dns(self, row, now):
         probe = row.get("probes", {})
-        local = datetime.datetime.fromtimestamp(now, zoneinfo.ZoneInfo("Europe/Berlin"))
-        maintenance = local.hour == 5 and local.minute < 2
+        local = datetime.datetime.fromtimestamp(now, dt_util.get_default_time_zone())
+        maintenance = (
+            local.hour == self.maintenance_hour and local.minute < self.maintenance_minutes
+        )
         w = [probe.get("wan_cf", {}), probe.get("wan_google", {})]
         known_loss = all(x.get("loss") is not None for x in w)
         if not maintenance:
             self.check(
-                "DSL-Testpfad",
+                "Primär-WAN-Testpfad",
                 (
                     True
                     if any(x.get("loss") is None and x.get("rc") not in (None, 0) for x in w)
@@ -402,22 +420,22 @@ class LadyIncidentEngine:
                     if known_loss
                     else None
                 ),
-                "DSL-Testpfad nicht verfügbar: PPP-Interface oder Ping-Prüfung fehlgeschlagen.",
+                "Primär-WAN-Testpfad nicht verfügbar: WAN-Interface oder Ping-Prüfung fehlgeschlagen.",
                 now,
                 10,
             )
         if not maintenance:
             self.check(
-                "DSL-Paketverlust",
+                "Primär-WAN-Paketverlust",
                 all(x["loss"] > 0 for x in w) if known_loss else None,
-                "DSL-Paketverlust zu zwei unabhängigen Testzielen. PC-LAN separat protokolliert; mögliche Internetstörung.",
+                "Primär-WAN-Paketverlust zu zwei unabhängigen Testzielen. PC-LAN separat protokolliert; mögliche Internetstörung.",
                 now,
                 10,
             )
             self.check(
-                "DSL-Latenz",
+                "Primär-WAN-Latenz",
                 all(x["avg"] > 80 for x in w) if all(x.get("avg") is not None for x in w) else None,
-                "DSL-Latenz zu beiden Testzielen über 80 ms.",
+                "Primär-WAN-Latenz zu beiden Testzielen über 80 ms.",
                 now,
                 15,
             )

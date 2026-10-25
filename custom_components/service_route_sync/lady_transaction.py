@@ -14,7 +14,18 @@ from .windows_queue import prepare_replay
 class LadyTransaction:
     """One serialized producer; optimistic Store revisions reject other writers."""
 
-    def __init__(self, store, history=None):
+    def __init__(
+        self,
+        store,
+        history=None,
+        *,
+        notifications_enabled=True,
+        engine_options=None,
+        windows_enabled=True,
+    ):
+        self.engine_options = dict(engine_options or {})
+        self.windows_enabled = windows_enabled
+        self.notifications_enabled = notifications_enabled
         self.store = store
         self.lock = asyncio.Lock()
         self.history = history
@@ -31,14 +42,17 @@ class LadyTransaction:
                     "tracked_port": None,
                     "deferred_events": [],
                 }
+            if not self.notifications_enabled:
+                candidate["outbox"] = []
             replay = prepare_replay(candidate["deferred_events"], batch.events, now)
             observation = copy.deepcopy(row)
             observation["windows"] = {
                 "events": list(replay.due),
                 "agent": copy.deepcopy(batch.agent),
             }
-            observation["windows_ok"] = batch.heartbeat_ok
-            engine = LadyIncidentEngine(candidate["engine"])
+            if self.windows_enabled:
+                observation["windows_ok"] = batch.heartbeat_ok
+            engine = LadyIncidentEngine(candidate["engine"], **self.engine_options)
             events = engine.sample(observation, now)
             cursor = asdict(batch.cursor) if batch.cursor is not None else candidate["cursor"]
             for index, event in enumerate(events):
@@ -54,7 +68,8 @@ class LadyTransaction:
                         allow_nan=False,
                     ).encode()
                 ).hexdigest()
-                candidate["outbox"].append({"delivery_id": identity, "event": event})
+                if self.notifications_enabled:
+                    candidate["outbox"].append({"delivery_id": identity, "event": event})
             candidate.update(
                 engine=engine.s,
                 cursor=cursor,

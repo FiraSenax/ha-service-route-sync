@@ -1,13 +1,12 @@
-"""Reuse the already authenticated official HA UniFi integration."""
+"""UniFi access using credentials explicitly supplied to this integration."""
 
 from copy import deepcopy
-import asyncio
 import ipaddress
 from json import JSONDecodeError
 import logging
 import re
 
-from aiohttp import ClientError, ClientSession, ClientTimeout, CookieJar, Fingerprint
+from aiohttp import ClientError, ClientSession, ClientTimeout, Fingerprint
 
 from ..core import SyncError
 from ..client_observation import canonical_mac
@@ -31,7 +30,7 @@ class UniFiBackend:
         return deepcopy(rows)
 
     async def read_clients(self):
-        """Read only active clients using the official parent's fixed API path."""
+        """Read only active clients using a fixed API path."""
         from aiounifi.models.client import ClientListRequest
 
         return await self._read_identity_records(ClientListRequest.create())
@@ -42,106 +41,69 @@ class UniFiBackend:
 
         return await self._read_identity_records(DeviceListRequest.create())
 
-    def __init__(self, hass, parent_entry_id, *, tls_pin_sha256=None, route_api_key=None):
-        self.hass = hass
-        self.parent_entry_id = parent_entry_id
-        if tls_pin_sha256 is not None and (
-            not isinstance(tls_pin_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", tls_pin_sha256)
+    def __init__(self, hass, settings):
+        self.settings = dict(settings)
+        self.tls_pin_sha256 = settings.get("unifi_tls_pin_sha256") or None
+        self.route_api_key = settings.get("unifi_route_api_key") or None
+        self.api_key = settings.get("unifi_api_key")
+        self.host = settings.get("unifi_host")
+        self.port = settings.get("unifi_port", 443)
+        self.site = settings.get("unifi_site", "default")
+        if not isinstance(self.host, str) or not self.host:
+            raise SyncError("Configure this integration's UniFi endpoint and credentials")
+        try:
+            ipaddress.ip_address(self.host)
+        except ValueError:
+            if not re.fullmatch(r"[A-Za-z0-9.-]{1,253}", self.host):
+                raise SyncError("Invalid UniFi host") from None
+        if type(self.port) is not int or not 1 <= self.port <= 65535:
+            raise SyncError("Invalid UniFi port")
+        if not isinstance(self.site, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", self.site):
+            raise SyncError("Invalid UniFi site")
+        if self.tls_pin_sha256 is not None and not re.fullmatch(
+            r"[0-9a-f]{64}", self.tls_pin_sha256
         ):
             raise SyncError("Invalid UniFi certificate pin")
-        self.tls_pin_sha256 = tls_pin_sha256
-        if route_api_key is not None and (
-            not isinstance(route_api_key, str)
-            or not 16 <= len(route_api_key) <= 512
-            or any(ord(ch) < 33 or ord(ch) > 126 for ch in route_api_key)
+        if self.route_api_key is not None and (
+            not isinstance(self.route_api_key, str)
+            or not 16 <= len(self.route_api_key) <= 512
+            or any(ord(ch) < 33 or ord(ch) > 126 for ch in self.route_api_key)
         ):
             raise SyncError("Invalid dedicated UniFi route API key")
-        self.route_api_key = route_api_key
+        if (
+            not isinstance(self.api_key, str)
+            or not 16 <= len(self.api_key) <= 512
+            or any(ord(ch) < 33 or ord(ch) > 126 for ch in self.api_key)
+        ):
+            raise SyncError("Configure this integration's own UniFi local API key")
         self._pinned_session = None
-        self._pinned_controller = None
-        self._pinned_parent = None
-        self._pinned_lock = asyncio.Lock()
-
-    def _api(self):
-        entry = self.hass.config_entries.async_get_entry(self.parent_entry_id)
-        hub = getattr(entry, "runtime_data", None) if entry else None
-        if entry is None or entry.domain != "unifi" or hub is None or not getattr(hub, "api", None):
-            raise SyncError("The selected UniFi integration is not loaded")
-        return hub.api
-
-    async def _trusted_api(self):
-        """Log in independently using the parent's in-memory credentials and a TLS pin.
-
-        The official parent remains the only credential store. Every route
-        request, including login and reauthentication, verifies the exact
-        gateway certificate. Its unverified session is never reused here.
-        """
-        if self.tls_pin_sha256 is None:
-            return self._api()
-        from aiounifi.controller import Controller
-        from aiounifi.models.configuration import Configuration
-
-        async with self._pinned_lock:
-            parent = self._api()
-            if self._pinned_controller is not None and parent is self._pinned_parent:
-                return self._pinned_controller
-            if self._pinned_session is not None:
-                await self._pinned_session.close()
-            self._pinned_session = ClientSession(cookie_jar=CookieJar(unsafe=True), trust_env=False)
-            native = parent.connectivity.config
-            controller = Controller(
-                Configuration(
-                    self._pinned_session,
-                    host=native.host,
-                    username=native.username,
-                    password=native.password,
-                    port=native.port,
-                    site=native.site,
-                    ssl_context=Fingerprint(bytes.fromhex(self.tls_pin_sha256)),
-                    totp_secret=native.totp_secret,
-                )
-            )
-            try:
-                async with asyncio.timeout(15):
-                    await controller.login()
-            except BaseException:
-                await self._pinned_session.close()
-                self._pinned_session = None
-                self._pinned_controller = None
-                self._pinned_parent = None
-                raise
-            self._pinned_controller = controller
-            self._pinned_parent = parent
-            return controller
 
     async def async_close(self):
-        async with self._pinned_lock:
-            if self._pinned_session is not None:
-                await self._pinned_session.close()
-                self._pinned_session = None
-            self._pinned_controller = None
-            self._pinned_parent = None
+        if self._pinned_session is not None:
+            await self._pinned_session.close()
+            self._pinned_session = None
 
     async def _request(self, request):
         """Keep API error bodies out of HA logs and diagnostics.
 
-        Parent authentication stays owned by the official UniFi integration.
+        Authentication is owned exclusively by this config entry.
         Cancellation is deliberately not caught.
         """
         from aiounifi.errors import AiounifiException
 
-        if self.route_api_key is not None and request.path.startswith("/trafficroutes"):
-            return await self._route_key_request(request)
-
         try:
-            return await (await self._trusted_api()).request(request)
+            if request.path.startswith("/trafficroutes"):
+                return await self._route_key_request(request)
+            if request.method != "get" or request.path not in ("/stat/sta", "/stat/device"):
+                raise SyncError("Unexpected UniFi observation operation")
+            return await self._key_request(request)
         except (AiounifiException, ClientError, JSONDecodeError, TimeoutError, OSError) as exc:
             _LOGGER.warning("UniFi API request failed (%s)", type(exc).__name__)
             raise SyncError("The selected UniFi API request failed") from None
 
     async def _route_key_request(self, request):
         """Use a dedicated key only for fixed traffic-route paths, pinned end to end."""
-        if self.tls_pin_sha256 is None or request.method not in ("get", "put"):
+        if request.method not in ("get", "put"):
             raise SyncError("Verified TLS and a fixed route operation are required")
         if request.method == "get" and request.path != "/trafficroutes":
             raise SyncError("Unexpected UniFi route path")
@@ -149,44 +111,35 @@ class UniFiBackend:
             r"/trafficroutes/[0-9a-f-]{36}", request.path
         ):
             raise SyncError("Unexpected UniFi route path")
-        native = self._api().connectivity.config
-        host, site, port = native.host, native.site, native.port
-        if (
-            not isinstance(host, str)
-            or not isinstance(site, str)
-            or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", site)
-            or type(port) is not int
-            or not 1 <= port <= 65535
-        ):
-            raise SyncError("Invalid trusted UniFi endpoint")
-        try:
-            ipaddress.ip_address(host)
-        except ValueError:
-            if not re.fullmatch(r"[A-Za-z0-9.-]{1,253}", host):
-                raise SyncError("Invalid trusted UniFi endpoint") from None
+        return await self._key_request(request)
+
+    async def _key_request(self, request):
+        route = request.path.startswith("/trafficroutes")
         if self._pinned_session is None:
-            self._pinned_session = ClientSession(cookie_jar=CookieJar(unsafe=True), trust_env=False)
-        url = f"https://{host}:{port}/proxy/network/v2/api/site/{site}{request.path}"
-        try:
-            async with self._pinned_session.request(
-                request.method.upper(),
-                url,
-                headers={"X-API-KEY": self.route_api_key},
-                json=deepcopy(request.data) if request.method == "put" else None,
-                ssl=Fingerprint(bytes.fromhex(self.tls_pin_sha256)),
-                timeout=ClientTimeout(total=15),
-                allow_redirects=False,
-            ) as response:
-                if response.status not in (200, 201, 204):
-                    _LOGGER.warning(
-                        "Dedicated UniFi route API rejected request (HTTP %s)", response.status
-                    )
-                    raise SyncError("The dedicated UniFi route API request failed")
-                if request.method == "put":
-                    return None
-                return await response.json(content_type=None)
-        except (ClientError, JSONDecodeError, TimeoutError, OSError):
-            raise SyncError("The dedicated UniFi route API request failed") from None
+            self._pinned_session = ClientSession(trust_env=False)
+        authority = f"[{self.host}]" if ":" in self.host else self.host
+        prefix = (
+            f"/proxy/network/v2/api/site/{self.site}"
+            if route
+            else f"/proxy/network/api/s/{self.site}"
+        )
+        key = (self.route_api_key or self.api_key) if route else self.api_key
+        url = f"https://{authority}:{self.port}{prefix}{request.path}"
+        async with self._pinned_session.request(
+            request.method.upper(),
+            url,
+            headers={"X-API-KEY": key},
+            json=deepcopy(request.data) if request.method == "put" else None,
+            ssl=Fingerprint(bytes.fromhex(self.tls_pin_sha256)) if self.tls_pin_sha256 else True,
+            timeout=ClientTimeout(total=15),
+            allow_redirects=False,
+        ) as response:
+            if response.status not in (200, 201, 204):
+                _LOGGER.warning("UniFi API rejected request (HTTP %s)", response.status)
+                raise SyncError("The configured UniFi API request failed")
+            if request.method == "put":
+                return None
+            return await response.json(content_type=None)
 
     async def read_routes(self):
         from aiounifi.models.traffic_route import TrafficRouteListRequest
@@ -215,12 +168,7 @@ class UniFiBackend:
         await self._request(TrafficRouteSaveRequest.create(deepcopy(route)))
 
     async def read_gateways(self) -> dict[str, dict]:
-        """Read WAN-capable devices using the parent's authenticated API.
-
-        The device list request has a fixed path. No user-supplied host, URL or
-        credentials are accepted here, and this does not modify the parent's
-        cached objects or publish private interface addresses as attributes.
-        """
+        """Read WAN-capable devices with this entry's credentials."""
         from aiounifi.models.device import DeviceListRequest
 
         response = await self._request(DeviceListRequest.create())
@@ -238,3 +186,12 @@ class UniFiBackend:
                 raise SyncError("Ambiguous UniFi gateway identity")
             gateways[device_id] = deepcopy(row)
         return gateways
+
+
+async def read_controller(hass, settings, method, *, backend_factory=UniFiBackend):
+    """Flow probes always close their temporary authenticated session."""
+    backend = backend_factory(hass, settings)
+    try:
+        return await getattr(backend, method)()
+    finally:
+        await backend.async_close()

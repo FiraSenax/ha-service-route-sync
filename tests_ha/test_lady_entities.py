@@ -33,7 +33,9 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
             "sources": {"api": True, "probe": False, "dns": True, "windows": False},
             "notification_ok": False,
         }
-        self.runtime = SimpleNamespace(incidents=self.coordinator, active=False)
+        self.runtime = SimpleNamespace(
+            incidents=self.coordinator, active=False, profile_name="Office PC"
+        )
 
     async def asyncTearDown(self):
         await self.hass.async_stop(force=True)

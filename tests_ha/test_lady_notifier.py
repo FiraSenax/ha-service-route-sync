@@ -33,7 +33,9 @@ class NotifierTests(unittest.IsolatedAsyncioTestCase):
             },
             expected_revision=0,
         )
-        self.notifier = LadyNotifier(self.hass, LadyTransaction(self.store))
+        self.notifier = LadyNotifier(
+            self.hass, LadyTransaction(self.store), "test_target", "Office PC"
+        )
 
     async def asyncTearDown(self):
         await self.hass.async_stop(force=True)
@@ -48,7 +50,7 @@ class NotifierTests(unittest.IsolatedAsyncioTestCase):
         async def fail(call):
             raise HomeAssistantError("synthetic")
 
-        self.hass.services.async_register("notify", "pushover", fail)
+        self.hass.services.async_register("notify", "test_target", fail)
         with self.assertRaises(HomeAssistantError):
             await self.notifier.async_drain()
         fresh = LadyCheckpointStore(self.hass, "notifytest")
@@ -59,11 +61,12 @@ class NotifierTests(unittest.IsolatedAsyncioTestCase):
         async def succeed(call):
             calls.append(call.data)
 
-        self.hass.services.async_register("notify", "pushover", succeed)
-        notifier = LadyNotifier(self.hass, LadyTransaction(fresh))
+        self.hass.services.async_register("notify", "test_target", succeed)
+        notifier = LadyNotifier(self.hass, LadyTransaction(fresh), "test_target", "Office PC")
         self.assertEqual(await notifier.async_drain(maximum=1), 1)
         self.assertEqual(len(fresh.state["outbox"]), 1)
-        self.assertEqual(calls[0]["data"]["priority"], 0)
+        self.assertTrue(calls[0]["title"].startswith("Office PC"))
+        self.assertNotIn("data", calls[0])
         self.assertEqual(await notifier.async_drain(), 1)
         self.assertEqual(fresh.state["outbox"], [])
         self.assertEqual(await notifier.async_drain(), 0)

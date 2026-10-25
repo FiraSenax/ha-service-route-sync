@@ -94,7 +94,7 @@ def parse_client_probes(raw, now: datetime, profile_ids: tuple[str, ...]) -> Cli
                 if (
                     stamp > observed
                     or not isinstance(row["connections"], dict)
-                    or set(row["connections"]) != {"dsl", "starlink", "vpn1", "vpn2", "other"}
+                    or set(row["connections"]) != {"primary", "secondary", "vpn1", "vpn2", "other"}
                 ):
                     raise NetworkDataError("Unexpected routing measurements")
                 routes[key] = RoutingObservation(stamp, True, row["connections"])

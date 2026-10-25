@@ -2,21 +2,43 @@ import copy
 from datetime import datetime, timezone
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.lady_engine import LadyIncidentEngine, counter_delta
+from service_route_sync.lady_engine import LadyIncidentEngine, counter_delta, pc_monitoring_status
 
 NOW = datetime(2026, 10, 12, 1, tzinfo=timezone.utc).timestamp()
 
 
 class LadyEngineTests(unittest.TestCase):
+    def test_pc_monitoring_status_explains_suppressed_alerts(self):
+        row = self.active_row()
+        row.update(api_ok=True, probe_ok=True)
+        row["probes"]["lan"]["loss"] = 100
+        self.assertEqual(pc_monitoring_status(row, {}, NOW), "no_pc_evidence")
+        row["port"]["up"] = False
+        self.assertEqual(pc_monitoring_status(row, {}, NOW), "port_disconnected")
+        self.assertEqual(
+            pc_monitoring_status(row, {"expected_power_off": True}, NOW), "powered_off"
+        )
+        row["port"]["up"] = True
+        row["probes"]["lan"]["loss"] = 0
+        self.assertEqual(pc_monitoring_status(row, {}, NOW), "active")
+        row["probes"]["lan"]["loss"] = None
+        row["windows"] = {"agent": {"last_keepalive": NOW - 15}}
+        self.assertEqual(pc_monitoring_status(row, {}, NOW), "active")
+        row["api_ok"] = False
+        self.assertEqual(pc_monitoring_status(row, {}, NOW), "source_unavailable")
+
     def test_missing_dns_source_breaks_existing_recovery_timer(self):
         engine = LadyIncidentEngine(
             {"incidents": {"DNS test-resolver": {"active": True, "since": None, "good": NOW - 20}}}
         )
-        engine.sample({}, NOW)
+        row = self.active_row()
+        row.pop("dns")
+        engine.sample(row, NOW)
         self.assertIsNone(engine.s["incidents"]["DNS test-resolver"]["good"])
-        engine.sample({"dns": {"test-resolver": {"ok": True}}}, NOW + 20)
+        row["dns"] = {"test-resolver": {"ok": True}}
+        engine.sample(row, NOW + 20)
         self.assertTrue(engine.s["incidents"]["DNS test-resolver"]["active"])
-        engine.sample({"dns": {"test-resolver": {"ok": True}}}, NOW + 51)
+        engine.sample(row, NOW + 51)
         self.assertFalse(engine.s["incidents"]["DNS test-resolver"]["active"])
 
     def test_unknown_link_is_not_an_offline_transition(self):
@@ -34,13 +56,14 @@ class LadyEngineTests(unittest.TestCase):
         row = {
             "api_ok": True,
             "port_identity": "test",
-            "port": {"link_down_count": True},
+            "port": {"link_down_count": True, "up": True},
             "switch_uptime": "10",
         }
         engine.link_flaps(row, NOW, False, False)
         self.assertNotIn("link_flap_window", engine.s)
         row["port"]["link_down_count"] = 10
         row["switch_uptime"] = 100
+        engine.s["up_since"] = NOW - 1000
         engine.link_flaps(row, NOW, False, False)
         engine.s["incidents"]["LAN-Linkabbrüche gehäuft"]["active"] = True
         engine.link_flaps(row, NOW + 121, False, False)
@@ -66,39 +89,65 @@ class LadyEngineTests(unittest.TestCase):
             "dns": {"test-resolver": {"ok": False}},
         }
 
-    def test_expected_shutdown_does_not_disable_wan_or_dns_incidents(self):
+    def active_row(self):
+        row = self.row()
+        row["port"]["speed"] = 2500
+        row["probes"]["lan"] = {"loss": 0, "avg": 1}
+        return row
+
+    def test_expected_shutdown_suppresses_all_lady_notifications(self):
         engine = LadyIncidentEngine({"power_off": NOW - 10, "power_on": NOW - 1000})
         engine.sample(self.row(), NOW)
         events = engine.sample(self.row(), NOW + 31)
         self.assertTrue(engine.s["expected_power_off"])
-        self.assertTrue(any(event["key"] == "DSL-Paketverlust" for event in events))
-        self.assertTrue(any(event["key"] == "DNS test-resolver" for event in events))
-        self.assertFalse(any(event["key"].startswith("LAN-") for event in events))
+        self.assertEqual(events, [])
+        self.assertFalse(any(value["active"] for value in engine.s["incidents"].values()))
 
     def test_persisted_incident_and_notification_dedup_survive_restore(self):
-        engine = LadyIncidentEngine({"power_off": NOW - 10, "power_on": NOW - 1000})
-        engine.sample(self.row(), NOW)
-        engine.sample(self.row(), NOW + 31)
+        engine = LadyIncidentEngine()
+        engine.sample(self.active_row(), NOW)
+        engine.sample(self.active_row(), NOW + 31)
         checkpoint = copy.deepcopy(engine.s)
         restored = LadyIncidentEngine(checkpoint)
-        self.assertFalse(restored.sample(self.row(), NOW + 40))
-        self.assertTrue(restored.s["incidents"]["DSL-Paketverlust"]["active"])
+        self.assertFalse(restored.sample(self.active_row(), NOW + 40))
+        self.assertTrue(restored.s["incidents"]["Primär-WAN-Paketverlust"]["active"])
         restored.s["power_on"] = NOW + 41
-        self.assertEqual(checkpoint["power_on"], NOW - 1000)
+        self.assertNotIn("power_on", checkpoint)
 
     def test_wan_recovery_requires_existing_stability_window(self):
-        engine = LadyIncidentEngine({"power_off": NOW - 10, "power_on": NOW - 1000})
-        engine.sample(self.row(), NOW)
-        engine.sample(self.row(), NOW + 31)
-        row = self.row()
+        engine = LadyIncidentEngine()
+        engine.sample(self.active_row(), NOW)
+        engine.sample(self.active_row(), NOW + 31)
+        row = self.active_row()
         row["probes"]["wan_cf"]["loss"] = 0
         row["probes"]["wan_google"]["loss"] = 0
         engine.sample(row, NOW + 40)
-        self.assertTrue(engine.s["incidents"]["DSL-Paketverlust"]["active"])
+        self.assertTrue(engine.s["incidents"]["Primär-WAN-Paketverlust"]["active"])
         events = engine.sample(row, NOW + 71)
         self.assertTrue(
-            any(event["key"] == "DSL-Paketverlust" and event["recovery"] for event in events)
+            any(event["key"] == "Primär-WAN-Paketverlust" and event["recovery"] for event in events)
         )
+
+    def test_disconnected_pc_clears_stale_incidents_without_recovery(self):
+        engine = LadyIncidentEngine()
+        engine.sample(self.active_row(), NOW)
+        engine.sample(self.active_row(), NOW + 31)
+        offline = self.row()
+        offline["port"]["up"] = False
+        self.assertEqual(engine.sample(offline, NOW + 40), [])
+        self.assertEqual(engine.sample(offline, NOW + 200), [])
+        self.assertFalse(any(value["active"] for value in engine.s["incidents"].values()))
+        self.assertEqual(engine.sample(self.active_row(), NOW + 210), [])
+
+    def test_wake_on_lan_link_requires_positive_pc_evidence(self):
+        engine = LadyIncidentEngine()
+        row = self.row()
+        for seconds in (0, 31, 150, 300):
+            self.assertEqual(engine.sample(row, NOW + seconds), [])
+        row["windows"] = {"agent": {"last_keepalive": NOW + 300}}
+        engine.sample(row, NOW + 305)
+        events = engine.sample(row, NOW + 336)
+        self.assertTrue(any(event["key"] == "Primär-WAN-Paketverlust" for event in events))
 
     def test_unknown_interrupts_recovery_without_clearing_active_incident(self):
         engine = LadyIncidentEngine()
@@ -125,12 +174,12 @@ class LadyEngineTests(unittest.TestCase):
             value.update(loss=0, avg=100)
         engine.wan_dns(row, NOW)
         engine.wan_dns(row, NOW + 16)
-        self.assertTrue(engine.s["incidents"]["DSL-Latenz"]["active"])
+        self.assertTrue(engine.s["incidents"]["Primär-WAN-Latenz"]["active"])
         for value in row["probes"].values():
             value["avg"] = None
         engine.wan_dns(row, NOW + 20)
         engine.wan_dns(row, NOW + 60)
-        self.assertTrue(engine.s["incidents"]["DSL-Latenz"]["active"])
+        self.assertTrue(engine.s["incidents"]["Primär-WAN-Latenz"]["active"])
 
     def test_counter_delta_rejects_missing_reset_and_invalid_values(self):
         for current, previous in [

@@ -4,9 +4,11 @@ Deutsch · [English](README.md)
 
 [![Tests](https://github.com/FiraSenax/ha-service-route-sync/actions/workflows/tests.yml/badge.svg)](https://github.com/FiraSenax/ha-service-route-sync/actions/workflows/tests.yml)
 
-Eine Home-Assistant-Integration, die Zielnetze ausgewählter Spiele und Dienste in bestehenden UniFi-Routen aktuell hält. Läuft direkt in HA, nutzt die vorhandene UniFi-Anmeldung und braucht keinen externen Timer.
+Eine Home-Assistant-Integration, die Zielnetze ausgewählter Spiele und Dienste in bestehenden UniFi-Routen aktuell hält. Läuft direkt in HA, nutzt einen eigenen, ausdrücklich konfigurierten lokalen UniFi-API-Schlüssel und braucht keinen externen Timer.
 
-**Vorschau ist standardmäßig aktiv.** Die Integration läuft in der lokalen Installation mit Home Assistant **2026.10.1**. Router-Schreibvorgänge und Wiederherstellung sind automatisiert mit simuliertem Backend getestet; ein produktiver Schreibtest für die Dienstrouten steht noch aus.
+**Vorschau ist standardmäßig aktiv.** Controller-Zugriff, Router-Schreibvorgänge und Wiederherstellung sind automatisiert mit simuliertem Backend getestet. Diese Version muss vor automatischen Schreibzugriffen noch am eigenen Controller geprüft werden.
+
+**Upgrade auf 0.3:** Eigene Zugangsdaten, Steuerungs-Helper, Diagnoseprofil und Benachrichtigungsziel eintragen. Persönliche Standardwerte werden nicht übernommen. Details stehen in der [Konfigurations- und Umstellungsanleitung](docs/CONFIGURATION.md).
 
 ## Dienste
 
@@ -35,7 +37,7 @@ Azure und AWS werden bewusst nach konkreten Tags, Diensten und Regionen ausgewä
 
 | Backend | Stand |
 | --- | --- |
-| UniFi Network | Implementiert; vorhandene offizielle HA-UniFi-Integration erforderlich |
+| UniFi Network | Implementiert; eigene lokale UniFi-Zugangsdaten erforderlich |
 | FRITZ!Box | Noch nicht implementiert; keine gleichwertige API-Funktion zugesagt |
 | Weitere Router | Backend-Schnittstelle vorhanden, konkrete Unterstützung noch offen |
 
@@ -51,13 +53,13 @@ keinen zuletzt gültigen Client-Snapshot.
 
 ## Installation
 
-Home Assistant **2026.9 oder neuer** und eine bereits eingerichtete, geladene **UniFi Network**-Integration werden benötigt. Der UniFi-Benutzer braucht Zugriff auf Traffic Routes; für automatische Änderungen entsprechende Schreibrechte.
+Home Assistant **2026.9 oder neuer** und ein erreichbarer **UniFi Network**-Controller werden benötigt. Die Einrichtung erfolgt ausschließlich mit einem lokalen Network-API-Schlüssel. Benötigte Zugriffe und Grenzen der Rechtevergabe stehen unter [Berechtigungen](docs/PERMISSIONS.md). Für Beobachtung werden nur Lesezugriffe benötigt; Routenänderungen brauchen zusätzlich Updates vorhandener Routen. Ein separater Schlüssel ist nicht automatisch auf diese Rechte beschränkt: Entscheidend ist, welche Beschränkungen die eingesetzte UniFi-Version tatsächlich durchsetzt.
 
 1. HACS öffnen → Menü → **Benutzerdefinierte Repositories**.
 2. `https://github.com/FiraSenax/ha-service-route-sync` hinzufügen, Typ **Integration**.
 3. **Service Route Sync** herunterladen und HA neu starten.
 4. Einstellungen → Geräte & Dienste → Integration hinzufügen → **Service Route Sync**.
-5. UniFi-Anbindung, Spiele/Dienste und bei Bedarf Cloud-Filter auswählen.
+5. Controller-Host, Port, Site und eigene lokale Zugangsdaten eingeben; Spiele/Dienste und Cloud-Filter auswählen.
 6. Jedem Dienst eine eigene vorhandene IP-Route zuordnen. Diese Routen zuvor im UniFi-Gateway mit gewünschtem WAN und Geräte-/Netzbereich anlegen.
 
 Das Repository ist als HACS-Custom-Repository installierbar; eine Aufnahme in den HACS-Standardkatalog ist nicht erfolgt.
@@ -75,7 +77,7 @@ Nach der Einrichtung erscheinen:
 - **Automatic route updates**: Standardmäßig **aus**. Einschalten erlaubt Änderungen und startet eine frische Prüfung.
 - **Restore last route update**: Letzte einzelne Routensicherung zurückspielen, wenn die Automatik aus ist und niemand die Route inzwischen verändert hat.
 
-Vor dem Einschalten externe Skripte oder weitere Integrationen deaktivieren, die dieselben Routen ändern. Pro UniFi-Anbindung wird eine Service-Route-Sync-Instanz eingerichtet.
+Vor dem Einschalten externe Skripte oder weitere Integrationen deaktivieren, die dieselben Routen ändern. Pro Controller-Endpunkt und Site wird eine Service-Route-Sync-Instanz eingerichtet.
 
 Das Prüfintervall beträgt standardmäßig 24 Stunden, einstellbar zwischen einer Stunde und einer Woche. Erfolgreich geladene Quellen werden eine Stunde zwischengespeichert; erneutes Drücken lädt in dieser Zeit dieselben Quelldaten, liest den Router aber erneut. Änderungen der Integrationsoptionen schalten die Automatik wieder aus.
 
@@ -122,7 +124,7 @@ python -m venv .venv
 .venv/bin/ruff format --check .
 ```
 
-`core.py` enthält routerunabhängige Planung und Schreibprüfungen, `providers.py` die Datenquellen und `backends/unifi.py` den Adapter. Der Adapter nutzt die `aiounifi`-API der offiziellen HA-Integration; Änderungen dieser Schnittstelle können Anpassungen benötigen. GitHub Actions prüft Tests, Formatierung, Python-Kompilierung, Hassfest und HACS.
+`core.py` enthält routerunabhängige Planung und Schreibprüfungen, `providers.py` die Datenquellen und `backends/unifi.py` den Adapter. Der Adapter verwendet eine eigene `aiounifi`-Clientinstanz mit explizit konfigurierten Zugangsdaten; Änderungen dieser Schnittstelle können Anpassungen benötigen. GitHub Actions prüft Tests, Formatierung, Python-Kompilierung, Hassfest und HACS.
 
 ## Quellen
 

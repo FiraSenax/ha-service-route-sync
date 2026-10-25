@@ -13,9 +13,12 @@ from datetime import date
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from configuration import read_private_config
+from windows_reader.windows_source import validate_agent_id
+
 from windows_reader.windows_protocol import parse_cursor_request, parse_windows_response
-from windows_reader.windows_source import read_windows_batch, read_windows_archive_batch
-from windows_reader.windows_archive import DailyCursor
+from windows_reader.windows_source import read_windows_archive_batch
+from windows_reader.windows_archive import DailyCursor, DEFAULT_MAX_ARCHIVE_BYTES, MAX_ARCHIVE_BYTES
 
 
 def request(schema):
@@ -33,7 +36,9 @@ def request(schema):
             raise ValueError("request_size")
 
 
-def bounded_archive_response(root, database, cursor, today):
+def bounded_archive_response(
+    root, database, cursor, today, agent_id, maximum_archive_bytes=DEFAULT_MAX_ARCHIVE_BYTES
+):
     """Reduce the archive page until its complete response fits the SSH bound."""
     page_bytes = 1048576
     while True:
@@ -42,8 +47,9 @@ def bounded_archive_response(root, database, cursor, today):
             database,
             cursor or DailyCursor(today.isoformat(), 0),
             today,
-            "013",
+            agent_id,
             maximum_bytes=page_bytes,
+            maximum_archive_bytes=maximum_archive_bytes,
         )
         raw = dataclasses.asdict(batch)
         raw["schema"] = 2
@@ -66,26 +72,28 @@ def main():
     # One small page per invocation; no caller paths, agent or query allowed.
     with open("/run/service-route-sync-windows.lock", "a+b") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        database = Path("/var/ossec/queue/db/global.db")
-        if schema == 2:
-            # Null is bootstrap only. Migration must supply the mapped old day.
-            today = date.today()
-            encoded = bounded_archive_response(
-                Path("/var/ossec/logs/alerts"), database, cursor, today
-            )
-        else:
-            batch = read_windows_batch(
-                Path("/var/ossec/logs/alerts/alerts.json"),
-                database,
-                cursor,
-                "013",
-                maximum_bytes=32768,
-            )
-            raw = dataclasses.asdict(batch)
-            raw["schema"] = schema
-            raw["events"] = list(raw["events"])
-            parse_windows_response(raw)
-            encoded = json.dumps(raw, separators=(",", ":"), allow_nan=False).encode()
+        config = read_private_config("/data/service-route-sync/windows.json")
+        if (
+            not {"agent_id", "database", "alerts_root"}
+            <= set(config)
+            <= {"agent_id", "database", "alerts_root", "maximum_archive_bytes"}
+        ):
+            raise ValueError("invalid_configuration")
+        maximum_archive_bytes = config.get("maximum_archive_bytes", DEFAULT_MAX_ARCHIVE_BYTES)
+        if (
+            type(maximum_archive_bytes) is not int
+            or not 1 <= maximum_archive_bytes <= MAX_ARCHIVE_BYTES
+        ):
+            raise ValueError("invalid_configuration")
+        agent_id = config["agent_id"]
+        validate_agent_id(agent_id)
+        database, alerts_root = Path(config["database"]), Path(config["alerts_root"])
+        if not database.is_absolute() or not alerts_root.is_absolute():
+            raise ValueError("invalid_configuration")
+        today = date.today()
+        encoded = bounded_archive_response(
+            alerts_root, database, cursor, today, agent_id, maximum_archive_bytes
+        )
         if len(encoded) > 65536:
             raise ValueError("response_size")
         sys.stdout.buffer.write(encoded)

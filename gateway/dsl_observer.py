@@ -7,18 +7,36 @@ import json
 import os
 import stat
 import time
+import re
+from configuration import read_private_config
 
 from client_observer import parse_ping
 from observer import ObservationError, run
 
 COMMAND = "service-route-sync dsl v1"
 TARGETS = {"wan_cf": "1.1.1.1", "wan_google": "8.8.8.8"}
-DSL_MARK = str(0x21940000)
 
 
-async def route_is_dsl(target):
+def probe_config():
+    raw = read_private_config("/data/service-route-sync/wan-probe.json")
+    if (
+        set(raw) != {"interface", "mark"}
+        or not isinstance(raw["interface"], str)
+        or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,14}", raw["interface"])
+    ):
+        raise ValueError("invalid_configuration")
+    if (
+        raw["interface"] == "lo"
+        or type(raw["mark"]) is not int
+        or not 0 < raw["mark"] <= 0xFFFFFFFF
+    ):
+        raise ValueError("invalid_configuration")
+    return raw["interface"], str(raw["mark"])
+
+
+async def route_is_dsl(target, interface, mark):
     code, output, _ = await run(
-        ["ip", "-j", "-4", "route", "get", target, "mark", DSL_MARK, "oif", "ppp0"], timeout=2
+        ["ip", "-j", "-4", "route", "get", target, "mark", mark, "oif", interface], timeout=2
     )
     if code != 0 or len(output) > 8192:
         return False
@@ -30,15 +48,15 @@ async def route_is_dsl(target):
         isinstance(routes, list)
         and len(routes) == 1
         and isinstance(routes[0], dict)
-        and routes[0].get("dev") == "ppp0"
+        and routes[0].get("dev") == interface
         and routes[0].get("type", "unicast") == "unicast"
     )
 
 
-async def sample(target):
+async def sample(target, interface, mark):
     missing = {"loss": None, "avg": None, "max": None, "rc": 2}
     try:
-        if not await route_is_dsl(target):
+        if not await route_is_dsl(target, interface, mark):
             return dict(missing, error="dsl_route_unavailable")
         code, output, error = await run(
             [
@@ -52,14 +70,14 @@ async def sample(target):
                 "-W",
                 "1",
                 "-I",
-                "ppp0",
+                interface,
                 "-m",
-                DSL_MARK,
+                mark,
                 target,
             ],
             timeout=5,
         )
-        if not await route_is_dsl(target):
+        if not await route_is_dsl(target, interface, mark):
             return dict(missing, error="dsl_route_changed")
         if len(output) > 4096 or len(error) > 1024:
             return dict(missing, error="invalid_probe")
@@ -78,7 +96,8 @@ async def sample(target):
 
 
 async def observe():
-    values = await asyncio.gather(*(sample(target) for target in TARGETS.values()))
+    interface, mark = probe_config()
+    values = await asyncio.gather(*(sample(target, interface, mark) for target in TARGETS.values()))
     return {
         "schema": 1,
         "observed_at_ms": int(time.time() * 1000),

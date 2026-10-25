@@ -45,6 +45,14 @@ class FakeBackend:
 
 
 class PrefixTests(unittest.TestCase):
+    def test_fortnite_accepts_any_existing_anchor_ranges_and_preserves_them(self):
+        for ranges in ([], [{"ip_version": "v4", "ip_start": "9.9.9.1", "ip_stop": "9.9.9.2"}]):
+            original = route()
+            original["ip_ranges"] = ranges
+            plan = build_plan("fortnite", original, ["8.8.8.0/24", "1.1.1.0/24"])
+            self.assertEqual(plan.after["ip_ranges"], ranges)
+            self.assertEqual(original["ip_ranges"], ranges)
+
     def test_invalid_empty_private_and_default_inputs_fail(self):
         for values in (
             [],

@@ -106,12 +106,27 @@ def read_windows_batch(alerts: Path, database: Path, cursor, agent_id, *, maximu
     )
 
 
-def read_windows_archive_batch(root, database, cursor, today, agent_id, *, maximum_bytes=1048576):
+def read_windows_archive_batch(
+    root,
+    database,
+    cursor,
+    today,
+    agent_id,
+    *,
+    maximum_bytes=1048576,
+    maximum_archive_bytes=1024 * 1024 * 1024,
+):
     validate_agent_id(agent_id)
     # Wazuh writes alerts for every agent. A minute of the shared log can
     # exceed the old 32 KiB page even when our target agent has no events.
     # Keep the output bounded separately by the fixed SSH reader's 64 KiB cap.
-    page = read_daily_page(root, cursor, today, maximum_bytes=maximum_bytes)
+    page = read_daily_page(
+        root,
+        cursor,
+        today,
+        maximum_bytes=maximum_bytes,
+        maximum_archive_bytes=maximum_archive_bytes,
+    )
     try:
         heartbeat = read_heartbeat(database, agent_id)
     except (sqlite3.Error, OSError, WindowsSourceError):

@@ -110,23 +110,6 @@ def removed_coverage_percentage(previous, desired):
 def build_plan(service, route, prefixes, *, maximum_removal=0.5):
     if route.get("matching_target") != "IP" or route.get("domains") or route.get("regions"):
         raise SyncError("Bind an IP-based route without domain/region matching")
-    if service == "fortnite":
-        expected_ranges = {
-            ("v4", "199.255.40.0", "199.255.43.255"),
-            ("v4", "185.25.180.0", "185.25.183.255"),
-        }
-        observed_ranges = route.get("ip_ranges")
-        if (
-            not isinstance(observed_ranges, list)
-            or len(observed_ranges) != 2
-            or any(
-                not isinstance(row, dict) or set(row) != {"ip_version", "ip_start", "ip_stop"}
-                for row in observed_ranges
-            )
-            or {(row["ip_version"], row["ip_start"], row["ip_stop"]) for row in observed_ranges}
-            != expected_ranges
-        ):
-            raise SyncError("Fortnite route anchor ranges differ from the reviewed policy")
     before = deepcopy(route)
     previous = route_prefixes(before)
     desired = set(prefixes)

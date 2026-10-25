@@ -37,7 +37,7 @@ def register_ipv6_services(hass):
             {
                 vol.Required("entry_id"): str,
                 vol.Required("digest"): vol.Match(r"[0-9a-f]{64}"),
-                vol.Required("mode"): vol.In(("dsl", "starlink")),
+                vol.Required("mode"): vol.In(("primary", "secondary")),
             }
         ),
     )

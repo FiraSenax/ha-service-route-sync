@@ -86,7 +86,7 @@ def hook_lines(tool, table, chain, target):
     return tuple(line for line in raw.splitlines() if target in line)
 
 
-def current_delegation():
+def current_delegation(config):
     raw, _ = command(["ubios-udapi-client", "-r", "-t", "3", "GET", "/interfaces"])
     try:
         rows = json.loads(raw)
@@ -99,10 +99,10 @@ def current_delegation():
         for row in rows
         if isinstance(row, dict)
         and isinstance(row.get("identification"), dict)
-        and row["identification"].get("id") == "ppp0"
+        and row["identification"].get("id") == config.primary_interface
     ]
     if len(selected) != 1:
-        raise PolicyError("ambiguous_dsl_interface")
+        raise PolicyError("ambiguous_primary_interface")
     known, prefix = delegation(selected[0], 56)
     if not known:
         raise PolicyError("delegation_unknown")
@@ -128,7 +128,7 @@ def default_route(table, interface):
 
 def snapshot(config):
     try:
-        delegation_value = current_delegation()
+        delegation_value = current_delegation(config)
     except PolicyError as error:
         if str(error) != "delegation_unknown":
             raise
@@ -171,7 +171,7 @@ def request():
         or not re.fullmatch(r"[0-9a-f]{32}", value["transaction_id"])
         or not isinstance(value["expected_digest"], str)
         or not re.fullmatch(r"[0-9a-f]{64}", value["expected_digest"])
-        or value["mode"] not in ("dsl", "starlink")
+        or value["mode"] not in ("primary", "secondary")
     ):
         raise PolicyError("operation_denied")
     return value
@@ -215,7 +215,8 @@ def policy_command(action, priority, source, table):
     if (
         action not in ("add", "del")
         or priority not in (31009, 31010)
-        or table not in ("201.ppp0", "202.eth1")
+        or not isinstance(table, str)
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", table)
     ):
         raise PolicyError("invalid_managed_policy")
     return ["ip", "-6", "rule", action, "pref", str(priority), "from", source, "lookup", table]
@@ -226,7 +227,7 @@ def policy_parts(line, priority, config):
     if (
         not match
         or match[1] != str(config.ula)
-        or match[2] not in (config.dsl_table, config.starlink_table)
+        or match[2] not in (config.primary_table, config.secondary_table)
     ):
         raise PolicyError("unknown_policy_rule")
     return match[1], match[2]
@@ -345,11 +346,11 @@ def hooks_only_missing(snapshot_value, config):
 
 
 def ensure_target(config, mode, observed):
-    if mode == "dsl":
-        expected_nat(config, "dsl", observed.delegation)
-        if not default_route(config.dsl_table, "ppp0"):
+    if mode == "primary":
+        expected_nat(config, "primary", observed.delegation)
+        if not default_route(config.primary_table, config.primary_interface):
             raise PolicyError("target_route_unavailable")
-    elif not default_route(config.starlink_table, "eth1"):
+    elif not default_route(config.secondary_table, config.secondary_interface):
         raise PolicyError("target_route_unavailable")
 
 
@@ -370,8 +371,8 @@ def switch_exact(config, before, mode, old_mode):
         mutate(config, rule_command("ip6tables", "nat", old_rule, "-D"))
         return
     append_expected(config, mode, before.delegation)
-    target = config.dsl_table if mode == "dsl" else config.starlink_table
-    old = config.dsl_table if old_mode == "dsl" else config.starlink_table
+    target = config.primary_table if mode == "primary" else config.secondary_table
+    old = config.primary_table if old_mode == "primary" else config.secondary_table
     mutate(config, policy_command("add", 31009, str(config.ula), target))
     mutate(config, policy_command("del", 31010, str(config.ula), old))
     mutate(config, policy_command("add", 31010, str(config.ula), target))
@@ -389,7 +390,7 @@ def rebuild_blank(config, observed, mode):
         mutate(config, rule_command("iptables", "mangle", line, "-A"))
     mutate(config, insert_rule("ip6tables", "nat", "-A UBIOS_POSTROUTING_USER_HOOK -j IOB_V6_NAT"))
     mutate(config, insert_rule("iptables", "mangle", "-A UBIOS_PREROUTING_PBR -j IOB_SAB_PBR"))
-    target = config.dsl_table if mode == "dsl" else config.starlink_table
+    target = config.primary_table if mode == "primary" else config.secondary_table
     mutate(config, policy_command("add", 31010, str(config.ula), target))
 
 
@@ -634,11 +635,11 @@ def main():
                 recognized != "unknown" or blank(observed) or hooks_only_missing(observed, config)
             ),
             "blank": blank(observed),
-            "healthy": mode in ("dsl", "starlink"),
+            "healthy": mode in ("primary", "secondary"),
             "digest": observed.digest(),
             "delegation_ready": observed.delegation is not None,
-            "dsl_default": default_route(config.dsl_table, "ppp0"),
-            "starlink_default": default_route(config.starlink_table, "eth1"),
+            "primary_default": default_route(config.primary_table, config.primary_interface),
+            "secondary_default": default_route(config.secondary_table, config.secondary_interface),
             "review_required": journal is not None
             and journal.get("phase") in ("intent", "blocked"),
         }

@@ -54,7 +54,9 @@ class WindowsReaderPagingTests(unittest.TestCase):
                 return_value={"last_keepalive": int(time.time())},
             ):
                 while cursor.offset < archive.stat().st_size:
-                    response = observer.bounded_archive_response(root, root / "db", cursor, day)
+                    response = observer.bounded_archive_response(
+                        root, root / "db", cursor, day, "013"
+                    )
                     self.assertLessEqual(len(response), 65536)
                     result = json.loads(response)
                     seen.extend(int(event["id"]) for event in result["events"])

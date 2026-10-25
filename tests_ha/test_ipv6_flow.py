@@ -30,6 +30,13 @@ class IPv6FlowTests(unittest.IsolatedAsyncioTestCase):
     async def test_disabled_scope_preserves_other_options(self):
         flow = FlowHarness()
         flow.defaults.update(
+            {
+                f"ipv6_{name}_entity": f"input_boolean.custom_{name}"
+                for name in ("enabled", "dry_run", "nat66", "sab")
+            }
+        )
+        flow.defaults["ipv6_override_entity"] = "input_select.custom_wan"
+        flow.defaults.update(
             gateway_observer_enabled=True,
             gateway_observer_host="192.0.2.1",
             wifi_history_enabled=True,
@@ -51,6 +58,13 @@ class IPv6FlowTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_new_key_starts_in_inspection_mode(self):
         flow = FlowHarness()
+        flow.defaults.update(
+            {
+                f"ipv6_{name}_entity": f"input_boolean.custom_{name}"
+                for name in ("enabled", "dry_run", "nat66", "sab")
+            }
+        )
+        flow.defaults["ipv6_override_entity"] = "input_select.custom_wan"
         flow.defaults.update(gateway_observer_enabled=True, gateway_observer_host="192.0.2.1")
         with patch(
             "custom_components.service_route_sync.config_flow.prepare_ipv6_actor_key",
@@ -72,6 +86,13 @@ class IPv6FlowTests(unittest.IsolatedAsyncioTestCase):
     async def test_writer_requires_stopped_legacy_controller(self):
         flow = FlowHarness()
         flow.defaults.update(
+            {
+                f"ipv6_{name}_entity": f"input_boolean.custom_{name}"
+                for name in ("enabled", "dry_run", "nat66", "sab")
+            }
+        )
+        flow.defaults["ipv6_override_entity"] = "input_select.custom_wan"
+        flow.defaults.update(
             gateway_observer_enabled=True,
             gateway_observer_host="192.0.2.1",
             ipv6_actor_enabled=True,
@@ -89,6 +110,13 @@ class IPv6FlowTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_route_tls_fingerprint_is_verified_before_saving(self):
         flow = FlowHarness()
+        flow.defaults.update(
+            {
+                f"ipv6_{name}_entity": f"input_boolean.custom_{name}"
+                for name in ("enabled", "dry_run", "nat66", "sab")
+            }
+        )
+        flow.defaults["ipv6_override_entity"] = "input_select.custom_wan"
         flow.defaults.update(bindings={"blizzard": "route-id"}, automatic_apply=False)
         backend = SimpleNamespace(
             read_routes=AsyncMock(return_value={"route-id": {"_id": "route-id"}}),
@@ -103,7 +131,7 @@ class IPv6FlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["type"], "create_entry")
         self.assertEqual(result["data"]["unifi_tls_pin_sha256"], "61" * 32)
         self.assertFalse(result["data"]["automatic_apply"])
-        self.assertEqual(factory.call_args.kwargs["tls_pin_sha256"], "61" * 32)
+        self.assertEqual(factory.call_args.args[1]["unifi_tls_pin_sha256"], "61" * 32)
         backend.read_routes.assert_awaited_once()
         backend.async_close.assert_awaited_once()
 

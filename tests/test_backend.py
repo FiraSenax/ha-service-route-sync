@@ -10,35 +10,35 @@ from service_route_sync.backends.unifi import UniFiBackend
 from service_route_sync.core import SyncError
 
 
+CONNECTION = {
+    "unifi_host": "192.0.2.1",
+    "unifi_port": 443,
+    "unifi_site": "default",
+    "unifi_api_key": "x" * 32,
+}
+
+
 class UniFiTests(unittest.IsolatedAsyncioTestCase):
-    async def test_pinned_controller_uses_parent_credentials_but_separate_verified_session(self):
-        native = SimpleNamespace(
-            host="192.0.2.1",
-            username="test",
-            password="secret",
-            port=443,
-            site="default",
-            totp_secret=None,
-            session=object(),
-        )
-        parent_api = SimpleNamespace(connectivity=SimpleNamespace(config=native))
-        parent = SimpleNamespace(domain="unifi", runtime_data=SimpleNamespace(api=parent_api))
-        hass = SimpleNamespace(config_entries=SimpleNamespace(async_get_entry=lambda _: parent))
-        backend = UniFiBackend(hass, "parent", tls_pin_sha256="a" * 64)
-        with patch("aiounifi.controller.Controller") as controller_class:
-            controller = controller_class.return_value
-            controller.login = AsyncMock()
-            try:
-                self.assertIs(await backend._trusted_api(), controller)
-                self.assertIs(await backend._trusted_api(), controller)
-                controller.login.assert_awaited_once()
-                config = controller_class.call_args.args[0]
-                self.assertIsInstance(config.ssl_context, Fingerprint)
-                self.assertEqual(config.ssl_context.fingerprint, bytes.fromhex("a" * 64))
-                self.assertIsNot(config.session, native.session)
-                self.assertEqual((config.username, config.password), ("test", "secret"))
-            finally:
-                await backend.async_close()
+    async def test_owned_key_uses_fixed_endpoint_and_verified_tls_without_parent(self):
+        from unittest.mock import MagicMock
+
+        settings = {**CONNECTION, "unifi_tls_pin_sha256": "a" * 64}
+        backend = UniFiBackend(SimpleNamespace(), settings)
+        session = MagicMock()
+        session.close = AsyncMock()
+        response = SimpleNamespace(status=200, json=AsyncMock(return_value={"data": []}))
+        session.request.return_value.__aenter__.return_value = response
+        with patch("service_route_sync.backends.unifi.ClientSession", return_value=session):
+            self.assertEqual(await backend.read_clients(), [])
+            call = session.request.call_args
+            self.assertEqual(
+                call.args[1], "https://192.0.2.1:443/proxy/network/api/s/default/stat/sta"
+            )
+            self.assertEqual(call.kwargs["headers"], {"X-API-KEY": "x" * 32})
+            self.assertIsInstance(call.kwargs["ssl"], Fingerprint)
+            self.assertFalse(call.kwargs["allow_redirects"])
+            await backend.async_close()
+            session.close.assert_awaited_once()
 
     async def test_client_and_device_reads_use_fixed_parent_paths(self):
         for method, expected in [("read_clients", "/stat/sta"), ("read_devices", "/stat/device")]:
@@ -64,11 +64,11 @@ class UniFiTests(unittest.IsolatedAsyncioTestCase):
 
     def backend(self, response):
         api = SimpleNamespace(request=AsyncMock(return_value=response))
-        parent = SimpleNamespace(domain="unifi", runtime_data=SimpleNamespace(api=api))
-        hass = SimpleNamespace(config_entries=SimpleNamespace(async_get_entry=lambda _: parent))
-        return UniFiBackend(hass, "example-entry"), api
+        backend = UniFiBackend(SimpleNamespace(), CONNECTION)
+        backend._key_request = api.request
+        return backend, api
 
-    async def test_reads_existing_parent_api_without_new_login(self):
+    async def test_reads_owned_api(self):
         backend, api = self.backend([{"_id": "route", "enabled": False}])
         self.assertEqual(await backend.read_routes(), {"route": {"_id": "route", "enabled": False}})
         request = api.request.call_args.args[0]
@@ -106,10 +106,10 @@ class UniFiTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(SyncError):
                 await backend.read_routes()
 
-    async def test_unloaded_parent_is_not_replaced_by_another_login(self):
+    async def test_missing_owned_credentials_are_rejected(self):
         hass = SimpleNamespace(config_entries=SimpleNamespace(async_get_entry=lambda _: None))
         with self.assertRaises(SyncError):
-            await UniFiBackend(hass, "missing").read_routes()
+            await UniFiBackend(hass, {}).read_routes()
 
     async def test_gateway_reads_fixed_path_and_keeps_parent_data_private(self):
         source = {

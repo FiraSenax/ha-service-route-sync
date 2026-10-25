@@ -37,8 +37,8 @@ class ActorStatus:
     healthy: bool
     digest: str
     delegation_ready: bool
-    dsl_default: bool
-    starlink_default: bool
+    primary_default: bool
+    secondary_default: bool
     review_required: bool
 
 
@@ -57,7 +57,7 @@ def _digest(value: Any) -> str:
 
 
 def _mode(value: Any) -> str:
-    if value not in ("dsl", "starlink", "unknown") or not isinstance(value, str):
+    if value not in ("primary", "secondary", "unknown") or not isinstance(value, str):
         raise GatewayTransportError("Invalid gateway policy mode")
     return value
 
@@ -83,8 +83,8 @@ def parse_actor_response(raw: Any, operation: str) -> ActorStatus | ActorResult:
             "healthy",
             "digest",
             "delegation_ready",
-            "dsl_default",
-            "starlink_default",
+            "primary_default",
+            "secondary_default",
             "review_required",
         }
         if set(raw) != fields or raw["operation"] != "inspect":
@@ -94,7 +94,7 @@ def parse_actor_response(raw: Any, operation: str) -> ActorStatus | ActorResult:
         repairable, blank = _bool(raw["repairable"]), _bool(raw["blank"])
         healthy = _bool(raw["healthy"])
         if (
-            healthy != (mode in ("dsl", "starlink"))
+            healthy != (mode in ("primary", "secondary"))
             or (mode != "unknown" and (mode != owned_mode or not repairable or blank))
             or (blank and (mode != "unknown" or owned_mode != "unknown" or not repairable))
             or (owned_mode != "unknown" and not repairable)
@@ -109,8 +109,8 @@ def parse_actor_response(raw: Any, operation: str) -> ActorStatus | ActorResult:
             healthy,
             _digest(raw["digest"]),
             _bool(raw["delegation_ready"]),
-            _bool(raw["dsl_default"]),
-            _bool(raw["starlink_default"]),
+            _bool(raw["primary_default"]),
+            _bool(raw["secondary_default"]),
             _bool(raw["review_required"]),
         )
     if operation == "apply":
@@ -136,7 +136,7 @@ async def apply_actor(
     if not isinstance(transaction_id, str) or not _TRANSACTION.fullmatch(transaction_id):
         raise GatewayTransportError("Invalid gateway transaction")
     _digest(expected_digest)
-    if mode not in ("dsl", "starlink") or not isinstance(mode, str):
+    if mode not in ("primary", "secondary") or not isinstance(mode, str):
         raise GatewayTransportError("Invalid gateway policy mode")
     payload = json.dumps(
         {

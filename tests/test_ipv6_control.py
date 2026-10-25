@@ -18,14 +18,14 @@ NOW = datetime(2026, 10, 12, 12, tzinfo=timezone.utc)
 CONTROLS = IPv6Controls(True, False, True, True, "auto")
 
 
-def status(mode="dsl", *, owned_mode=None, blank=False, repairable=True, review=False):
+def status(mode="primary", *, owned_mode=None, blank=False, repairable=True, review=False):
     return ActorStatus(
         mode,
         True,
         owned_mode if owned_mode is not None else mode,
         repairable,
         blank,
-        mode in ("dsl", "starlink"),
+        mode in ("primary", "secondary"),
         "a" * 64,
         True,
         True,
@@ -34,20 +34,20 @@ def status(mode="dsl", *, owned_mode=None, blank=False, repairable=True, review=
     )
 
 
-def observation(dsl=True, starlink=True, *, age=0):
+def observation(primary=True, secondary=True, *, age=0):
     when = NOW - timedelta(seconds=age)
     primary = ProtocolObservation(
         "ppp0",
         when,
         True,
         True,
-        dsl,
+        primary,
         True,
         True,
         True,
-        None if not dsl else IPv6Network("2001:4860:abcd:1200::/56"),
+        None if not primary else IPv6Network("2001:4860:abcd:1200::/56"),
     )
-    secondary = ProtocolObservation("eth1", when, True, True, starlink, True, True, True, None)
+    secondary = ProtocolObservation("eth1", when, True, True, secondary, True, True, True, None)
     return GatewayObservation(when, primary, secondary)
 
 
@@ -67,7 +67,7 @@ class IPv6ControlTests(unittest.TestCase):
         ):
             self.assertFalse(plan_ipv6(FailoverState(), row, observation(), CONTROLS, NOW).write)
 
-    def test_dsl_outage_has_elapsed_hysteresis_and_no_both_down_write(self):
+    def test_primary_outage_has_elapsed_hysteresis_and_no_both_down_write(self):
         starting = FailoverState(Wan.PRIMARY)
         first = plan_ipv6(starting, status(), observation(False, True), CONTROLS, NOW)
         self.assertEqual(first.reason, "stabilizing")
@@ -85,13 +85,13 @@ class IPv6ControlTests(unittest.TestCase):
         )
         second = plan_ipv6(first.state, status(), later, CONTROLS, NOW + timedelta(seconds=16))
         self.assertTrue(second.write)
-        self.assertEqual(second.target, "starlink")
+        self.assertEqual(second.target, "secondary")
         self.assertFalse(
             plan_ipv6(first.state, status(), observation(False, False), CONTROLS, NOW).write
         )
 
-    def test_prefix_rotation_repairs_only_with_healthy_dsl(self):
-        stale = status("unknown", owned_mode="dsl")
+    def test_prefix_rotation_repairs_only_with_healthy_primary(self):
+        stale = status("unknown", owned_mode="primary")
         plan = plan_ipv6(FailoverState(Wan.PRIMARY), stale, observation(), CONTROLS, NOW)
         self.assertTrue(plan.write)
         self.assertEqual(plan.reason, "repair_prefix")
@@ -114,7 +114,7 @@ class IPv6ControlTests(unittest.TestCase):
         )
         second = plan_ipv6(first.state, blank, later, CONTROLS, NOW + timedelta(seconds=16))
         self.assertTrue(second.write)
-        self.assertEqual(second.target, "dsl")
+        self.assertEqual(second.target, "primary")
 
     def test_stale_or_unknown_health_blocks_actuation(self):
         self.assertEqual(
@@ -148,7 +148,7 @@ class IPv6ControlTests(unittest.TestCase):
             replace(CONTROLS, dry_run=True),
             NOW,
         )
-        self.assertEqual(preview.target, "starlink")
+        self.assertEqual(preview.target, "secondary")
         self.assertFalse(preview.write)
 
 

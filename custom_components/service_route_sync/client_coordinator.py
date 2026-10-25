@@ -1,4 +1,4 @@
-"""Read-only client collection through the authenticated native UniFi parent."""
+"""Read-only client collection through this integration’s own UniFi connection."""
 
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ class ClientCoordinator(DataUpdateCoordinator[ClientSnapshot]):
             {row["id"]: row.get("name", row["id"]) for row in profiles}
         )
         settings = {**entry.data, **entry.options}
-        self.backend = UniFiBackend(hass, settings["unifi_entry_id"])
+        self.backend = UniFiBackend(hass, settings)
         super().__init__(
             hass,
             _LOGGER,
@@ -71,6 +71,10 @@ class ClientCoordinator(DataUpdateCoordinator[ClientSnapshot]):
             config_entry=entry,
             update_interval=timedelta(seconds=30),
         )
+
+    async def async_shutdown(self):
+        await super().async_shutdown()
+        await self.backend.async_close()
 
     async def _async_update_data(self) -> ClientSnapshot:
         try:

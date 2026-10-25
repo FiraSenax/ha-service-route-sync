@@ -1,9 +1,6 @@
 {
   "domain": "service_route_sync",
   "name": "Service Route Sync",
-  "after_dependencies": [
-    "unifi"
-  ],
   "codeowners": [
     "@FiraSenax"
   ],
@@ -15,6 +12,8 @@
   "documentation": "https://github.com/FiraSenax/ha-service-route-sync",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/FiraSenax/ha-service-route-sync/issues",
-  "requirements": [],
-  "version": "0.2.2"
+  "requirements": [
+    "aiounifi==95"
+  ],
+  "version": "0.3.0"
 }

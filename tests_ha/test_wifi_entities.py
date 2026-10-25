@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests_ha import CONNECTION
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from custom_components.service_route_sync.wifi_coordinator import WifiCoordinator, WirelessSnapshot
@@ -18,7 +19,7 @@ class WifiEntityTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.hass = HomeAssistant(self.temp.name)
-        self.coordinator = WifiCoordinator(self.hass, None, "parent")
+        self.coordinator = WifiCoordinator(self.hass, None, CONNECTION)
         self.coordinator.config_entry = SimpleNamespace(entry_id="wifi-test")
         self.now = dt_util.utcnow()
         self.coordinator.data = WirelessSnapshot(self.now, ())

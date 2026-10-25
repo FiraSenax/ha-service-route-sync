@@ -20,7 +20,9 @@ class ProtocolTests(unittest.TestCase):
                     "probe_at_ms": STAMP,
                     "probe": {"loss": 0, "average_ms": 0, "maximum_ms": 0},
                     "routing_at_ms": STAMP,
-                    "connections": dict.fromkeys(["dsl", "starlink", "vpn1", "vpn2", "other"], 0),
+                    "connections": dict.fromkeys(
+                        ["primary", "secondary", "vpn1", "vpn2", "other"], 0
+                    ),
                 }
             },
         }
@@ -31,8 +33,8 @@ class ProtocolTests(unittest.TestCase):
     def test_real_zero_immutable_and_input_independent(self):
         result = self.parse()
         self.assertEqual(result.probes["pc"].loss, 0)
-        self.raw["clients"]["pc"]["connections"]["dsl"] = 99
-        self.assertEqual(result.routes["pc"].connections["dsl"], 0)
+        self.raw["clients"]["pc"]["connections"]["primary"] = 99
+        self.assertEqual(result.routes["pc"].connections["primary"], 0)
         with self.assertRaises(TypeError):
             result.probes["other"] = result.probes["pc"]
 
@@ -77,7 +79,7 @@ class ProtocolTests(unittest.TestCase):
 
     def test_counter_boolean_and_extra_route_rejected(self):
         for value in [True, -1, "0", 0.5]:
-            self.raw["clients"]["pc"]["connections"]["dsl"] = value
+            self.raw["clients"]["pc"]["connections"]["primary"] = value
             with self.assertRaises(NetworkDataError):
                 self.parse()
 

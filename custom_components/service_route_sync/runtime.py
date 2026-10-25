@@ -1,4 +1,4 @@
-"""Independent feature lifecycles for one authenticated UniFi parent."""
+"""Independent feature lifecycles for one independently authenticated config entry."""
 
 from __future__ import annotations
 

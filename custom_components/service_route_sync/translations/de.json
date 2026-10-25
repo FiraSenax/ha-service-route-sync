@@ -3,9 +3,8 @@
     "step": {
       "user": {
         "title": "Dienste auswählen",
-        "description": "Wähle eine bestehende UniFi-Anbindung. Die Einrichtung startet mit einer Vorschau ohne Routeränderungen.",
+        "description": "Eigene lokale UniFi-Zugangsdaten eingeben. TLS wird geprüft; für selbstsignierte Zertifikate den SHA-256-Fingerprint angeben. Einrichtung beginnt mit einer Vorschau.",
         "data": {
-          "unifi_entry_id": "UniFi-Integration",
           "services": "Dienste und Spiele",
           "ipv6": "IPv6 einbeziehen",
           "maximum_prefixes": "Maximale Präfixe pro Route",
@@ -15,8 +14,13 @@
           "client_monitoring_enabled": "PC-Netzwerk überwachen (nur lesend)",
           "work_probe_enabled": "Microsoft-365-Verbindung vom Haus messen",
           "network_metrics_enabled": "Geschützten Prometheus-Kompatibilitätsexport aktivieren",
-          "lady_enabled": "LadyOfGames-Netzwerkdiagnose",
-          "wifi_history_enabled": "WLAN-Historie aller Clients alle 30 Minuten speichern (lokal)"
+          "lady_enabled": "Client-Netzwerkdiagnose",
+          "wifi_history_enabled": "WLAN-Historie aller Clients alle 30 Minuten speichern (lokal)",
+          "unifi_host": "UniFi-Host",
+          "unifi_port": "HTTPS-Port",
+          "unifi_site": "UniFi-Site",
+          "unifi_tls_pin_sha256": "Zertifikat-Fingerprint SHA-256 (optional)",
+          "unifi_api_key": "Lokaler UniFi-API-Schlüssel (leer lassen zum Beibehalten)"
         }
       },
       "sources": {
@@ -93,12 +97,19 @@
         }
       },
       "lady": {
-        "title": "LadyOfGames auswählen",
+        "title": "Diagnoseprofil",
         "description": "Wähle die Netzwerkschnittstellen dieses PCs. Die Gaming-Profile bleiben getrennt. Eine neue Einrichtung startet mit Beobachtung ohne Benachrichtigungen. Ist der PC offline, trage seine bekannte MAC-Adresse in das separate Feld ein.",
         "data": {
           "lady_clients": "PC-Schnittstellen",
           "lady_reconfigure": "Quellenzugriffe neu prüfen",
-          "lady_manual_mac": "MAC-Adresse einer derzeit offline befindlichen PC-Schnittstelle"
+          "lady_manual_mac": "MAC-Adresse einer derzeit offline befindlichen PC-Schnittstelle",
+          "lady_profile_id": "Profilkennung",
+          "lady_profile_name": "Profilname",
+          "lady_windows_enabled": "Windows-/Wazuh-Quelle verwenden",
+          "lady_notify_service": "Benachrichtigungsdienst",
+          "lady_expected_speed": "Erwartete LAN-Geschwindigkeit (Mbit/s)",
+          "lady_maintenance_hour": "Wartungsstunde (HA-Zeitzone, −1 deaktiviert)",
+          "lady_maintenance_minutes": "Wartungsdauer ab voller Stunde (Minuten)"
         }
       },
       "lady_sources": {
@@ -109,6 +120,31 @@
           "lady_windows_host": "IP des Wazuh-Hosts",
           "gateway_host_public_key": "Öffentlicher Ed25519-Host-Schlüssel des Routers",
           "windows_host_public_key": "Öffentlicher Ed25519-Host-Schlüssel des Wazuh-Hosts"
+        }
+      },
+      "connection": {
+        "title": "UniFi-Verbindung",
+        "description": "Eigene lokale UniFi-Zugangsdaten eingeben. TLS wird geprüft; für selbstsignierte Zertifikate den SHA-256-Fingerprint angeben. Einrichtung beginnt mit einer Vorschau.",
+        "data": {
+          "unifi_host": "UniFi-Host",
+          "unifi_port": "HTTPS-Port",
+          "unifi_site": "UniFi-Site",
+          "unifi_tls_pin_sha256": "Zertifikat-Fingerprint SHA-256 (optional)",
+          "unifi_api_key": "Lokaler UniFi-API-Schlüssel (leer lassen zum Beibehalten)"
+        }
+      },
+      "ipv6_controls": {
+        "title": "IPv6-Steuerung",
+        "description": "Fünf unterschiedliche Helper und die drei Werte des Auswahl-Helpers konfigurieren.",
+        "data": {
+          "ipv6_enabled_entity": "Aktivierungs-Helper",
+          "ipv6_dry_run_entity": "Testmodus-Helper",
+          "ipv6_nat66_entity": "NAT66-Helper",
+          "ipv6_sab_entity": "Quellrouting-Helper",
+          "ipv6_override_entity": "WAN-Auswahl-Helper",
+          "ipv6_auto_option": "Auswahlwert für Automatik",
+          "ipv6_primary_option": "Auswahlwert für primäres WAN",
+          "ipv6_secondary_option": "Auswahlwert für sekundäres WAN"
         }
       }
     },
@@ -122,7 +158,9 @@
       "invalid_configuration": "Bitte gültige Einstellungen auswählen.",
       "invalid_observer_configuration": "Hostschlüssel oder WAN-Interfaces ungültig.",
       "observer_unavailable": "Beobachtungszugang nicht erreichbar oder Antwort ungültig/veraltet. Helfer, Schlüssel und Uhrzeit prüfen.",
-      "invalid_clients": "Wähle mindestens ein gültiges Gerät ohne doppelte Zuordnung."
+      "invalid_clients": "Wähle mindestens ein gültiges Gerät ohne doppelte Zuordnung.",
+      "notification_target_required": "Zuerst einen Benachrichtigungsdienst im Diagnoseprofil auswählen.",
+      "router_unavailable": "UniFi-Verbindung prüfen: Host, Zugangsdaten und Zertifikat."
     },
     "abort": {
       "router_unavailable": "Die gewählte UniFi-Anbindung ist nicht verfügbar.",
@@ -134,16 +172,16 @@
       "no_clients": "UniFi liefert keine auswählbaren Geräte.",
       "invalid_client_import": "Profilübernahme ungültig oder Probe-Zugang nicht bestätigt.",
       "client_profiles_imported": "Profile übernommen; die Integration wird neu geladen.",
-      "invalid_lady_configuration": "Die vorhandene Lady-Konfiguration ist ungültig."
+      "invalid_lady_configuration": "Die vorhandene Lady-Konfiguration ist ungültig.",
+      "reauth_successful": "UniFi-Verbindung aktualisiert."
     }
   },
   "options": {
     "step": {
       "user": {
         "title": "Dienste auswählen",
-        "description": "Wähle eine bestehende UniFi-Anbindung. Die Einrichtung startet mit einer Vorschau ohne Routeränderungen.",
+        "description": "Eigene lokale UniFi-Zugangsdaten eingeben. TLS wird geprüft; für selbstsignierte Zertifikate den SHA-256-Fingerprint angeben. Einrichtung beginnt mit einer Vorschau.",
         "data": {
-          "unifi_entry_id": "UniFi-Integration",
           "services": "Dienste und Spiele",
           "ipv6": "IPv6 einbeziehen",
           "maximum_prefixes": "Maximale Präfixe pro Route",
@@ -153,8 +191,13 @@
           "client_monitoring_enabled": "PC-Netzwerk überwachen (nur lesend)",
           "work_probe_enabled": "Microsoft-365-Verbindung vom Haus messen",
           "network_metrics_enabled": "Geschützten Prometheus-Kompatibilitätsexport aktivieren",
-          "lady_enabled": "LadyOfGames-Netzwerkdiagnose",
-          "wifi_history_enabled": "WLAN-Historie aller Clients alle 30 Minuten speichern (lokal)"
+          "lady_enabled": "Client-Netzwerkdiagnose",
+          "wifi_history_enabled": "WLAN-Historie aller Clients alle 30 Minuten speichern (lokal)",
+          "unifi_host": "UniFi-Host",
+          "unifi_port": "HTTPS-Port",
+          "unifi_site": "UniFi-Site",
+          "unifi_tls_pin_sha256": "Zertifikat-Fingerprint SHA-256 (optional)",
+          "unifi_api_key": "Lokaler UniFi-API-Schlüssel (leer lassen zum Beibehalten)"
         }
       },
       "sources": {
@@ -222,12 +265,19 @@
         }
       },
       "lady": {
-        "title": "LadyOfGames auswählen",
+        "title": "Diagnoseprofil",
         "description": "Wähle die Netzwerkschnittstellen dieses PCs. Die Gaming-Profile bleiben getrennt. Eine neue Einrichtung startet mit Beobachtung ohne Benachrichtigungen. Ist der PC offline, trage seine bekannte MAC-Adresse in das separate Feld ein.",
         "data": {
           "lady_clients": "PC-Schnittstellen",
           "lady_reconfigure": "Quellenzugriffe neu prüfen",
-          "lady_manual_mac": "MAC-Adresse einer derzeit offline befindlichen PC-Schnittstelle"
+          "lady_manual_mac": "MAC-Adresse einer derzeit offline befindlichen PC-Schnittstelle",
+          "lady_profile_id": "Profilkennung",
+          "lady_profile_name": "Profilname",
+          "lady_windows_enabled": "Windows-/Wazuh-Quelle verwenden",
+          "lady_notify_service": "Benachrichtigungsdienst",
+          "lady_expected_speed": "Erwartete LAN-Geschwindigkeit (Mbit/s)",
+          "lady_maintenance_hour": "Wartungsstunde (HA-Zeitzone, −1 deaktiviert)",
+          "lady_maintenance_minutes": "Wartungsdauer ab voller Stunde (Minuten)"
         }
       },
       "lady_sources": {
@@ -250,7 +300,7 @@
           "frigate_actor": "Frigate-Steuerung",
           "gateway_management": "Gateway-Verwaltungsadresse",
           "ipv6_policy": "IPv6-Regelsteuerung",
-          "lady_mode": "LadyOfGames-Betriebsmodus",
+          "lady_mode": "Client-Betriebsmodus",
           "lady_dns": "DNS-Server für überwachten PC"
         }
       },
@@ -263,12 +313,20 @@
       },
       "ipv6_policy": {
         "title": "IPv6-Regelsteuerung",
-        "description": "Zuerst mit einem eigenen, eingeschränkten Schlüssel nur prüfen. Schreiben erst aktivieren, nachdem der VM101-Schreiber gestoppt ist und der Gateway-Aktor Schreibbereitschaft sowie einen gesunden Zustand meldet.",
+        "description": "Zuerst mit einem eigenen, eingeschränkten Schlüssel nur prüfen. Schreiben erst aktivieren, nachdem der andere IPv6-Schreiber gestoppt ist und der Gateway-Aktor Schreibbereitschaft sowie einen gesunden Zustand meldet.",
         "data": {
           "ipv6_actor_enabled": "IPv6-Regeln prüfen",
           "ipv6_actor_active": "Home Assistant darf IPv6-Regeln schreiben",
           "ipv6_actor_reconfigure": "Neuen eingeschränkten Schlüssel anlegen",
-          "legacy_writer_stopped": "Der IPv6-Schreiber auf VM101 wurde gestoppt"
+          "legacy_writer_stopped": "Der andere IPv6-Schreiber wurde gestoppt",
+          "ipv6_enabled_entity": "Aktivierungs-Helper",
+          "ipv6_dry_run_entity": "Testmodus-Helper",
+          "ipv6_nat66_entity": "NAT66-Helper",
+          "ipv6_sab_entity": "Quellrouting-Helper",
+          "ipv6_override_entity": "WAN-Auswahl-Helper",
+          "ipv6_auto_option": "Auswahlwert für Automatik",
+          "ipv6_primary_option": "Auswahlwert für primäres WAN",
+          "ipv6_secondary_option": "Auswahlwert für sekundäres WAN"
         }
       },
       "route_services": {
@@ -303,11 +361,10 @@
         }
       },
       "lady_mode": {
-        "title": "LadyOfGames-Betriebsmodus",
-        "description": "Benachrichtigungen erst nach geprüftem Import und Stilllegung des alten Monitors aktivieren. Bei Problemen kann hier auf Beobachtung zurückgeschaltet werden.",
+        "title": "Diagnose-Benachrichtigungen",
+        "description": "Benachrichtigungen für den ausgewählten Dienst aktivieren. Ohne Aktivierung bleibt die Diagnose im Beobachtungsmodus.",
         "data": {
-          "lady_active": "Benachrichtigungen aktiv",
-          "legacy_monitor_stopped": "Alter Monitor wurde gestoppt"
+          "lady_active": "Benachrichtigungen aktiv"
         }
       },
       "lady_dns": {
@@ -315,6 +372,31 @@
         "data": {
           "primary": "Erster DNS-Server im LAN",
           "secondary": "Zweiter DNS-Server im LAN"
+        }
+      },
+      "connection": {
+        "title": "UniFi-Verbindung",
+        "description": "Eigene lokale UniFi-Zugangsdaten eingeben. TLS wird geprüft; für selbstsignierte Zertifikate den SHA-256-Fingerprint angeben. Einrichtung beginnt mit einer Vorschau.",
+        "data": {
+          "unifi_host": "UniFi-Host",
+          "unifi_port": "HTTPS-Port",
+          "unifi_site": "UniFi-Site",
+          "unifi_tls_pin_sha256": "Zertifikat-Fingerprint SHA-256 (optional)",
+          "unifi_api_key": "Lokaler UniFi-API-Schlüssel (leer lassen zum Beibehalten)"
+        }
+      },
+      "ipv6_controls": {
+        "title": "IPv6-Steuerung",
+        "description": "Fünf unterschiedliche Helper und die drei Werte des Auswahl-Helpers konfigurieren.",
+        "data": {
+          "ipv6_enabled_entity": "Aktivierungs-Helper",
+          "ipv6_dry_run_entity": "Testmodus-Helper",
+          "ipv6_nat66_entity": "NAT66-Helper",
+          "ipv6_sab_entity": "Quellrouting-Helper",
+          "ipv6_override_entity": "WAN-Auswahl-Helper",
+          "ipv6_auto_option": "Auswahlwert für Automatik",
+          "ipv6_primary_option": "Auswahlwert für primäres WAN",
+          "ipv6_secondary_option": "Auswahlwert für sekundäres WAN"
         }
       }
     },
@@ -330,11 +412,11 @@
       "observer_unavailable": "Beobachtungszugang nicht erreichbar oder Antwort ungültig/veraltet. Helfer, Schlüssel und Uhrzeit prüfen.",
       "invalid_clients": "Wähle mindestens ein gültiges Gerät ohne doppelte Zuordnung.",
       "frigate_observe_first": "Neue Verbindung zunächst ohne Neustartfreigabe speichern.",
-      "legacy_monitor_running": "Zuerst den alten Monitor stoppen und den finalen Checkpoint importieren.",
-      "ipv6_legacy_writer_running": "Vor der HA-Aktivierung den IPv6-Schreiber auf VM101 stoppen.",
+      "ipv6_legacy_writer_running": "Vor der HA-Aktivierung den andere IPv6-Schreiber stoppen.",
       "lady_sources_not_ready": "Die lesenden Lady-Quellen liefern noch keine aktuelle Beobachtung.",
-      "lady_checkpoint_missing": "Der importierte, dauerhafte Lady-Checkpoint oder seine Historie fehlt.",
-      "invalid_dns_servers": "Zwei verschiedene private IPv4-Adressen eingeben (10/8, 172.16/12 oder 192.168/16)."
+      "invalid_dns_servers": "Zwei verschiedene private IPv4-Adressen eingeben (10/8, 172.16/12 oder 192.168/16).",
+      "notification_target_required": "Zuerst einen Benachrichtigungsdienst im Diagnoseprofil auswählen.",
+      "router_unavailable": "UniFi-Verbindung prüfen: Host, Zugangsdaten und Zertifikat."
     },
     "abort": {
       "router_unavailable": "Die gewählte UniFi-Anbindung ist nicht verfügbar.",
@@ -345,7 +427,7 @@
       "observer_key_unavailable": "Der eigene Beobachtungsschlüssel konnte nicht sicher angelegt werden.",
       "no_clients": "UniFi liefert keine auswählbaren Geräte.",
       "invalid_lady_configuration": "Die vorhandene Lady-Konfiguration ist ungültig.",
-      "lady_not_configured": "LadyOfGames ist noch nicht eingerichtet."
+      "lady_not_configured": "Client ist noch nicht eingerichtet."
     }
   },
   "entity": {
@@ -413,6 +495,16 @@
       },
       "lady_last_observation": {
         "name": "Letzte Messung"
+      },
+      "lady_pc_monitoring": {
+        "name": "PC-Alarmstatus",
+        "state": {
+          "active": "Aktiv",
+          "powered_off": "Ausgeschaltet",
+          "port_disconnected": "Switch-Port getrennt",
+          "source_unavailable": "Messung nicht verfügbar",
+          "no_pc_evidence": "Kein aktueller PC-Nachweis"
+        }
       },
       "wifi_client_count": {
         "name": "Beobachtete WLAN-Clients"

@@ -9,10 +9,10 @@ feature remains unavailable and retries through its entity listeners. If all
 selected features fail, HA retries entry setup. The HA coordinator registers
 its shutdown with the config entry; entities remove their listeners on unload.
 
-The official UniFi parent integration remains the source for client and WAN
-reads and for selecting the controller. It has read-only route permission on
-this installation. Destination route reads and writes therefore use a separate
-dedicated API key stored in the HA config entry, never exposed in diagnostics.
+Client and WAN reads use this integration's own configured controller, local
+Network API key. No other integration's runtime client or stored
+credentials are accessed. Destination writes use a separate dedicated API key
+stored in this config entry and omitted from diagnostics.
 Those requests use fixed traffic-route paths, HTTPS certificate SHA-256 pinning,
 no redirects, bounded timeouts and sanitized error bodies. A gateway must be
 explicitly selected from discovered WAN-capable devices. Certificate rotation
@@ -48,8 +48,8 @@ two fixed target modes; arbitrary commands and parameters are denied. It uses
 authoritative DHCPv6 delegation discovery, interface-bound probes, a pinned
 host identity, durable intent, compare-and-swap digest, exact readback after
 every mutation, bounded rollback and a persistent latch on ambiguous results.
-The read-only WAN observer remains independent. The former VM101 service was
-disabled before HA became the sole writer and VM101 has been removed.
+The read-only WAN observer remains independent. The former external service was
+disabled before HA became the sole writer and external has been removed.
 
 ### Writer deployment, 2026-10-12
 

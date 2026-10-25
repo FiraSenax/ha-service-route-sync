@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests_ha import CONNECTION
 from homeassistant.exceptions import ConfigEntryNotReady
 from custom_components.service_route_sync import async_setup_entry, async_unload_entry
 from custom_components.service_route_sync.runtime import RuntimeData
@@ -43,7 +44,7 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(entry.runtime_data.frigate_actor)
 
     async def test_wifi_history_polls_and_unloads_without_gaming_or_cloud(self):
-        hass, entry = self.environment({"wifi_history_enabled": True, "unifi_entry_id": "parent"})
+        hass, entry = self.environment({"wifi_history_enabled": True, **CONNECTION})
         wifi = SimpleNamespace(
             async_config_entry_first_refresh=AsyncMock(),
             async_add_listener=Mock(return_value=Mock()),
@@ -66,7 +67,7 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
         )
         with patch("custom_components.service_route_sync.prepare_wifi", return_value=wifi):
             result, _, entry, _, network = await self.run_setup(
-                {"wifi_history_enabled": True, "network_enabled": True, "unifi_entry_id": "parent"}
+                {"wifi_history_enabled": True, "network_enabled": True, **CONNECTION}
             )
         self.assertTrue(result)
         self.assertIs(entry.runtime_data.network, network)
@@ -110,7 +111,7 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
 
     def environment(self, data):
         entry = SimpleNamespace(
-            data=data,
+            data={**CONNECTION, **data},
             options={},
             unique_id="parent",
             entry_id="entry",

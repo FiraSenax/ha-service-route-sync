@@ -28,13 +28,6 @@ from .ipv6_control import IPv6Controls, IPv6Plan, plan_ipv6
 from .runtime import RouteConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
-_DEFAULT_ENTITIES = {
-    "enabled": "input_boolean.ipv6_failover_aktiv",
-    "dry_run": "input_boolean.ipv6_failover_dry_run",
-    "nat66": "input_boolean.ipv6_failover_nat66_aktiv",
-    "sab": "input_boolean.ipv6_failover_sab_routing_aktiv",
-    "override": "input_select.ipv6_failover_override",
-}
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,7 +45,7 @@ def reconciliation_allowed(saved: dict, actor: ActorStatus, digest: str, mode: s
     return (
         isinstance(saved, dict)
         and saved.get("phase") == "intent"
-        and saved.get("target") in ("dsl", "starlink")
+        and saved.get("target") in ("primary", "secondary")
         and actor.writable
         and not actor.review_required
         and actor.healthy
@@ -115,7 +108,7 @@ class IPv6Coordinator(DataUpdateCoordinator[IPv6RuntimeStatus]):
             and re.fullmatch(r"[0-9a-f]{32}", saved["transaction_id"])
             and isinstance(saved["digest"], str)
             and re.fullmatch(r"[0-9a-f]{64}", saved["digest"])
-            and ("target" not in saved or saved["target"] in ("dsl", "starlink"))
+            and ("target" not in saved or saved["target"] in ("primary", "secondary"))
         ):
             self.local_latch = saved["phase"] == "intent"
         else:
@@ -124,13 +117,20 @@ class IPv6Coordinator(DataUpdateCoordinator[IPv6RuntimeStatus]):
 
     def _controls(self) -> IPv6Controls:
         values = {}
-        for name, default in _DEFAULT_ENTITIES.items():
-            entity_id = self.settings.get(f"ipv6_{name}_entity", default)
+        for name in ("enabled", "dry_run", "nat66", "sab", "override"):
+            entity_id = self.settings.get(f"ipv6_{name}_entity")
+            if not entity_id:
+                raise UpdateFailed("Select all IPv6 control helpers in the options")
             state = self.hass.states.get(entity_id)
             if state is None:
                 raise UpdateFailed("IPv6 control entity is unavailable")
             if name == "override":
-                values[name] = state.state
+                options = {
+                    self.settings.get("ipv6_auto_option", "auto"): "auto",
+                    self.settings.get("ipv6_primary_option", "primary"): "primary",
+                    self.settings.get("ipv6_secondary_option", "secondary"): "secondary",
+                }
+                values[name] = options.get(state.state)
             elif state.state in ("on", "off"):
                 values[name] = state.state == "on"
             else:
@@ -238,7 +238,7 @@ class IPv6Coordinator(DataUpdateCoordinator[IPv6RuntimeStatus]):
         if (
             self.active_writer
             or not re.fullmatch(r"[0-9a-f]{64}", digest)
-            or mode not in ("dsl", "starlink")
+            or mode not in ("primary", "secondary")
         ):
             raise ValueError("IPv6 writer must be inactive and readback exact")
         saved = await self.store.async_load()

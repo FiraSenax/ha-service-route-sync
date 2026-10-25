@@ -107,7 +107,15 @@ class LadyMetricsView(HomeAssistantView):
         entities = [
             row.entity_id
             for row in er.async_entries_for_config_entry(registry, entry_id)
-            if row.unique_id.startswith((entry_id + "_lady_", entry_id + "_client_ladyofgames_"))
+            if row.unique_id.startswith(
+                (
+                    entry_id + "_lady_",
+                    entry_id
+                    + "_client_"
+                    + settings.get("lady_profile", {}).get("id", "unconfigured")
+                    + "_",
+                )
+            )
         ]
         if not entities or any(
             not user.permissions.check_entity(entity, POLICY_READ) for entity in entities
@@ -120,8 +128,7 @@ class LadyMetricsView(HomeAssistantView):
         bandwidth = None
         network = getattr(runtime, "network", None)
         if (
-            settings.get("gateway_primary_interface") == "ppp0"
-            and network is not None
+            network is not None
             and network.last_update_success
             and network.data is not None
             and network.data.primary is not None

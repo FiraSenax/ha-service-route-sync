@@ -7,23 +7,25 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests_ha import CONNECTION
 from custom_components.service_route_sync.config_flow import OptionsFlow, Steps
 from custom_components.service_route_sync.const import DEFAULTS
 
 
 class FlowHarness(Steps):
     def __init__(self):
-        self.defaults = {**DEFAULTS, "unifi_entry_id": "parent"}
+        self.defaults = {**DEFAULTS, **CONNECTION}
         self.settings = {
             **DEFAULTS,
-            "unifi_entry_id": "parent",
+            **CONNECTION,
             "services": [],
             "network_enabled": True,
         }
         self.hass = SimpleNamespace(
+            services=SimpleNamespace(async_services=lambda: {"notify": {"test_target": {}}}),
             config_entries=SimpleNamespace(
                 async_entries=lambda domain: [SimpleNamespace(entry_id="parent", title="Router")]
-            )
+            ),
         )
 
     def async_show_form(self, **kwargs):
@@ -39,7 +41,7 @@ class FlowHarness(Steps):
 class NetworkFlowTests(unittest.IsolatedAsyncioTestCase):
     async def test_wifi_only_is_valid_without_routes_or_wan(self):
         result = await self.flow.async_step_user(
-            {"unifi_entry_id": "parent", "services": [], "wifi_history_enabled": True}
+            {**CONNECTION, "services": [], "wifi_history_enabled": True}
         )
         self.assertEqual(result["type"], "create_entry")
         self.assertTrue(result["data"]["wifi_history_enabled"])
@@ -48,13 +50,13 @@ class NetworkFlowTests(unittest.IsolatedAsyncioTestCase):
     async def test_wifi_option_preserves_existing_choice_and_can_be_disabled(self):
         self.flow.defaults["wifi_history_enabled"] = True
         result = await self.flow.async_step_user(
-            {"unifi_entry_id": "parent", "services": [], "network_enabled": True}
+            {**CONNECTION, "services": [], "network_enabled": True}
         )
         self.assertEqual(result["step_id"], "network")
         self.assertTrue(self.flow.settings["wifi_history_enabled"])
         await self.flow.async_step_user(
             {
-                "unifi_entry_id": "parent",
+                **CONNECTION,
                 "services": [],
                 "network_enabled": True,
                 "wifi_history_enabled": False,
@@ -65,6 +67,8 @@ class NetworkFlowTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.flow = FlowHarness()
         self.backend = SimpleNamespace(
+            async_close=AsyncMock(),
+            read_devices=AsyncMock(return_value=[]),
             read_gateways=AsyncMock(return_value={"gateway": {"name": "Router"}}),
             read_routes=AsyncMock(return_value={}),
         )
@@ -77,16 +81,14 @@ class NetworkFlowTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_network_only_skips_route_api(self):
         result = await self.flow.async_step_user(
-            {"unifi_entry_id": "parent", "services": [], "network_enabled": True}
+            {**CONNECTION, "services": [], "network_enabled": True}
         )
         self.assertEqual(result["step_id"], "network")
         self.backend.read_gateways.assert_awaited_once()
 
     async def test_empty_or_unknown_service_selection_does_not_crash(self):
         for services in ([], ["nonexistent"]):
-            result = await self.flow.async_step_user(
-                {"unifi_entry_id": "parent", "services": services}
-            )
+            result = await self.flow.async_step_user({**CONNECTION, "services": services})
             self.assertEqual(result["type"], "form")
             self.assertTrue(result["errors"])
 

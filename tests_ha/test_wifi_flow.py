@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests_ha import CONNECTION
 from custom_components.service_route_sync.config_flow import OptionsFlow
 from custom_components.service_route_sync.core import SyncError
 
@@ -28,7 +29,7 @@ class WifiFlowTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.flow = Harness()
         self.flow.entry = SimpleNamespace(
-            data={"unifi_entry_id": "parent"},
+            data={**CONNECTION},
             options={
                 "gateway_observer_host": "trusted-existing-host",
                 "gateway_observer_key_id": "existing-key",
@@ -37,7 +38,9 @@ class WifiFlowTests(unittest.IsolatedAsyncioTestCase):
             },
         )
         self.flow.hass = SimpleNamespace()
-        self.backend = SimpleNamespace(read_clients=AsyncMock(return_value=[]))
+        self.backend = SimpleNamespace(
+            async_close=AsyncMock(), read_clients=AsyncMock(return_value=[])
+        )
         self.patch = patch(
             "custom_components.service_route_sync.config_flow.UniFiBackend",
             return_value=self.backend,

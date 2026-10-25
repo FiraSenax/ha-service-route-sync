@@ -26,7 +26,9 @@ async def async_setup_entry(
             for key in ("connection", "running", "restart_enabled")
         )
     if lady := getattr(entry.runtime_data, "lady", None):
-        async_add_entities([ClientOnlineSensor(lady.clients, "ladyofgames", "online")])
+        async_add_entities(
+            [ClientOnlineSensor(lady.clients, next(iter(lady.clients.profiles)), "online")]
+        )
         async_add_entities(
             LadySourceSensor(lady, key) for key in ("api", "probe", "dns", "windows")
         )

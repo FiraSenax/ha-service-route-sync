@@ -1,4 +1,4 @@
-"""All-client wireless observations through the native authenticated parent."""
+"""All-client wireless observations through this integration’s own UniFi connection."""
 
 import asyncio
 from dataclasses import dataclass
@@ -24,7 +24,7 @@ def prepare_wifi(hass, entry, settings):
     history = WifiHistory(
         Path(hass.config.path(".storage", "service_route_sync_wifi", identity + ".sqlite"))
     )
-    return WifiCoordinator(hass, entry, settings["unifi_entry_id"], history)
+    return WifiCoordinator(hass, entry, settings, history)
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,8 +34,8 @@ class WirelessSnapshot:
 
 
 class WifiCoordinator(DataUpdateCoordinator[WirelessSnapshot]):
-    def __init__(self, hass, entry, parent_entry_id, history=None):
-        self.backend = UniFiBackend(hass, parent_entry_id)
+    def __init__(self, hass, entry, settings, history=None):
+        self.backend = UniFiBackend(hass, settings)
         self.history = history
         super().__init__(
             hass,
@@ -44,6 +44,10 @@ class WifiCoordinator(DataUpdateCoordinator[WirelessSnapshot]):
             config_entry=entry,
             update_interval=timedelta(seconds=30),
         )
+
+    async def async_shutdown(self):
+        await super().async_shutdown()
+        await self.backend.async_close()
 
     async def _async_update_data(self):
         try:

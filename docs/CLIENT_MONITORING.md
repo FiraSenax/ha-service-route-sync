@@ -1,10 +1,10 @@
-# Client monitoring migration
+# Client monitoring
 
-The client collector and its UI are local development candidates. They are not a complete replacement for the active Gaming/Lady exporters. Do not stop those exporters until native probe, incident, Windows, event/history and authenticated NAS scrape parity has been verified.
+Client profiles, MAC aliases and routing roles are explicitly configured. See [public configuration](CONFIGURATION.md) for connection settings, optional diagnostics and gateway routing-mark configuration.
 
 ## Gateway boundary
 
-`gateway/client_observer.py` exposes one fixed original SSH command: `service-route-sync clients v1`. Install alongside `observer.py` in a root-owned private directory only after a backed-up deployment review. Use a dedicated client-observer SSH identity with `restrict`, `from` limited to the HA address, and a forced command invoking the fixed absolute helper path. Do not extend the existing WAN observer key to accept arbitrary commands or target arguments. Pin the gateway host key in HA through the existing trusted connection.
+`gateway/client_observer.py` exposes one fixed original SSH command: `service-route-sync clients v1`. Install alongside `observer.py` and `configuration.py` in a root-owned private directory only after a backed-up deployment review. Use a dedicated client-observer SSH identity with `restrict`, `from` limited to the HA address, and a forced command invoking the fixed absolute helper path. Do not extend the existing WAN observer key to accept arbitrary commands or target arguments. Pin the gateway host key in HA through the existing trusted connection.
 
 The helper reads `/data/service-route-sync/clients.json`, with exact structure:
 

@@ -26,18 +26,18 @@ class IPv6CoordinatorTests(unittest.IsolatedAsyncioTestCase):
             "phase": "intent",
             "transaction_id": "a" * 32,
             "digest": "a" * 64,
-            "target": "starlink",
+            "target": "secondary",
         }
-        current = replace(status("starlink"), digest="b" * 64)
-        self.assertTrue(reconciliation_allowed(saved, current, "b" * 64, "starlink"))
-        self.assertFalse(reconciliation_allowed(saved, current, "a" * 64, "starlink"))
+        current = replace(status("secondary"), digest="b" * 64)
+        self.assertTrue(reconciliation_allowed(saved, current, "b" * 64, "secondary"))
+        self.assertFalse(reconciliation_allowed(saved, current, "a" * 64, "secondary"))
         self.assertFalse(
             reconciliation_allowed(
-                saved, replace(current, review_required=True), "b" * 64, "starlink"
+                saved, replace(current, review_required=True), "b" * 64, "secondary"
             )
         )
         self.assertFalse(
-            reconciliation_allowed(saved, replace(current, mode="dsl"), "b" * 64, "dsl")
+            reconciliation_allowed(saved, replace(current, mode="primary"), "b" * 64, "primary")
         )
 
     def coordinator(self):
@@ -58,8 +58,8 @@ class IPv6CoordinatorTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_success_requires_intent_apply_independent_readback_complete(self):
         coordinator = self.coordinator()
-        initial = status("dsl")
-        changed = status("starlink")
+        initial = status("primary")
+        changed = status("secondary")
         changed = __import__("dataclasses").replace(changed, digest="b" * 64)
         with (
             patch(
@@ -68,7 +68,7 @@ class IPv6CoordinatorTests(unittest.IsolatedAsyncioTestCase):
             ) as inspect,
             patch(
                 "custom_components.service_route_sync.ipv6_coordinator.apply_actor",
-                new=AsyncMock(return_value=ActorResult("starlink", True, "b" * 64, False)),
+                new=AsyncMock(return_value=ActorResult("secondary", True, "b" * 64, False)),
             ) as apply,
             patch(
                 "custom_components.service_route_sync.ipv6_coordinator.dt_util.utcnow",
@@ -79,19 +79,21 @@ class IPv6CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(inspect.await_count, 2)
         apply.assert_awaited_once()
         self.assertFalse(coordinator.local_latch)
-        self.assertEqual(result.actor.mode, "starlink")
+        self.assertEqual(result.actor.mode, "secondary")
         self.assertEqual(
             [call.args[0]["phase"] for call in coordinator._durable_save.await_args_list],
             ["intent", "complete"],
         )
-        self.assertEqual(coordinator._durable_save.await_args_list[0].args[0]["target"], "starlink")
+        self.assertEqual(
+            coordinator._durable_save.await_args_list[0].args[0]["target"], "secondary"
+        )
 
     async def test_ssh_timeout_retains_intent_and_latch(self):
         coordinator = self.coordinator()
         with (
             patch(
                 "custom_components.service_route_sync.ipv6_coordinator.inspect_actor",
-                new=AsyncMock(return_value=status("dsl")),
+                new=AsyncMock(return_value=status("primary")),
             ),
             patch(
                 "custom_components.service_route_sync.ipv6_coordinator.apply_actor",

@@ -1,7 +1,7 @@
 """Legacy Lady metric names, backed by accepted native observations/history."""
 
 from datetime import datetime
-from zoneinfo import ZoneInfo
+from homeassistant.util import dt as dt_util
 
 from .network_metrics import MetricWriter
 
@@ -37,8 +37,13 @@ def render_lady(snapshot, now, bandwidth=None):
     )
     for category, value in incidents.items():
         metric("incident_active", value["active"] if current else None, category=category)
-    local = datetime.fromtimestamp(now, ZoneInfo("Europe/Berlin"))
-    metric("maintenance", local.hour == 5 and local.minute < 2)
+    local = datetime.fromtimestamp(now, dt_util.get_default_time_zone())
+    policy = snapshot.get("engine_options", {})
+    metric(
+        "maintenance",
+        local.hour == policy.get("maintenance_hour", -1)
+        and local.minute < policy.get("maintenance_minutes", 2),
+    )
     for name in ("api", "probe", "windows", "dns253", "dns254"):
         source = sources[name]
         maximum = 45 if name in ("api", "probe") else 100
@@ -81,13 +86,13 @@ def render_lady(snapshot, now, bandwidth=None):
     valid = bool(current and routing is not None and routing.get("rc") == 0)
     metric("routing_valid", valid)
     if valid:
-        for route in ("dsl", "starlink", "vpn1", "vpn2", "other"):
+        for route in ("primary", "secondary", "vpn1", "vpn2", "other"):
             metric("connections", routing["counts"].get(route), route=route)
     bw_fresh = bandwidth is not None and fresh(bandwidth["observed_at"], now, 90)
     metric("bandwidth_source_ok", bw_fresh)
     if bw_fresh:
         for direction in ("upload", "download"):
-            metric("dsl_mbps", bandwidth.get(direction), direction=direction)
+            metric("primary_mbps", bandwidth.get(direction), direction=direction)
     history = snapshot["history"]
     for category, count in history["counts"].items():
         metric("recorded_events", count, category=category)

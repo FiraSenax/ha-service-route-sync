@@ -3,13 +3,12 @@
 from uuid import uuid4
 import asyncio
 import re
-import time
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
 
-from .backends.unifi import UniFiBackend
+from .backends.unifi import UniFiBackend, read_controller
 from .catalog import CATALOG
 from .const import DEFAULTS, DOMAIN
 from .core import SyncError, normalize_prefixes
@@ -32,23 +31,77 @@ from .client_probe_protocol import parse_client_probes
 from .backends.client_probe_ssh import ClientProbeSSHConfig, read_client_probes
 from homeassistant.util import dt as dt_util
 from .lady_flow import LadyFlowSteps
-from .lady_history import LadyHistory, LadyHistoryError, journal_path
-from .lady_store import LadyCheckpointError, LadyCheckpointStore
 from .wifi_observation import observe_wireless, WifiDataError
 from .frigate_flow import FrigateFlowSteps
 
 
-def fields(hass, defaults):
-    routers = [
-        {"value": entry.entry_id, "label": entry.title}
-        for entry in hass.config_entries.async_entries("unifi")
+def connection_fields(defaults):
+    return {
+        vol.Required("unifi_host", default=defaults.get("unifi_host", "")): str,
+        vol.Required("unifi_port", default=defaults.get("unifi_port", 443)): vol.All(
+            int, vol.Range(min=1, max=65535)
+        ),
+        vol.Required("unifi_site", default=defaults.get("unifi_site", "default")): str,
+        vol.Optional("unifi_api_key", default=""): selector.TextSelector(
+            selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+        ),
+        vol.Optional("unifi_tls_pin_sha256", default=defaults.get("unifi_tls_pin_sha256", "")): str,
+    }
+
+
+def connection_settings(defaults, values):
+    settings = {**defaults, **values}
+    settings["unifi_host"] = settings["unifi_host"].strip().lower()
+    settings["unifi_tls_pin_sha256"] = (
+        settings.get("unifi_tls_pin_sha256", "").replace(":", "").strip().lower()
+    )
+    settings["unifi_api_key"] = values.get("unifi_api_key") or defaults.get("unifi_api_key", "")
+    return settings
+
+
+def connection_identity(settings):
+    return f"{settings['unifi_host']}:{settings['unifi_port']}/{settings['unifi_site']}"
+
+
+def ipv6_control_fields(settings):
+    fields = {}
+    for name in ("enabled", "dry_run", "nat66", "sab", "override"):
+        key = f"ipv6_{name}_entity"
+        marker = (
+            vol.Optional(key, default=settings[key]) if settings.get(key) else vol.Optional(key)
+        )
+        fields[marker] = selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain="input_select" if name == "override" else "input_boolean"
+            )
+        )
+    for name in ("auto", "primary", "secondary"):
+        key = f"ipv6_{name}_option"
+        fields[vol.Optional(key, default=settings.get(key, name))] = vol.All(
+            str, vol.Length(min=1, max=64)
+        )
+    return fields
+
+
+def validate_ipv6_controls(settings):
+    entities = [
+        settings.get(f"ipv6_{name}_entity")
+        for name in ("enabled", "dry_run", "nat66", "sab", "override")
     ]
+    if not all(entities) or len(set(entities)) != 5:
+        raise ValueError("Select five distinct IPv6 helpers")
+    options = [
+        settings.get(f"ipv6_{name}_option", name) for name in ("auto", "primary", "secondary")
+    ]
+    if len(set(options)) != 3:
+        raise ValueError("Select distinct IPv6 override values")
+
+
+def fields(hass, defaults):
     services = [{"value": key, "label": service.name} for key, service in CATALOG.items()]
     return vol.Schema(
         {
-            vol.Required(
-                "unifi_entry_id", default=defaults.get("unifi_entry_id", "")
-            ): selector.SelectSelector(selector.SelectSelectorConfig(options=routers)),
+            **connection_fields(defaults),
             vol.Required("services", default=defaults.get("services", [])): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=services, multiple=True)
             ),
@@ -96,12 +149,14 @@ class Steps(LadyFlowSteps):
                     data_schema=fields(self.hass, self.defaults),
                     errors={"base": "invalid_configuration"},
                 )
-            self.settings = {**self.defaults, **user_input}
+            self.settings = connection_settings(self.defaults, user_input)
             self.settings.setdefault("client_request_id", str(uuid4()))
             if isinstance(self, ConfigFlow):
-                await self.async_set_unique_id(user_input["unifi_entry_id"])
+                await self.async_set_unique_id(connection_identity(self.settings))
                 self._abort_if_unique_id_configured()
-            elif user_input["unifi_entry_id"] != self.defaults["unifi_entry_id"]:
+            elif self.defaults.get("unifi_host") and connection_identity(
+                self.settings
+            ) != connection_identity(self.defaults):
                 errors["base"] = "immutable_router"
             if (
                 not user_input["services"]
@@ -113,7 +168,14 @@ class Steps(LadyFlowSteps):
             ):
                 errors["base"] = "no_services"
             elif not errors:
-                return await self.async_step_sources()
+                try:
+                    await read_controller(
+                        self.hass, self.settings, "read_devices", backend_factory=UniFiBackend
+                    )
+                except (SyncError, ValueError):
+                    errors["base"] = "router_unavailable"
+                else:
+                    return await self.async_step_sources()
         return self.async_show_form(
             step_id="user", data_schema=fields(self.hass, self.defaults), errors=errors
         )
@@ -178,7 +240,9 @@ class Steps(LadyFlowSteps):
             )
         errors = {}
         try:
-            routes = await UniFiBackend(self.hass, self.settings["unifi_entry_id"]).read_routes()
+            routes = await read_controller(
+                self.hass, self.settings, "read_routes", backend_factory=UniFiBackend
+            )
         except Exception:  # Authentication/API failures must keep the flow read-only.
             return self.async_abort(reason="router_unavailable")
         eligible = {
@@ -230,9 +294,9 @@ class Steps(LadyFlowSteps):
             self.settings["ipv6_actor_active"] = False
             return await self.async_step_clients()
         try:
-            gateways = await UniFiBackend(
-                self.hass, self.settings["unifi_entry_id"]
-            ).read_gateways()
+            gateways = await read_controller(
+                self.hass, self.settings, "read_gateways", backend_factory=UniFiBackend
+            )
         except Exception:
             return self.async_abort(reason="router_unavailable")
         if not gateways:
@@ -370,6 +434,25 @@ class Steps(LadyFlowSteps):
 
     async def _after_gateway_observer(self):
         if self.settings.get("ipv6_actor_enabled"):
+            return await self.async_step_ipv6_controls()
+        return await self.async_step_clients()
+
+    async def async_step_ipv6_controls(self, user_input=None):
+        schema = vol.Schema(ipv6_control_fields(self.settings))
+        errors = {}
+        if user_input is not None:
+            try:
+                values = schema(user_input)
+                candidate = {**self.settings, **values}
+                validate_ipv6_controls(candidate)
+                self.settings = candidate
+                return await self._after_ipv6_controls()
+            except (vol.Invalid, ValueError):
+                errors["base"] = "invalid_configuration"
+        return self.async_show_form(step_id="ipv6_controls", data_schema=schema, errors=errors)
+
+    async def _after_ipv6_controls(self):
+        if self.settings.get("ipv6_actor_enabled"):
             if not self.settings.get("ipv6_actor_key_id"):
                 self.settings["ipv6_actor_host"] = self.settings["gateway_observer_host"]
                 self.settings["ipv6_actor_key_id"] = uuid4().hex
@@ -434,7 +517,9 @@ class Steps(LadyFlowSteps):
             if existing:
                 validate_profiles(existing)
             async with asyncio.timeout(8):
-                rows = await UniFiBackend(self.hass, self.settings["unifi_entry_id"]).read_clients()
+                rows = await read_controller(
+                    self.hass, self.settings, "read_clients", backend_factory=UniFiBackend
+                )
         except (SyncError, ClientDataError, TimeoutError):
             return self.async_abort(reason="router_unavailable")
         profiles = {row["id"]: dict(row) for row in existing}
@@ -500,9 +585,9 @@ class Steps(LadyFlowSteps):
         try:
             public_key = await prepare_observer_key(self.hass, self.settings["client_probe_key_id"])
             async with asyncio.timeout(8):
-                gateways = await UniFiBackend(
-                    self.hass, self.settings["unifi_entry_id"]
-                ).read_gateways()
+                gateways = await read_controller(
+                    self.hass, self.settings, "read_gateways", backend_factory=UniFiBackend
+                )
         except (OSError, GatewayTransportError, SyncError, TimeoutError, ValueError):
             return self.async_abort(reason="observer_key_unavailable")
         hosts = {}
@@ -563,6 +648,38 @@ class ConfigFlow(Steps, config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self):
         self.defaults = dict(DEFAULTS)
+
+    async def async_step_reauth(self, entry_data):
+        entry = self._get_reauth_entry()
+        self.defaults = {**entry.data, **entry.options}
+        return await self.async_step_connection()
+
+    async def async_step_connection(self, user_input=None):
+        errors = {}
+        if user_input is not None:
+            try:
+                values = vol.Schema(connection_fields(self.defaults))(user_input)
+                settings = connection_settings(self.defaults, values)
+                await read_controller(
+                    self.hass, settings, "read_devices", backend_factory=UniFiBackend
+                )
+            except (vol.Invalid, ValueError, SyncError):
+                errors["base"] = "router_unavailable"
+            else:
+                entry = self._get_reauth_entry()
+                identity = connection_identity(settings)
+                if entry.unique_id != identity:
+                    await self.async_set_unique_id(identity)
+                    self._abort_if_unique_id_configured()
+                settings["automatic_apply"] = False
+                return self.async_update_reload_and_abort(
+                    entry, options=settings, unique_id=identity
+                )
+        return self.async_show_form(
+            step_id="connection",
+            data_schema=vol.Schema(connection_fields(self.defaults)),
+            errors=errors,
+        )
 
     async def async_step_reconfigure(self, user_input=None):
         """Explicit one-time profile migration through HA's administrator UI/API."""
@@ -713,9 +830,7 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
                 )
                 backend = UniFiBackend(
                     self.hass,
-                    self.defaults["unifi_entry_id"],
-                    tls_pin_sha256=pin,
-                    route_api_key=api_key,
+                    {**self.defaults, "unifi_tls_pin_sha256": pin, "unifi_route_api_key": api_key},
                 )
                 routes = await backend.read_routes()
                 if any(
@@ -738,6 +853,7 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
         """A narrow IPv6 management flow preserves all unrelated options."""
         schema = vol.Schema(
             {
+                **ipv6_control_fields(self.defaults),
                 vol.Required(
                     "ipv6_actor_enabled", default=self.defaults.get("ipv6_actor_enabled", False)
                 ): selector.BooleanSelector(),
@@ -753,6 +869,8 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
             try:
                 values = schema(user_input)
                 enabled, active = values["ipv6_actor_enabled"], values["ipv6_actor_active"]
+                if enabled:
+                    validate_ipv6_controls({**self.defaults, **values})
                 if enabled and self.defaults.get("gateway_observer_enabled") is not True:
                     raise ValueError("WAN observer required")
                 if active and not enabled:
@@ -769,6 +887,7 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
                     ) or not self.defaults.get("ipv6_actor_key_id")
                     self.settings = {
                         **self.defaults,
+                        **{key: value for key, value in values.items() if key.startswith("ipv6_")},
                         "ipv6_actor_enabled": True,
                         "ipv6_actor_active": active and not fresh_key,
                     }
@@ -796,6 +915,7 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
                 elif not errors:
                     self.settings = {
                         **self.defaults,
+                        **{key: value for key, value in values.items() if key.startswith("ipv6_")},
                         "ipv6_actor_enabled": False,
                         "ipv6_actor_active": False,
                     }
@@ -812,64 +932,23 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
         return self.async_show_form(step_id="ipv6_policy", data_schema=schema, errors=errors)
 
     async def async_step_lady_mode(self, user_input=None):
-        """Activate only an imported, durable Lady checkpoint after legacy freeze."""
+        """Enable notifications for the explicitly selected service."""
         if not self.defaults.get("lady_enabled"):
             return self.async_abort(reason="lady_not_configured")
         schema = vol.Schema(
-            {
-                vol.Required(
-                    "lady_active", default=self.defaults.get("lady_active", False)
-                ): selector.BooleanSelector(),
-                vol.Optional("legacy_monitor_stopped", default=False): selector.BooleanSelector(),
-            }
+            {vol.Required("lady_active", default=self.defaults.get("lady_active", False)): bool}
         )
         errors = {}
         if user_input is not None:
             try:
                 values = schema(user_input)
-                active = values["lady_active"]
-                if active and not self.defaults.get("lady_active"):
-                    if values["legacy_monitor_stopped"] is not True:
-                        errors["base"] = "legacy_monitor_running"
-                    else:
-                        runtime = getattr(self.config_entry, "runtime_data", None)
-                        lady = getattr(runtime, "lady", None)
-                        if lady is None or not lady.incidents.last_update_success:
-                            errors["base"] = "lady_sources_not_ready"
-                        else:
-                            store = LadyCheckpointStore(self.hass, self.config_entry.entry_id)
-                            checkpoint = await store.async_load()
-                            if (
-                                checkpoint is None
-                                or not isinstance(checkpoint.get("cursor"), dict)
-                                or "day" not in checkpoint["cursor"]
-                                or not checkpoint.get("history_epoch")
-                                or not checkpoint.get("history_revision")
-                            ):
-                                errors["base"] = "lady_checkpoint_missing"
-                            else:
-                                history = LadyHistory(
-                                    journal_path(
-                                        self.hass.config.path(DOMAIN, "lady_history"),
-                                        store.store.key,
-                                        checkpoint["history_epoch"],
-                                    )
-                                )
-                                await self.hass.async_add_executor_job(
-                                    history.snapshot, checkpoint["history_revision"], time.time()
-                                )
-                if not errors:
-                    self.settings = {**self.defaults, "lady_active": active}
+                if values["lady_active"] and not self.defaults.get("lady_notify_service"):
+                    errors["base"] = "notification_target_required"
+                else:
+                    self.settings = {**self.defaults, **values}
                     return self.finish()
-            except (
-                vol.Invalid,
-                LadyCheckpointError,
-                LadyHistoryError,
-                OSError,
-                ValueError,
-                TypeError,
-            ):
-                errors["base"] = "lady_checkpoint_missing"
+            except vol.Invalid:
+                errors["base"] = "invalid_configuration"
         return self.async_show_form(step_id="lady_mode", data_schema=schema, errors=errors)
 
     async def async_step_route_services(self, user_input=None):
@@ -974,9 +1053,9 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
                 values = schema(user_input)
                 if values["wifi_history_enabled"]:
                     async with asyncio.timeout(8):
-                        rows = await UniFiBackend(
-                            self.hass, self.defaults["unifi_entry_id"]
-                        ).read_clients()
+                        rows = await read_controller(
+                            self.hass, self.defaults, "read_clients", backend_factory=UniFiBackend
+                        )
                     observe_wireless(rows, dt_util.utcnow())
                 self.settings = {**self.defaults, **values}
                 return self.finish()
@@ -1003,6 +1082,10 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
             "interval_hours",
             "unifi_tls_pin_sha256",
             "unifi_route_api_key",
+            "unifi_host",
+            "unifi_port",
+            "unifi_site",
+            "unifi_api_key",
         )
         if any(self.settings.get(key) != self.defaults.get(key) for key in route_fields):
             self.settings["automatic_apply"] = False

@@ -45,10 +45,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
     if lady := getattr(entry.runtime_data, "lady", None):
         async_add_entities(
             LadyStatusSensor(lady, key)
-            for key in ("mode", "pending", "active_incidents", "last_observation")
+            for key in ("mode", "pending", "active_incidents", "last_observation", "pc_monitoring")
         )
         async_add_entities(
-            ClientPortSensor(lady.clients, "ladyofgames", key)
+            ClientPortSensor(lady.clients, next(iter(lady.clients.profiles)), key)
             for key in (
                 "speed_mbit_s",
                 "rx_errors",
@@ -142,6 +142,15 @@ class LadyStatusSensor(LadyEntity, SensorEntity):
         elif key == "mode":
             self._attr_device_class = SensorDeviceClass.ENUM
             self._attr_options = ["observation", "active"]
+        elif key == "pc_monitoring":
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = [
+                "active",
+                "powered_off",
+                "port_disconnected",
+                "source_unavailable",
+                "no_pc_evidence",
+            ]
 
     @property
     def native_value(self):
@@ -152,6 +161,8 @@ class LadyStatusSensor(LadyEntity, SensorEntity):
             return "active" if self.runtime.active else "observation"
         if self.key == "last_observation":
             return datetime.fromtimestamp(data["observed_at"], timezone.utc)
+        if self.key == "pc_monitoring":
+            return data["pc_monitoring"]
         if self.key == "active_incidents":
             state = self.coordinator.transaction.store.state
             return (

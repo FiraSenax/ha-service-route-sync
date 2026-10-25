@@ -1,9 +1,6 @@
 """Explicit Lady feature assembly; observation mode cannot send notifications."""
 
 from dataclasses import dataclass
-import time
-
-from homeassistant.exceptions import ConfigEntryNotReady
 
 from .backends.dsl_ssh import DSLSSHConfig
 from .backends.windows_ssh import WindowsArchiveSSHConfig, read_windows_archive
@@ -18,6 +15,7 @@ from .lady_probes import LadyClientSSHConfig, LadyPCProbeReader, LadyProbeReader
 from .lady_store import LadyCheckpointStore
 from .lady_transaction import LadyTransaction
 from .lady_history import LadyHistory, journal_path
+from .windows_source import WindowsBatch
 
 
 class ObservationOnlyNotifier:
@@ -30,16 +28,17 @@ class LadyRuntime:
     clients: ClientCoordinator
     incidents: LadyCoordinator
     active: bool
+    profile_name: str
 
 
 async def prepare_lady(hass, entry, settings):
     profile = settings.get("lady_profile")
-    if tuple(validate_profiles([profile])) != ("ladyofgames",):
+    if len(validate_profiles([profile])) != 1:
         raise ValueError("Lady requires exactly its separately configured profile")
     gaming = settings.get("client_profiles", [])
     if gaming:
         assigned = validate_profiles(gaming)
-        if "ladyofgames" in assigned or any(
+        if profile["id"] in assigned or any(
             set(profile["macs"]).intersection(macs) for macs in assigned.values()
         ):
             raise ValueError("Lady and Gaming client scopes must remain separate")
@@ -49,25 +48,22 @@ async def prepare_lady(hass, entry, settings):
     gateway = settings.get("lady_gateway_host")
     dsl = DSLSSHConfig(gateway, credential_directory(hass, settings.get("lady_dsl_key_id")))
     pc = LadyClientSSHConfig(gateway, credential_directory(hass, settings.get("lady_pc_key_id")))
-    windows = WindowsArchiveSSHConfig(
-        settings.get("lady_windows_host"),
-        credential_directory(hass, settings.get("lady_windows_key_id")),
-    )
-    if len({dsl.credential_directory, pc.credential_directory, windows.credential_directory}) != 3:
-        raise ValueError("Lady source credentials must have separate scopes")
-    for config in (dsl, pc, windows):
+    windows = None
+    configs = [dsl, pc]
+    if settings.get("lady_windows_enabled"):
+        windows = WindowsArchiveSSHConfig(
+            settings.get("lady_windows_host"),
+            credential_directory(hass, settings.get("lady_windows_key_id")),
+        )
+        configs.append(windows)
+    if len({config.credential_directory for config in configs}) != len(configs):
+        raise ValueError("Observation sources require separate credentials")
+    for config in configs:
         await hass.async_add_executor_job(config.validate_files)
     if not await hass.async_add_executor_job(same_pinned_gateway, dsl.known_hosts, pc.known_hosts):
         raise ValueError("Lady router source host pins disagree")
-    # Keep observation checkpoints separate from the final imported live state.
-    store = LadyCheckpointStore(hass, entry.entry_id + ("_shadow" if not active else ""))
+    store = LadyCheckpointStore(hass, entry.entry_id)
     await store.async_load()
-    if active and (
-        store.state is None
-        or not isinstance(store.state["cursor"], dict)
-        or "day" not in store.state["cursor"]
-    ):
-        raise ConfigEntryNotReady("Lady requires a verified imported daily checkpoint")
     history = LadyHistory(
         journal_path(
             hass.config.path("service_route_sync", "lady_history"),
@@ -75,25 +71,41 @@ async def prepare_lady(hass, entry, settings):
             (store.state or {}).get("history_epoch"),
         )
     )
-    if active:
-        marker = store.state.get("history_revision", 0)
-        if not marker or not store.state.get("history_epoch"):
-            raise ConfigEntryNotReady("Lady requires an imported history journal")
-        await hass.async_add_executor_job(history.snapshot, marker, time.time())
-    transaction = LadyTransaction(store, history)
+    transaction = LadyTransaction(
+        store,
+        history,
+        notifications_enabled=active,
+        windows_enabled=bool(settings.get("lady_windows_enabled")),
+        engine_options={
+            "expected_speed": settings.get("lady_expected_speed", 1000),
+            "maintenance_hour": settings.get("lady_maintenance_hour", -1),
+            "maintenance_minutes": settings.get("lady_maintenance_minutes", 2),
+        },
+    )
     clients = ClientCoordinator(hass, entry, [profile])
 
     async def read_windows(cursor):
+        if windows is None:
+            return WindowsBatch(None, (), None, False, False, 0, False)
         return await read_windows_archive(windows, cursor)
 
     readers = {
-        "api": LadyClientReader(clients, "ladyofgames"),
+        "api": LadyClientReader(clients, profile["id"]),
         "probe": LadyProbeReader(LadyDSLReader(dsl), LadyPCProbeReader(hass, pc, clients)),
         "dns": LadyDNSReader(validate_dns_servers(settings.get("lady_dns_servers"))),
         "windows": read_windows,
     }
-    notifier = LadyNotifier(hass, transaction) if active else ObservationOnlyNotifier()
+    notifier = (
+        LadyNotifier(
+            hass,
+            transaction,
+            settings.get("lady_notify_service"),
+            profile.get("name", profile["id"]),
+        )
+        if active
+        else ObservationOnlyNotifier()
+    )
     incidents = LadyCoordinator(
         hass, entry, transaction, notifier, readers, publish_heartbeat=active
     )
-    return LadyRuntime(clients, incidents, active)
+    return LadyRuntime(clients, incidents, active, profile.get("name", profile["id"]))

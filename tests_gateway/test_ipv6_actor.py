@@ -103,72 +103,72 @@ class ActorTests(TestCase):
         )
 
     def test_exact_switch_and_all_single_command_failures_rollback(self):
-        before = healthy_snapshot("dsl")
-        complete, result, error = run(before, "starlink")
+        before = healthy_snapshot("primary")
+        complete, result, error = run(before, "secondary")
         self.assertIsNone(error)
         self.assertTrue(result["applied"])
-        self.assertEqual(classify(complete.state, parse_config(RAW)), "starlink")
+        self.assertEqual(classify(complete.state, parse_config(RAW)), "secondary")
         for failure in range(1, complete.writes + 1):
             with self.subTest(failure=failure):
-                router, result, error = run(before, "starlink", fail_at=failure)
+                router, result, error = run(before, "secondary", fail_at=failure)
                 self.assertEqual(error, "apply_rolled_back")
                 self.assertEqual(router.state, before)
                 self.assertEqual(router.journal[-1]["phase"], "complete")
                 self.assertTrue(router.journal[-1]["rolled_back"])
 
     def test_rotated_prefix_and_all_single_command_failures_rollback(self):
-        before = replace(healthy_snapshot("dsl"), delegation="2001:4860:abcd:3400::/56")
-        complete, result, error = run(before, "dsl")
+        before = replace(healthy_snapshot("primary"), delegation="2001:4860:abcd:3400::/56")
+        complete, result, error = run(before, "primary")
         self.assertIsNone(error)
         self.assertTrue(result["applied"])
-        self.assertEqual(classify(complete.state, parse_config(RAW)), "dsl")
+        self.assertEqual(classify(complete.state, parse_config(RAW)), "primary")
         for failure in range(1, complete.writes + 1):
             with self.subTest(failure=failure):
-                router, _, error = run(before, "dsl", fail_at=failure)
+                router, _, error = run(before, "primary", fail_at=failure)
                 self.assertEqual(error, "apply_rolled_back")
                 self.assertEqual(router.state, before)
 
     def test_reverse_switch_and_hook_repair(self):
         config = parse_config(RAW)
-        before = healthy_snapshot("starlink")
-        router, result, error = run(before, "dsl")
+        before = healthy_snapshot("secondary")
+        router, result, error = run(before, "primary")
         self.assertIsNone(error)
-        self.assertEqual(classify(router.state, config), "dsl")
+        self.assertEqual(classify(router.state, config), "primary")
         for failure in range(1, router.writes + 1):
             with self.subTest(failure=failure):
-                failed, _, error = run(before, "dsl", fail_at=failure)
+                failed, _, error = run(before, "primary", fail_at=failure)
                 self.assertEqual(error, "apply_rolled_back")
                 self.assertEqual(failed.state, before)
-        missing = replace(healthy_snapshot("dsl"), nat_hook=())
-        repaired, result, error = run(missing, "dsl")
+        missing = replace(healthy_snapshot("primary"), nat_hook=())
+        repaired, result, error = run(missing, "primary")
         self.assertIsNone(error)
-        self.assertEqual(classify(repaired.state, config), "dsl")
+        self.assertEqual(classify(repaired.state, config), "primary")
         for failure in range(1, repaired.writes + 1):
             with self.subTest(failure=failure):
-                failed, _, error = run(missing, "dsl", fail_at=failure)
+                failed, _, error = run(missing, "primary", fail_at=failure)
                 self.assertEqual(error, "apply_rolled_back")
                 self.assertEqual(failed.state, missing)
 
     def test_blank_rebuild_and_all_single_command_failures_rollback(self):
         before = PolicySnapshot((), (), (), (), (), (), PD)
-        complete, result, error = run(before, "dsl")
+        complete, result, error = run(before, "primary")
         self.assertIsNone(error)
         self.assertTrue(result["applied"])
-        self.assertEqual(classify(complete.state, parse_config(RAW)), "dsl")
+        self.assertEqual(classify(complete.state, parse_config(RAW)), "primary")
         for failure in range(1, complete.writes + 1):
             with self.subTest(failure=failure):
-                router, _, error = run(before, "dsl", fail_at=failure)
+                router, _, error = run(before, "primary", fail_at=failure)
                 self.assertEqual(error, "apply_rolled_back")
                 self.assertEqual(router.state, before)
 
     def test_unknown_state_and_stale_digest_never_write(self):
-        before = healthy_snapshot("dsl")
+        before = healthy_snapshot("primary")
         extra = replace(before, nat_chain=before.nat_chain + ("-A IOB_V6_NAT -j ACCEPT",))
-        router, _, error = run(extra, "starlink")
+        router, _, error = run(extra, "secondary")
         self.assertEqual(error, "unknown_managed_state")
         self.assertEqual(router.writes, 0)
         config = parse_config(RAW)
-        call = {"transaction_id": "a" * 32, "expected_digest": "0" * 64, "mode": "starlink"}
+        call = {"transaction_id": "a" * 32, "expected_digest": "0" * 64, "mode": "secondary"}
         with patch.object(actor, "command", side_effect=AssertionError("wrote")):
             with self.assertRaisesRegex(actor.PolicyError, "state_changed"):
                 actor.apply(config, call, before, None)
@@ -180,7 +180,7 @@ class ActorTests(TestCase):
             )
 
     def test_concurrent_policy_edit_latches_without_overwriting_it(self):
-        before = healthy_snapshot("dsl")
+        before = healthy_snapshot("primary")
         config = parse_config(RAW)
         router = Router(before)
         original_command = router.command
@@ -192,7 +192,7 @@ class ActorTests(TestCase):
                 raise actor.PolicyError("injected_write_failure")
             return original_command(args, **kwargs)
 
-        call = {"transaction_id": "b" * 32, "expected_digest": before.digest(), "mode": "starlink"}
+        call = {"transaction_id": "b" * 32, "expected_digest": before.digest(), "mode": "secondary"}
         with (
             patch.object(actor, "command", concurrent_command),
             patch.object(actor, "snapshot", router.snapshot),
@@ -205,8 +205,8 @@ class ActorTests(TestCase):
         self.assertEqual(router.journal[-1]["phase"], "blocked")
 
     def test_changed_delegation_blocks_stale_rollback(self):
-        before = healthy_snapshot("dsl")
+        before = healthy_snapshot("primary")
         current = replace(before, delegation="2001:4860:abcd:3500::/56")
         with patch.object(actor, "command", side_effect=AssertionError("must not write")):
             with self.assertRaisesRegex(actor.PolicyError, "rollback_state_ambiguous"):
-                actor.restore(parse_config(RAW), before, current, "starlink")
+                actor.restore(parse_config(RAW), before, current, "secondary")

@@ -81,7 +81,7 @@ def hook_lines(tool, table, chain, target):
     return tuple(line for line in raw.splitlines() if target in line)
 
 
-def current_delegation():
+def current_delegation(config):
     raw, _ = command(["ubios-udapi-client", "-r", "-t", "3", "GET", "/interfaces"])
     try:
         rows = json.loads(raw)
@@ -94,10 +94,10 @@ def current_delegation():
         for row in rows
         if isinstance(row, dict)
         and isinstance(row.get("identification"), dict)
-        and row["identification"].get("id") == "ppp0"
+        and row["identification"].get("id") == config.primary_interface
     ]
     if len(selected) != 1:
-        raise PolicyError("ambiguous_dsl_interface")
+        raise PolicyError("ambiguous_primary_interface")
     known, prefix = delegation(selected[0], 56)
     if not known:
         raise PolicyError("delegation_unknown")
@@ -123,7 +123,7 @@ def default_route(table, interface):
 
 def snapshot(config):
     try:
-        delegation_value = current_delegation()
+        delegation_value = current_delegation(config)
     except PolicyError as error:
         if str(error) != "delegation_unknown":
             raise
@@ -221,11 +221,11 @@ def main():
                 recognized != "unknown" or blank(observed) or hooks_only_missing(observed, config)
             ),
             "blank": blank(observed),
-            "healthy": mode in ("dsl", "starlink"),
+            "healthy": mode in ("primary", "secondary"),
             "digest": observed.digest(),
             "delegation_ready": observed.delegation is not None,
-            "dsl_default": default_route(config.dsl_table, "ppp0"),
-            "starlink_default": default_route(config.starlink_table, "eth1"),
+            "primary_default": default_route(config.primary_table, config.primary_interface),
+            "secondary_default": default_route(config.secondary_table, config.secondary_interface),
             "review_required": journal is not None
             and journal.get("phase") in ("intent", "blocked"),
         }

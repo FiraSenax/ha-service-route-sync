@@ -22,12 +22,7 @@ class RouteCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, entry):
         self.entry = entry
         self.settings = {**entry.data, **entry.options}
-        self.backend = UniFiBackend(
-            hass,
-            self.settings["unifi_entry_id"],
-            tls_pin_sha256=self.settings.get("unifi_tls_pin_sha256"),
-            route_api_key=self.settings.get("unifi_route_api_key"),
-        )
+        self.backend = UniFiBackend(hass, self.settings)
         self.feeds = FeedClient(async_get_clientsession(hass), self.settings)
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.backups")
         self.backups = []

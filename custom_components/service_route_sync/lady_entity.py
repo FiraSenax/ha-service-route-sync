@@ -19,7 +19,7 @@ class LadyEntity(CoordinatorEntity):
         self._attr_translation_key = f"lady_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry_id}_lady")},
-            name="LadyOfGames",
+            name=runtime.profile_name,
             manufacturer="Service Route Sync",
             model="Network diagnostics",
         )

@@ -18,6 +18,7 @@ from .windows_source import WindowsBatch
 from .backends.gateway_ssh import GatewayTransportError
 from .client_observation import ClientDataError
 from .lady_dsl import DSLDataError
+from .lady_engine import pc_monitoring_status
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -155,6 +156,10 @@ class LadyCoordinator(DataUpdateCoordinator):
             result = await self.transaction.async_sample(row, batch, now)
         except (LadyCheckpointError, WindowsSourceError, OSError, ValueError):
             raise UpdateFailed("Lady observation checkpoint could not be committed") from None
+        pc_observation = {**row, "windows": {"agent": batch.agent}}
+        pc_status = pc_monitoring_status(
+            pc_observation, self.transaction.store.state["engine"], now
+        )
         if self.transaction.history is not None:
             try:
                 self.history_snapshot = await self.hass.async_add_executor_job(
@@ -206,6 +211,7 @@ class LadyCoordinator(DataUpdateCoordinator):
                 "row": measured,
                 "sources": source_metadata,
                 "engine": self.transaction.store.state["engine"],
+                "engine_options": dict(getattr(self.transaction, "engine_options", {})),
                 "pending": pending,
                 "history": copy.deepcopy(self.history_snapshot),
             }
@@ -219,5 +225,6 @@ class LadyCoordinator(DataUpdateCoordinator):
             "sources": health,
             "pending": pending,
             "notification_ok": notify_ok,
+            "pc_monitoring": pc_status,
             **result,
         }

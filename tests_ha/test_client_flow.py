@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests_ha import CONNECTION
 from tests_ha.test_network_flow import FlowHarness
 from custom_components.service_route_sync.core import SyncError
 
@@ -16,7 +17,9 @@ class ClientFlowTests(unittest.IsolatedAsyncioTestCase):
         self.flow = FlowHarness()
         self.flow.settings.update(client_monitoring_enabled=True, network_enabled=False)
         self.backend = SimpleNamespace(
-            read_clients=AsyncMock(return_value=[{"mac": MAC, "name": "PC"}])
+            read_devices=AsyncMock(return_value=[]),
+            async_close=AsyncMock(),
+            read_clients=AsyncMock(return_value=[{"mac": MAC, "name": "PC"}]),
         )
         self.patch = patch(
             "custom_components.service_route_sync.config_flow.UniFiBackend",
@@ -27,7 +30,7 @@ class ClientFlowTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_client_only_setup_skips_route_and_gateway_requests(self):
         result = await self.flow.async_step_user(
-            {"unifi_entry_id": "parent", "services": [], "client_monitoring_enabled": True}
+            {**CONNECTION, "services": [], "client_monitoring_enabled": True}
         )
         self.assertEqual(result["step_id"], "clients")
         result = await self.flow.async_step_clients({"clients": ["client_020000000001"]})
@@ -106,7 +109,7 @@ class ClientFlowTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_work_only_configuration_skips_unifi_client_reads(self):
         result = await self.flow.async_step_user(
-            {"unifi_entry_id": "parent", "services": [], "work_probe_enabled": True}
+            {**CONNECTION, "services": [], "work_probe_enabled": True}
         )
         self.assertEqual(result["type"], "create_entry")
         self.assertTrue(result["data"]["work_probe_enabled"])

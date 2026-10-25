@@ -24,7 +24,7 @@ class NetworkCoordinator(DataUpdateCoordinator[NetworkObservation]):
     def __init__(self, hass: HomeAssistant, entry: RouteConfigEntry) -> None:
         self.entry = entry
         self.settings = {**entry.data, **entry.options}
-        self.backend = UniFiBackend(hass, self.settings["unifi_entry_id"])
+        self.backend = UniFiBackend(hass, self.settings)
         super().__init__(
             hass,
             _LOGGER,
@@ -32,6 +32,10 @@ class NetworkCoordinator(DataUpdateCoordinator[NetworkObservation]):
             config_entry=entry,
             update_interval=timedelta(seconds=self.settings.get("network_interval_seconds", 10)),
         )
+
+    async def async_shutdown(self):
+        await super().async_shutdown()
+        await self.backend.async_close()
 
     async def _async_update_data(self) -> NetworkObservation:
         try:

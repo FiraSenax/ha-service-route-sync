@@ -3,9 +3,8 @@
     "step": {
       "user": {
         "title": "Select services",
-        "description": "Select an existing UniFi integration. Setup starts with a preview and makes no router changes.",
+        "description": "Enter this integration’s own local UniFi credentials. TLS certificates are verified; supply the SHA-256 fingerprint for a self-signed certificate. Setup starts with a preview.",
         "data": {
-          "unifi_entry_id": "UniFi integration",
           "services": "Services and games",
           "ipv6": "Include IPv6",
           "maximum_prefixes": "Maximum prefixes per route",
@@ -15,8 +14,13 @@
           "client_monitoring_enabled": "Monitor client networks (read-only)",
           "work_probe_enabled": "Measure Microsoft 365 connectivity from the house",
           "network_metrics_enabled": "Enable authenticated Prometheus compatibility export",
-          "lady_enabled": "LadyOfGames network diagnostics",
-          "wifi_history_enabled": "Store all-client Wi-Fi history every 30 minutes (local)"
+          "lady_enabled": "Client network diagnostics",
+          "wifi_history_enabled": "Store all-client Wi-Fi history every 30 minutes (local)",
+          "unifi_host": "UniFi host",
+          "unifi_port": "HTTPS port",
+          "unifi_site": "UniFi site",
+          "unifi_tls_pin_sha256": "Certificate SHA-256 fingerprint (optional)",
+          "unifi_api_key": "Local UniFi API key (leave empty to keep existing)"
         }
       },
       "sources": {
@@ -93,12 +97,19 @@
         }
       },
       "lady": {
-        "title": "Select LadyOfGames",
+        "title": "Diagnostic profile",
         "description": "Select this PC’s network interfaces. Gaming profiles remain separate. New setups start with observation and no notifications. If the PC is offline, enter its known MAC address in the separate field.",
         "data": {
           "lady_clients": "PC interfaces",
           "lady_reconfigure": "Recheck source access",
-          "lady_manual_mac": "MAC address of an offline PC interface"
+          "lady_manual_mac": "MAC address of an offline PC interface",
+          "lady_profile_id": "Profile ID",
+          "lady_profile_name": "Profile name",
+          "lady_windows_enabled": "Use a Windows/Wazuh source",
+          "lady_notify_service": "Notification service",
+          "lady_expected_speed": "Expected LAN speed (Mbit/s)",
+          "lady_maintenance_hour": "Maintenance hour (HA time zone, −1 disables)",
+          "lady_maintenance_minutes": "Maintenance duration from start of hour (minutes)"
         }
       },
       "lady_sources": {
@@ -109,6 +120,31 @@
           "lady_windows_host": "Wazuh host IP",
           "gateway_host_public_key": "Router public Ed25519 host key",
           "windows_host_public_key": "Wazuh public Ed25519 host key"
+        }
+      },
+      "connection": {
+        "title": "UniFi connection",
+        "description": "Enter this integration’s own local UniFi credentials. TLS certificates are verified; supply the SHA-256 fingerprint for a self-signed certificate. Setup starts with a preview.",
+        "data": {
+          "unifi_host": "UniFi host",
+          "unifi_port": "HTTPS port",
+          "unifi_site": "UniFi site",
+          "unifi_tls_pin_sha256": "Certificate SHA-256 fingerprint (optional)",
+          "unifi_api_key": "Local UniFi API key (leave empty to keep existing)"
+        }
+      },
+      "ipv6_controls": {
+        "title": "IPv6 controls",
+        "description": "Select five distinct helpers and the three values offered by the selection helper.",
+        "data": {
+          "ipv6_enabled_entity": "Enable helper",
+          "ipv6_dry_run_entity": "Dry-run helper",
+          "ipv6_nat66_entity": "NAT66 helper",
+          "ipv6_sab_entity": "Source routing helper",
+          "ipv6_override_entity": "WAN selection helper",
+          "ipv6_auto_option": "Automatic selection value",
+          "ipv6_primary_option": "Primary WAN selection value",
+          "ipv6_secondary_option": "Secondary WAN selection value"
         }
       }
     },
@@ -122,28 +158,30 @@
       "invalid_configuration": "Select valid settings.",
       "invalid_observer_configuration": "Invalid host key or WAN interfaces.",
       "observer_unavailable": "Observer unavailable or response invalid/stale. Check helper, keys and clocks.",
-      "invalid_clients": "Select at least one valid client without duplicate assignments."
+      "invalid_clients": "Select at least one valid client without duplicate assignments.",
+      "notification_target_required": "Select a notification service in the diagnostic profile first.",
+      "router_unavailable": "Check the UniFi host, credentials and TLS certificate."
     },
     "abort": {
-      "router_unavailable": "The selected UniFi integration is unavailable.",
+      "router_unavailable": "The selected UniFi controller is unavailable.",
       "no_routes": "Create suitable IP-based routes on your UniFi gateway first.",
-      "already_configured": "Service Route Sync is already configured for this UniFi integration.",
-      "no_gateways": "The UniFi integration exposes no supported gateway with WAN telemetry.",
+      "already_configured": "Service Route Sync is already configured for this UniFi controller.",
+      "no_gateways": "The UniFi controller exposes no supported gateway with WAN telemetry.",
       "observer_address_unavailable": "The selected gateway has no valid local IP address.",
       "observer_key_unavailable": "Unable to safely prepare the dedicated observer key.",
       "no_clients": "UniFi exposes no selectable clients.",
       "invalid_client_import": "Invalid profile migration or probe access could not be verified.",
       "client_profiles_imported": "Profiles migrated; the integration will reload.",
-      "invalid_lady_configuration": "The existing Lady configuration is invalid."
+      "invalid_lady_configuration": "The existing Lady configuration is invalid.",
+      "reauth_successful": "UniFi connection updated."
     }
   },
   "options": {
     "step": {
       "user": {
         "title": "Select services",
-        "description": "Select an existing UniFi integration. Setup starts with a preview and makes no router changes.",
+        "description": "Enter this integration’s own local UniFi credentials. TLS certificates are verified; supply the SHA-256 fingerprint for a self-signed certificate. Setup starts with a preview.",
         "data": {
-          "unifi_entry_id": "UniFi integration",
           "services": "Services and games",
           "ipv6": "Include IPv6",
           "maximum_prefixes": "Maximum prefixes per route",
@@ -153,8 +191,13 @@
           "client_monitoring_enabled": "Monitor client networks (read-only)",
           "work_probe_enabled": "Measure Microsoft 365 connectivity from the house",
           "network_metrics_enabled": "Enable authenticated Prometheus compatibility export",
-          "lady_enabled": "LadyOfGames network diagnostics",
-          "wifi_history_enabled": "Store all-client Wi-Fi history every 30 minutes (local)"
+          "lady_enabled": "Client network diagnostics",
+          "wifi_history_enabled": "Store all-client Wi-Fi history every 30 minutes (local)",
+          "unifi_host": "UniFi host",
+          "unifi_port": "HTTPS port",
+          "unifi_site": "UniFi site",
+          "unifi_tls_pin_sha256": "Certificate SHA-256 fingerprint (optional)",
+          "unifi_api_key": "Local UniFi API key (leave empty to keep existing)"
         }
       },
       "sources": {
@@ -222,12 +265,19 @@
         }
       },
       "lady": {
-        "title": "Select LadyOfGames",
+        "title": "Diagnostic profile",
         "description": "Select this PC’s network interfaces. Gaming profiles remain separate. New setups start with observation and no notifications. If the PC is offline, enter its known MAC address in the separate field.",
         "data": {
           "lady_clients": "PC interfaces",
           "lady_reconfigure": "Recheck source access",
-          "lady_manual_mac": "MAC address of an offline PC interface"
+          "lady_manual_mac": "MAC address of an offline PC interface",
+          "lady_profile_id": "Profile ID",
+          "lady_profile_name": "Profile name",
+          "lady_windows_enabled": "Use a Windows/Wazuh source",
+          "lady_notify_service": "Notification service",
+          "lady_expected_speed": "Expected LAN speed (Mbit/s)",
+          "lady_maintenance_hour": "Maintenance hour (HA time zone, −1 disables)",
+          "lady_maintenance_minutes": "Maintenance duration from start of hour (minutes)"
         }
       },
       "lady_sources": {
@@ -250,7 +300,7 @@
           "frigate_actor": "Frigate control",
           "gateway_management": "Gateway management address",
           "ipv6_policy": "IPv6 policy controller",
-          "lady_mode": "LadyOfGames operating mode",
+          "lady_mode": "Client operating mode",
           "lady_dns": "DNS resolvers for monitored host"
         }
       },
@@ -263,12 +313,20 @@
       },
       "ipv6_policy": {
         "title": "IPv6 policy controller",
-        "description": "Inspect first with a dedicated restricted key. Activate writing only after the VM101 writer is stopped and the gateway actor reports writable and healthy.",
+        "description": "Inspect first with a dedicated restricted key. Activate writing only after the other IPv6 writer is stopped and the gateway actor reports writable and healthy.",
         "data": {
           "ipv6_actor_enabled": "Inspect IPv6 policy",
           "ipv6_actor_active": "Allow HA to write IPv6 policy",
           "ipv6_actor_reconfigure": "Create a new restricted key",
-          "legacy_writer_stopped": "The VM101 IPv6 writer has been stopped"
+          "legacy_writer_stopped": "The other IPv6 writer has been stopped",
+          "ipv6_enabled_entity": "Enable helper",
+          "ipv6_dry_run_entity": "Dry-run helper",
+          "ipv6_nat66_entity": "NAT66 helper",
+          "ipv6_sab_entity": "Source routing helper",
+          "ipv6_override_entity": "WAN selection helper",
+          "ipv6_auto_option": "Automatic selection value",
+          "ipv6_primary_option": "Primary WAN selection value",
+          "ipv6_secondary_option": "Secondary WAN selection value"
         }
       },
       "route_services": {
@@ -303,11 +361,10 @@
         }
       },
       "lady_mode": {
-        "title": "LadyOfGames operating mode",
-        "description": "Enable notifications only after a verified import and stopping the legacy monitor. Switch back to observation here if needed.",
+        "title": "Diagnostic notifications",
+        "description": "Enable notifications for the selected service. Otherwise diagnostics remain in observation mode.",
         "data": {
-          "lady_active": "Notifications active",
-          "legacy_monitor_stopped": "Legacy monitor has been stopped"
+          "lady_active": "Notifications active"
         }
       },
       "lady_dns": {
@@ -315,6 +372,31 @@
         "data": {
           "primary": "Primary LAN resolver",
           "secondary": "Secondary LAN resolver"
+        }
+      },
+      "connection": {
+        "title": "UniFi connection",
+        "description": "Enter this integration’s own local UniFi credentials. TLS certificates are verified; supply the SHA-256 fingerprint for a self-signed certificate. Setup starts with a preview.",
+        "data": {
+          "unifi_host": "UniFi host",
+          "unifi_port": "HTTPS port",
+          "unifi_site": "UniFi site",
+          "unifi_tls_pin_sha256": "Certificate SHA-256 fingerprint (optional)",
+          "unifi_api_key": "Local UniFi API key (leave empty to keep existing)"
+        }
+      },
+      "ipv6_controls": {
+        "title": "IPv6 controls",
+        "description": "Select five distinct helpers and the three values offered by the selection helper.",
+        "data": {
+          "ipv6_enabled_entity": "Enable helper",
+          "ipv6_dry_run_entity": "Dry-run helper",
+          "ipv6_nat66_entity": "NAT66 helper",
+          "ipv6_sab_entity": "Source routing helper",
+          "ipv6_override_entity": "WAN selection helper",
+          "ipv6_auto_option": "Automatic selection value",
+          "ipv6_primary_option": "Primary WAN selection value",
+          "ipv6_secondary_option": "Secondary WAN selection value"
         }
       }
     },
@@ -330,22 +412,22 @@
       "observer_unavailable": "Observer unavailable or response invalid/stale. Check helper, keys and clocks.",
       "invalid_clients": "Select at least one valid client without duplicate assignments.",
       "frigate_observe_first": "Save a new connection without restart enablement first.",
-      "legacy_monitor_running": "Stop the legacy monitor and import the final checkpoint first.",
-      "ipv6_legacy_writer_running": "Stop the VM101 IPv6 writer before activating HA.",
+      "ipv6_legacy_writer_running": "Stop the other IPv6 writer before activating HA.",
       "lady_sources_not_ready": "Lady read-only sources have not provided a current observation.",
-      "lady_checkpoint_missing": "The imported durable Lady checkpoint or history is missing.",
-      "invalid_dns_servers": "Enter two different private IPv4 addresses (10/8, 172.16/12 or 192.168/16)."
+      "invalid_dns_servers": "Enter two different private IPv4 addresses (10/8, 172.16/12 or 192.168/16).",
+      "notification_target_required": "Select a notification service in the diagnostic profile first.",
+      "router_unavailable": "Check the UniFi host, credentials and TLS certificate."
     },
     "abort": {
-      "router_unavailable": "The selected UniFi integration is unavailable.",
+      "router_unavailable": "The selected UniFi controller is unavailable.",
       "no_routes": "Create suitable IP-based routes on your UniFi gateway first.",
-      "already_configured": "Service Route Sync is already configured for this UniFi integration.",
-      "no_gateways": "The UniFi integration exposes no supported gateway with WAN telemetry.",
+      "already_configured": "Service Route Sync is already configured for this UniFi controller.",
+      "no_gateways": "The UniFi controller exposes no supported gateway with WAN telemetry.",
       "observer_address_unavailable": "The selected gateway has no valid local IP address.",
       "observer_key_unavailable": "Unable to safely prepare the dedicated observer key.",
       "no_clients": "UniFi exposes no selectable clients.",
       "invalid_lady_configuration": "The existing Lady configuration is invalid.",
-      "lady_not_configured": "LadyOfGames is not configured yet."
+      "lady_not_configured": "Client is not configured yet."
     }
   },
   "entity": {
@@ -413,6 +495,16 @@
       },
       "lady_last_observation": {
         "name": "Last observation"
+      },
+      "lady_pc_monitoring": {
+        "name": "PC alerting status",
+        "state": {
+          "active": "Active",
+          "powered_off": "Powered off",
+          "port_disconnected": "Switch port disconnected",
+          "source_unavailable": "Measurement unavailable",
+          "no_pc_evidence": "No current PC response"
+        }
       },
       "wifi_client_count": {
         "name": "Observed Wi-Fi clients"

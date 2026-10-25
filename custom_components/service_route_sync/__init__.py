@@ -1,6 +1,6 @@
 """Maintain explicitly selected service destinations in existing router policies."""
 
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
@@ -39,9 +39,9 @@ async def async_setup(hass, config):
 
 
 async def async_setup_entry(hass, entry):
-    if entry.unique_id is None:
-        hass.config_entries.async_update_entry(entry, unique_id=entry.data["unifi_entry_id"])
     settings = {**entry.data, **entry.options}
+    if not all(settings.get(key) for key in ("unifi_host", "unifi_api_key")):
+        raise ConfigEntryAuthFailed("Configure this integration's own UniFi connection")
     runtime = RuntimeData()
     failures = []
     if settings.get("services"):

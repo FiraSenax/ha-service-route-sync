@@ -1,7 +1,7 @@
 # Restricted IPv6 policy actor
 
 The IPv6 policy controller is separate from the read-only WAN observer and
-from destination-route synchronization. It manages exactly the legacy
+from destination-route synchronization. It manages exactly the managed
 `IOB_V6_NAT` and `IOB_SAB_PBR` chains, their two UniFi hooks and the source
 policy at preference 31010. It never accepts a shell command, arbitrary
 prefix, interface, mark, table, or rule from Home Assistant. The gateway keeps
@@ -17,7 +17,7 @@ closed status flags and a SHA-256 digest of the managed state.
 2. Install `gateway/ipv6_policy.py` and `gateway/ipv6_actor.py` under the
    gateway's root-owned `/data/service-route-sync` directory (mode 0700).
    `ipv6_actor.json` must be root-owned 0600 with the exact deployment-specific
-   ULA, marks, SAB addresses and fixed WAN tables. The actor script must be
+   ULA, marks, SAB addresses and configured WAN interfaces and tables. The actor script must be
    root-owned 0700. Never put these values in HA options or diagnostics.
 3. Using an existing trusted gateway administrator connection, add the public
    key to the effective `authorized_keys` with an HA-source restriction and
@@ -34,11 +34,41 @@ closed status flags and a SHA-256 digest of the managed state.
    an actual read-only inspection.
 4. Confirm that HA reports an exact mode and fresh primary/secondary IPv6
    observations. While inspection-only, compare HA's planned target with the
-   legacy controller and the real managed rule set over normal WAN changes.
-5. At the supervised handover, stop and disable the VM101 IPv6 writer. Confirm
+   previous controller and the real managed rule set over normal WAN changes.
+5. At the supervised handover, stop and disable any other IPv6 writer. Confirm
    that no other process writes the managed chains. Only then enable the HA
    writer in the integration options. The first active refresh reads a fresh
    actor digest and WAN observation before any write.
+
+## Gateway configuration
+
+Use this schema for `/data/service-route-sync/ipv6_actor.json`. All addresses,
+interfaces, tables and marks below are examples to replace with your values.
+Primary and secondary roles are independent of provider names. The policy is
+specifically a /56 ULA NAT policy: primary uses a delegated /56 with NETMAP,
+secondary uses masquerading. Other prefix lengths or policy types are outside
+this actor's scope and are rejected.
+
+```json
+{
+  "schema": 1,
+  "ula_prefix": "fd12:3456:789a:bc00::/56",
+  "primary_interface": "wan0",
+  "secondary_interface": "wan1",
+  "primary_table": "301.fiber",
+  "secondary_table": "302.mobile",
+  "primary_mark": "0x1a0000/0x7e0000",
+  "secondary_mark": "0x1c0000/0x7e0000",
+  "sab_primary_ip": "192.168.10.10",
+  "sab_secondary_ip": "192.168.10.11"
+}
+```
+
+HA options select the control helpers and map the input-select values to the
+`primary` and `secondary` protocol roles. The separate source-routing addresses
+must be distinct. Interface names, table names and marks are validated before
+forming command arguments. The reader and writer must be upgraded together;
+old personal mode names are not accepted.
 
 ## Failure and recovery
 
@@ -82,3 +112,15 @@ with exact readback and closed journals. HA reports DSL, a current decision
 and no review latch. The read-only WAN observer remains independent. The
 pre-cutover rule snapshot, restore record and recovery details are kept in the
 private deployment notes, outside this repository.
+
+## Routing marks
+
+Use the mark and mask from the current gateway's `ip -4 rule show` entries for
+the configured WAN tables. Both WAN marks must use the same mask and differ in
+value. The actor uses that mask for both MARK and CONNMARK; it does not assume
+an older UniFi mask. For example, a controller may use
+`0x21940000/0x3ffe0000` and `0x21960000/0x3ffe0000`. These are examples, not defaults.
+After controller reprovisioning, verify marks as well as interfaces, routing
+tables and delegated prefixes. A completed historical journal does not prove
+that the current rules still match; ambiguous partial states remain blocked
+until audited and repaired.
