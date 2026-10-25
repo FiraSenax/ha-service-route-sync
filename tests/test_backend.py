@@ -38,7 +38,9 @@ class UniFiTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 call.args[1], "https://192.0.2.1:443/proxy/network/api/s/default/stat/sta"
             )
-            self.assertEqual(call.kwargs["headers"], {"X-API-KEY": "x" * 32})
+            self.assertEqual(
+                call.kwargs["headers"], {"X-API-KEY": "x" * 32, "Accept-Encoding": "gzip, deflate"}
+            )
             self.assertIsInstance(call.kwargs["ssl"], Fingerprint)
             self.assertFalse(call.kwargs["allow_redirects"])
             await backend.async_close()

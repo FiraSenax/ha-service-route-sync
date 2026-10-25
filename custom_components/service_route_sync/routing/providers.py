@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 import aiohttp
 
 from .catalog import CATALOG
+from ..backends.http_json import read_body
 from .core import SyncError, normalize_prefixes
 
 MAX_BYTES = 20_000_000
@@ -80,20 +81,20 @@ class FeedClient:
         }:
             raise SyncError("Unapproved feed host")
         async with self.session.get(
-            url, timeout=aiohttp.ClientTimeout(total=45), allow_redirects=False
+            url,
+            timeout=aiohttp.ClientTimeout(total=45),
+            allow_redirects=False,
+            auto_decompress=False,
+            headers={"Accept-Encoding": "gzip, deflate"},
         ) as response:
             response.raise_for_status()
-            data = bytearray()
-            async for chunk in response.content.iter_chunked(65536):
-                data.extend(chunk)
-                if len(data) > MAX_BYTES:
-                    raise SyncError("Feed exceeds size limit")
+            data = await read_body(response, maximum=MAX_BYTES)
             if html:
                 result = data.decode("utf-8")
             else:
                 import json
 
-                result = json.loads(data)
+                result = await asyncio.to_thread(json.loads, data)
         self._cycle_cache[url] = result
         self._cache[url] = (monotonic(), result)
         return result

@@ -3,6 +3,7 @@
 import json
 import asyncio
 import math
+import zlib
 
 from ..routing.core import SyncError
 
@@ -50,13 +51,40 @@ def _check_depth(body, maximum=64):
             depth -= 1
 
 
-async def read_json(response, *, maximum=MAX_CONTROLLER_BYTES):
-    """Bound decoded bytes even when Content-Length is absent or compressed."""
+async def read_body(response, *, maximum):
+    """Bound allocation before decompression, including hostile compressed bodies.
+
+    Callers must disable aiohttp automatic decompression and request only the
+    supported encodings. Content-Length is not a resource limit.
+    """
+    encoding = getattr(response, "headers", {}).get("Content-Encoding", "identity").lower()
+    if encoding not in ("identity", "gzip", "deflate"):
+        raise SyncError("Unsupported response content encoding")
+    decoder = (
+        zlib.decompressobj(31 if encoding == "gzip" else 15) if encoding != "identity" else None
+    )
     body = bytearray()
-    async for chunk in response.content.iter_chunked(65536):
-        if len(body) + len(chunk) > maximum:
-            raise SyncError("Controller response exceeds size limit")
-        body.extend(chunk)
+    encoded_bytes = 0
+    try:
+        async for chunk in response.content.iter_chunked(65536):
+            encoded_bytes += len(chunk)
+            if encoded_bytes > maximum + 65536:
+                raise SyncError("Response exceeds size limit")
+            decoded = decoder.decompress(chunk, maximum - len(body) + 1) if decoder else chunk
+            if len(body) + len(decoded) > maximum:
+                raise SyncError("Response exceeds size limit")
+            body.extend(decoded)
+            if decoder and decoder.unused_data:
+                raise SyncError("Unexpected trailing compressed content")
+        if decoder and not decoder.eof:
+            raise SyncError("Incomplete compressed response")
+    except zlib.error:
+        raise SyncError("Invalid compressed response") from None
+    return body
+
+
+async def read_json(response, *, maximum=MAX_CONTROLLER_BYTES):
+    body = await read_body(response, maximum=maximum)
     return await asyncio.to_thread(_decode, body)
 
 

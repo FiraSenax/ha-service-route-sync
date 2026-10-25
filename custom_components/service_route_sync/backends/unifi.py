@@ -121,7 +121,7 @@ class UniFiBackend:
     async def _key_request(self, request):
         route = request.path.startswith("/trafficroutes")
         if self._pinned_session is None:
-            self._pinned_session = ClientSession(trust_env=False)
+            self._pinned_session = ClientSession(trust_env=False, auto_decompress=False)
         authority = f"[{self.host}]" if ":" in self.host else self.host
         prefix = (
             f"/proxy/network/v2/api/site/{self.site}"
@@ -133,7 +133,7 @@ class UniFiBackend:
         async with self._pinned_session.request(
             request.method.upper(),
             url,
-            headers={"X-API-KEY": key},
+            headers={"X-API-KEY": key, "Accept-Encoding": "gzip, deflate"},
             json=deepcopy(request.data) if request.method == "put" else None,
             ssl=Fingerprint(bytes.fromhex(self.tls_pin_sha256)) if self.tls_pin_sha256 else True,
             timeout=ClientTimeout(total=15),

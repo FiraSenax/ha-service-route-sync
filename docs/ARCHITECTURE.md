@@ -37,7 +37,10 @@ layer; they are not independent processes or security sandboxes.
 - API keys belong to this entry. TLS is verified or explicitly certificate-pinned;
   redirects and environment proxies are disabled for authenticated requests.
 - Controller JSON is limited to 4 MiB of decoded content and 64 nesting levels;
-  parsing runs outside the event loop. SSH frames have independent tighter bounds.
+  parsing runs outside the event loop. Automatic aiohttp decompression is disabled;
+  gzip/deflate decoding uses a bounded output allocation for controller responses
+  and feeds, so compressed payloads cannot bypass the byte cap. SSH frames have
+  independent tighter bounds.
 - Route switches/buttons require an administrator or a trusted HA automation
   context. Network writes also retain preview validation, a persistent write latch,
   backups, concurrent-change checks and post-write verification.

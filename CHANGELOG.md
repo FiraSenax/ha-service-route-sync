@@ -5,7 +5,8 @@
 - Require administrator or trusted automation context for route controls, including
   refreshes that can trigger writes. Sanitize unexpected route-action errors.
 - Bound controller JSON to 4 MiB and 64 nesting levels; reject duplicate keys and
-  non-finite values, and decode outside the event loop.
+  non-finite values, and decode outside the event loop. Bound gzip/deflate output
+  allocation for controller and feed responses.
 - Separate routing, network, clients, monitoring, WLAN, IPv6, Frigate, probes and
   Windows protocols into feature packages and compose smaller configuration flows.
 - Isolate optional feature setup failures and centrally manage shutdown.

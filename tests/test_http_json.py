@@ -14,6 +14,28 @@ class HttpJsonTests(unittest.IsolatedAsyncioTestCase):
 
         return SimpleNamespace(content=SimpleNamespace(iter_chunked=chunks))
 
+    async def test_compressed_bomb_and_truncated_stream_are_bounded(self):
+        import gzip
+
+        response = self.response([gzip.compress(b"x" * 1_000_000)])
+        response.headers = {"Content-Encoding": "gzip"}
+        with self.assertRaisesRegex(SyncError, "size limit"):
+            await read_json(response, maximum=1000)
+        response = self.response([gzip.compress(b'{"a":1}')[:-1]])
+        response.headers = {"Content-Encoding": "gzip"}
+        with self.assertRaisesRegex(SyncError, "Incomplete"):
+            await read_json(response)
+
+    async def test_compressed_json_at_limit_and_unknown_encodings(self):
+        import gzip
+
+        response = self.response([gzip.compress(b'{"a":1}')])
+        response.headers = {"Content-Encoding": "gzip"}
+        self.assertEqual(await read_json(response, maximum=7), {"a": 1})
+        response.headers = {"Content-Encoding": "unsupported"}
+        with self.assertRaises(SyncError):
+            await read_json(response)
+
     async def test_missing_or_false_length_cannot_bypass_decoded_body_limit(self):
         response = self.response([b'{"x":"', b"x" * 100, b'"}'])
         response.content_length = 1
