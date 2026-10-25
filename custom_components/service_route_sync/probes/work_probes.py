@@ -80,6 +80,9 @@ async def probe_work_endpoint(target: str, now) -> WorkProbe:
     try:
         process = await asyncio.create_subprocess_exec(
             "/usr/bin/curl",
+            "-q",  # Must be first: do not load a per-user curl configuration.
+            "--max-filesize",
+            "1048576",
             "--silent",
             "--output",
             "/dev/null",

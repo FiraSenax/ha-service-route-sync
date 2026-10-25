@@ -68,7 +68,8 @@ The HTTPS backend currently supports UniFi OS compatibility API paths. A control
 with only `/integration/v1`, a different route schema or incompatible permissions
 is rejected by setup; an API key alone is not a compatibility guarantee.
 
-SSH features require OpenSSH in the HA runtime and a gateway supporting the exact
+Public HTTPS phase probes require `/usr/bin/curl`; user curl configuration is
+disabled and response bodies are limited to 1 MiB. SSH features require OpenSSH in the HA runtime and a gateway supporting the exact
 reader's Linux/UbiOS tools. IPv6 writes additionally require the documented chain
 layout, matching ULA/provider prefix lengths (/48–/64), explicit interface/table/
 mark configuration and exclusive ownership of the managed policy. A different
