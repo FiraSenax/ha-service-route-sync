@@ -13,8 +13,10 @@ from homeassistant.util import dt as dt_util
 
 from custom_components.service_route_sync.backends.gateway_ssh import GatewayTransportError
 from custom_components.service_route_sync.binary_sensor import GatewayProtocolSensor
-from custom_components.service_route_sync.gateway_coordinator import GatewayCoordinator
-from custom_components.service_route_sync.gateway_observation import parse_gateway_observation
+from custom_components.service_route_sync.network.gateway_coordinator import GatewayCoordinator
+from custom_components.service_route_sync.network.gateway_observation import (
+    parse_gateway_observation,
+)
 
 
 def observation(now):
@@ -125,7 +127,7 @@ class GatewayRuntimeTests(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(type(self.coordinator.transport), "validate_files"),
             patch(
-                "custom_components.service_route_sync.gateway_coordinator.read_gateway",
+                "custom_components.service_route_sync.network.gateway_coordinator.read_gateway",
                 new_callable=AsyncMock,
             ) as read,
         ):
@@ -143,7 +145,7 @@ class GatewayRuntimeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_missing_credential_files_do_not_start_ssh(self):
         with patch(
-            "custom_components.service_route_sync.gateway_coordinator.read_gateway",
+            "custom_components.service_route_sync.network.gateway_coordinator.read_gateway",
             new_callable=AsyncMock,
         ) as read:
             with self.assertRaises(UpdateFailed):

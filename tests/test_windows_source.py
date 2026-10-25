@@ -3,8 +3,12 @@ import sqlite3
 import tempfile
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.windows_source import extract_events, read_heartbeat, read_windows_batch
-from service_route_sync.windows_cursor import WindowsSourceError
+from service_route_sync.windows.windows_source import (
+    extract_events,
+    read_heartbeat,
+    read_windows_batch,
+)
+from service_route_sync.windows.windows_cursor import WindowsSourceError
 
 
 class WindowsSourceTests(unittest.TestCase):

@@ -1,5 +1,7 @@
 """IPv6 options affect no unrelated HA integration settings."""
 
+from tests_ha.flow_backend import patch_flow_backend
+
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -67,7 +69,7 @@ class IPv6FlowTests(unittest.IsolatedAsyncioTestCase):
         flow.defaults["ipv6_override_entity"] = "input_select.custom_wan"
         flow.defaults.update(gateway_observer_enabled=True, gateway_observer_host="192.0.2.1")
         with patch(
-            "custom_components.service_route_sync.config_flow.prepare_ipv6_actor_key",
+            "custom_components.service_route_sync.flows.ipv6.prepare_ipv6_actor_key",
             new=AsyncMock(return_value="ssh-ed25519 test"),
         ):
             result = await OptionsFlow.async_step_ipv6_policy(
@@ -122,9 +124,7 @@ class IPv6FlowTests(unittest.IsolatedAsyncioTestCase):
             read_routes=AsyncMock(return_value={"route-id": {"_id": "route-id"}}),
             async_close=AsyncMock(),
         )
-        with patch(
-            "custom_components.service_route_sync.config_flow.UniFiBackend", return_value=backend
-        ) as factory:
+        with patch_flow_backend(return_value=backend) as factory:
             result = await OptionsFlow.async_step_route_tls(
                 flow, {"unifi_tls_pin_sha256": ":".join(["61"] * 32)}
             )

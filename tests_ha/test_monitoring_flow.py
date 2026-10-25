@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests_ha.test_network_flow import FlowHarness
-from custom_components.service_route_sync.core import SyncError
+from custom_components.service_route_sync.routing.core import SyncError
 
 MAC = "02:00:00:00:00:01"
 OTHER = "02:00:00:00:00:02"
@@ -21,7 +21,7 @@ class MonitoringFlowTests(unittest.IsolatedAsyncioTestCase):
             read_clients=AsyncMock(return_value=[{"mac": MAC, "name": "Synthetic Monitoring"}]),
         )
         self.patch = patch(
-            "custom_components.service_route_sync.monitoring_flow.UniFiBackend",
+            "custom_components.service_route_sync.monitoring.monitoring_flow.UniFiBackend",
             return_value=self.backend,
         )
         self.patch.start()
@@ -79,9 +79,9 @@ class MonitoringFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["data"]["monitoring_active"])
         self.assertEqual(result["data"]["monitoring_profile"]["macs"], [MAC, OTHER])
 
-    async def test_dns_options_require_two_fixed_lan_resolvers(self):
+    async def test_dns_options_require_two_explicit_unicast_resolvers(self):
         invalid = await self.flow.async_step_monitoring_dns(
-            {"primary": "192.168.1.10", "secondary": "8.8.8.8"}
+            {"primary": "192.168.1.10", "secondary": "127.0.0.1"}
         )
         self.assertEqual(invalid["errors"], {"base": "invalid_dns_servers"})
         saved = await self.flow.async_step_monitoring_dns(
@@ -104,12 +104,12 @@ class MonitoringFlowTests(unittest.IsolatedAsyncioTestCase):
         )
         with (
             patch(
-                "custom_components.service_route_sync.monitoring_flow.prepare_observer_key",
+                "custom_components.service_route_sync.monitoring.monitoring_flow.prepare_observer_key",
                 new_callable=AsyncMock,
                 return_value="synthetic-public-key",
             ),
             patch(
-                "custom_components.service_route_sync.monitoring_flow.credential_directory",
+                "custom_components.service_route_sync.monitoring.monitoring_flow.credential_directory",
                 return_value=Path("/tmp/synthetic"),
             ),
         ):
@@ -132,7 +132,7 @@ class MonitoringFlowTests(unittest.IsolatedAsyncioTestCase):
             gateway_observer_host="172.20.0.2",
         )
         with patch(
-            "custom_components.service_route_sync.monitoring_flow.prepare_observer_key",
+            "custom_components.service_route_sync.monitoring.monitoring_flow.prepare_observer_key",
             new_callable=AsyncMock,
             return_value="synthetic-public-key",
         ):

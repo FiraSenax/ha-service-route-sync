@@ -6,6 +6,7 @@ async def async_get_config_entry_diagnostics(hass, entry):
     coordinator = runtime.routes
     report = {
         "routing_enabled": coordinator is not None,
+        "feature_setup_issues": dict(getattr(runtime, "setup_issues", {})),
         "network_enabled": runtime.network is not None,
         "gateway_observer_enabled": runtime.gateway is not None,
         "client_monitoring_enabled": runtime.clients is not None,

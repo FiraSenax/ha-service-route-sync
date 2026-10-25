@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests_ha import test_network_runtime as base
-from custom_components.service_route_sync.work_probe_coordinator import WorkProbeCoordinator
-from custom_components.service_route_sync.work_probes import WorkProbe
+from custom_components.service_route_sync.probes.work_probe_coordinator import WorkProbeCoordinator
+from custom_components.service_route_sync.probes.work_probes import WorkProbe
 from homeassistant.util import dt as dt_util
 
 
@@ -22,7 +22,7 @@ class WorkRuntimeTests(unittest.IsolatedAsyncioTestCase):
         row = WorkProbe(dt_util.utcnow(), True, 302, True, 0, 0, 0, 0, 0)
         runner = AsyncMock(return_value=row)
         with patch(
-            "custom_components.service_route_sync.work_probe_coordinator.probe_work_endpoint",
+            "custom_components.service_route_sync.probes.work_probe_coordinator.probe_work_endpoint",
             runner,
         ):
             await self.coordinator.async_config_entry_first_refresh()
@@ -42,7 +42,7 @@ class WorkRuntimeTests(unittest.IsolatedAsyncioTestCase):
             )
 
         with patch(
-            "custom_components.service_route_sync.work_probe_coordinator.probe_work_endpoint",
+            "custom_components.service_route_sync.probes.work_probe_coordinator.probe_work_endpoint",
             side_effect=probe,
         ):
             await self.coordinator.async_config_entry_first_refresh()

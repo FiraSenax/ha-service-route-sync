@@ -44,6 +44,28 @@ def snapshot(mode="primary", *, delegation=PD):
 
 
 class PolicyTests(unittest.TestCase):
+    def test_other_installations_can_use_matching_prefix_lengths_and_interface_names(self):
+        for length in [48, 56, 60, 64]:
+            config = parse_config(
+                {
+                    **RAW,
+                    "ula_prefix": f"fd34:5678:9abc::/{length}",
+                    "primary_interface": "wan.100",
+                    "secondary_interface": "uplink2",
+                    "primary_table": "120",
+                    "secondary_table": "130",
+                }
+            )
+            delegation = f"2001:4860:abcd::/{length}"
+            self.assertIn(f"--to {delegation}", expected_nat(config, "primary", delegation)[1])
+            self.assertIn("-o uplink2", expected_nat(config, "secondary", None)[1])
+            mismatch = 64 if length != 64 else 56
+            with self.assertRaises(PolicyError):
+                expected_nat(config, "primary", f"2001:4860:abcd::/{mismatch}")
+        for prefix in ["2001:db8::/48", "fe80::/64", "fd00::/32", "fd00::/80"]:
+            with self.assertRaises(PolicyError):
+                parse_config({**RAW, "ula_prefix": prefix})
+
     def test_current_unifi_marks_preserve_the_configured_mask(self):
         config = parse_config(
             {

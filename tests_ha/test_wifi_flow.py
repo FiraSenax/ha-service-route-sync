@@ -1,13 +1,14 @@
+from tests_ha.flow_backend import patch_flow_backend
 from pathlib import Path
 import sys
 from types import SimpleNamespace
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests_ha import CONNECTION
 from custom_components.service_route_sync.config_flow import OptionsFlow
-from custom_components.service_route_sync.core import SyncError
+from custom_components.service_route_sync.routing.core import SyncError
 
 
 class Harness(OptionsFlow):
@@ -41,8 +42,7 @@ class WifiFlowTests(unittest.IsolatedAsyncioTestCase):
         self.backend = SimpleNamespace(
             async_close=AsyncMock(), read_clients=AsyncMock(return_value=[])
         )
-        self.patch = patch(
-            "custom_components.service_route_sync.config_flow.UniFiBackend",
+        self.patch = patch_flow_backend(
             return_value=self.backend,
         )
         self.patch.start()

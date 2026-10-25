@@ -2,28 +2,29 @@
 
 from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .const import DOMAIN, PLATFORMS
-from .coordinator import RouteCoordinator
-from .network_coordinator import NetworkCoordinator
-from .gateway_coordinator import GatewayCoordinator
-from .client_coordinator import ClientCoordinator
-from .client_probe_coordinator import ClientProbeCoordinator
-from .work_probe_coordinator import WorkProbeCoordinator
+from .connection import requires_controller
+from .migration import async_migrate_entry as async_migrate_entry
+from .routing.coordinator import RouteCoordinator
+from .network.network_coordinator import NetworkCoordinator
+from .network.gateway_coordinator import GatewayCoordinator
+from .clients.client_coordinator import ClientCoordinator
+from .clients.client_probe_coordinator import ClientProbeCoordinator
+from .probes.work_probe_coordinator import WorkProbeCoordinator
 from .metrics_view import register_metrics_view
 from .runtime import RuntimeData
-from .monitoring_runtime import prepare_monitoring
-from .backends.gateway_ssh import GatewayTransportError
-from .monitoring_services import register_monitoring_services
-from .wifi_coordinator import prepare_wifi
-from .wifi_api import register_wifi_api
-from .wifi_services import register_wifi_services
+from .lifecycle import Feature, prepare_features
+from .monitoring.monitoring_runtime import prepare_monitoring
+from .monitoring.monitoring_services import register_monitoring_services
+from .wifi.wifi_coordinator import prepare_wifi
+from .wifi.wifi_api import register_wifi_api
+from .wifi.wifi_services import register_wifi_services
 from .frontend import register_frontend
-from .frigate_services import register_frigate_services
-from .frigate_coordinator import FrigateActorCoordinator
-from .ipv6_coordinator import IPv6Coordinator
-from .ipv6_services import register_ipv6_services
+from .frigate.frigate_services import register_frigate_services
+from .frigate.frigate_coordinator import FrigateActorCoordinator
+from .ipv6.ipv6_coordinator import IPv6Coordinator
+from .ipv6.ipv6_services import register_ipv6_services
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -40,65 +41,71 @@ async def async_setup(hass, config):
 
 async def async_setup_entry(hass, entry):
     settings = {**entry.data, **entry.options}
-    if not all(settings.get(key) for key in ("unifi_host", "unifi_api_key")):
+    if requires_controller(settings) and not all(
+        settings.get(key) for key in ("unifi_host", "unifi_api_key")
+    ):
         raise ConfigEntryAuthFailed("Configure this integration's own UniFi connection")
     runtime = RuntimeData()
-    failures = []
-    if settings.get("services"):
-        runtime.routes = RouteCoordinator(hass, entry)
-        await runtime.routes.load()
-    if settings.get("network_enabled"):
-        runtime.network = NetworkCoordinator(hass, entry)
-    if settings.get("gateway_observer_enabled"):
-        runtime.gateway = GatewayCoordinator(hass, entry)
-    if settings.get("ipv6_actor_enabled") is True:
-        if runtime.gateway is None:
-            failures.append(ConfigEntryNotReady("IPv6 policy requires verified WAN observations"))
-        else:
-            try:
-                runtime.ipv6_actor = IPv6Coordinator(hass, entry, runtime.gateway)
-                await runtime.ipv6_actor.async_initialize()
-            except (
-                KeyError,
-                ValueError,
-                OSError,
-                GatewayTransportError,
-                ConfigEntryNotReady,
-                UpdateFailed,
-            ):
-                runtime.ipv6_actor = None
-                failures.append(ConfigEntryNotReady("IPv6 policy trust is not ready"))
-    if settings.get("client_profiles"):
-        runtime.clients = ClientCoordinator(hass, entry, settings["client_profiles"])
-        if settings.get("client_probe_enabled"):
-            runtime.client_probes = ClientProbeCoordinator(hass, entry, runtime.clients)
-    if settings.get("work_probe_enabled"):
-        runtime.work_probes = WorkProbeCoordinator(hass, entry)
-    if settings.get("wifi_history_enabled"):
-        runtime.wifi = prepare_wifi(hass, entry, settings)
-    if settings.get("frigate_actor_enabled") is True:
-        try:
-            runtime.frigate_actor = FrigateActorCoordinator(hass, entry)
-        except (ValueError, OSError, GatewayTransportError):
-            failures.append(ConfigEntryNotReady("Frigate peer trust is not ready"))
-    if settings.get("monitoring_enabled"):
-        try:
-            runtime.monitoring = await prepare_monitoring(hass, entry, settings)
-        except (ValueError, OSError, GatewayTransportError, ConfigEntryNotReady):
-            failures.append(ConfigEntryNotReady("Monitoring observation sources are not ready"))
-    coordinators = (
-        runtime.routes,
-        runtime.network,
-        runtime.gateway,
-        runtime.ipv6_actor,
-        runtime.clients,
-        runtime.client_probes,
-        runtime.work_probes,
-        runtime.wifi,
-        runtime.frigate_actor,
-        runtime.monitoring.clients if runtime.monitoring else None,
-        runtime.monitoring.incidents if runtime.monitoring else None,
+    failures = await prepare_features(
+        runtime,
+        (
+            Feature(
+                "routes",
+                bool(settings.get("services")),
+                lambda: RouteCoordinator(hass, entry),
+                initialize="load",
+            ),
+            Feature(
+                "network",
+                bool(settings.get("network_enabled")),
+                lambda: NetworkCoordinator(hass, entry),
+            ),
+            Feature(
+                "gateway",
+                bool(settings.get("gateway_observer_enabled")),
+                lambda: GatewayCoordinator(hass, entry),
+            ),
+            Feature(
+                "ipv6_actor",
+                settings.get("ipv6_actor_enabled") is True,
+                lambda: IPv6Coordinator(hass, entry, runtime.gateway),
+                requires=("gateway",),
+                initialize="async_initialize",
+            ),
+            Feature(
+                "clients",
+                bool(settings.get("client_profiles")),
+                lambda: ClientCoordinator(hass, entry, settings["client_profiles"]),
+            ),
+            Feature(
+                "client_probes",
+                bool(settings.get("client_probe_enabled")),
+                lambda: ClientProbeCoordinator(hass, entry, runtime.clients),
+                requires=("clients",),
+            ),
+            Feature(
+                "work_probes",
+                bool(settings.get("work_probe_enabled")),
+                lambda: WorkProbeCoordinator(hass, entry),
+            ),
+            Feature(
+                "wifi",
+                bool(settings.get("wifi_history_enabled")),
+                lambda: prepare_wifi(hass, entry, settings),
+            ),
+            Feature(
+                "frigate_actor",
+                settings.get("frigate_actor_enabled") is True,
+                lambda: FrigateActorCoordinator(hass, entry),
+            ),
+            Feature(
+                "monitoring",
+                bool(settings.get("monitoring_enabled")),
+                lambda: prepare_monitoring(hass, entry, settings),
+            ),
+        ),
     )
+    coordinators = runtime.coordinators()
     if not any(coordinators):
         raise ConfigEntryNotReady("No feature is configured or ready")
     ready = False
@@ -110,17 +117,13 @@ async def async_setup_entry(hass, entry):
             except ConfigEntryNotReady as exc:
                 failures.append(exc)
     if not ready:
-        for coordinator in coordinators:
-            if coordinator is not None:
-                await coordinator.async_shutdown()
+        await runtime.shutdown()
         raise ConfigEntryNotReady("The selected router or sources are unavailable") from failures[0]
     entry.runtime_data = runtime
     try:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     except BaseException:
-        for coordinator in coordinators:
-            if coordinator is not None:
-                await coordinator.async_shutdown()
+        await runtime.shutdown()
         raise
     # These observations also feed the compatibility exporter. Keep them polling
     # even with disabled entities, and retry a failed initial probe handshake.
@@ -144,22 +147,7 @@ async def async_setup_entry(hass, entry):
 async def async_unload_entry(hass, entry):
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        runtime = entry.runtime_data
-        for coordinator in (
-            runtime.routes,
-            runtime.network,
-            runtime.gateway,
-            runtime.ipv6_actor,
-            runtime.clients,
-            runtime.client_probes,
-            runtime.work_probes,
-            runtime.wifi,
-            runtime.frigate_actor,
-            runtime.monitoring.clients if runtime.monitoring else None,
-            runtime.monitoring.incidents if runtime.monitoring else None,
-        ):
-            if coordinator is not None:
-                await coordinator.async_shutdown()
+        await entry.runtime_data.shutdown()
     return unloaded
 
 

@@ -9,12 +9,12 @@ from unittest.mock import AsyncMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests_ha import test_network_runtime as network_tests
-from custom_components.service_route_sync.client_coordinator import (
+from custom_components.service_route_sync.clients.client_coordinator import (
     ClientCoordinator,
     validate_profiles,
 )
-from custom_components.service_route_sync.client_observation import ClientDataError
-from custom_components.service_route_sync.core import SyncError
+from custom_components.service_route_sync.clients.client_observation import ClientDataError
+from custom_components.service_route_sync.routing.core import SyncError
 from custom_components.service_route_sync.diagnostics import async_get_config_entry_diagnostics
 from custom_components.service_route_sync.runtime import RuntimeData
 from custom_components.service_route_sync.sensor import ClientConnectionSensor, ClientPortSensor

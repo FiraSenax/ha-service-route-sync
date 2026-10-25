@@ -10,8 +10,8 @@ import probatio
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import Unauthorized
-from custom_components.service_route_sync.wifi_api import register_wifi_api
-from custom_components.service_route_sync.wifi_history import WifiHistoryError
+from custom_components.service_route_sync.wifi.wifi_api import register_wifi_api
+from custom_components.service_route_sync.wifi.wifi_history import WifiHistoryError
 
 
 class WifiApiTests(unittest.IsolatedAsyncioTestCase):

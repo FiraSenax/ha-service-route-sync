@@ -6,8 +6,8 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.util import dt as dt_util
-from custom_components.service_route_sync.frigate_coordinator import FrigateObservation
-from custom_components.service_route_sync.frigate_entity import (
+from custom_components.service_route_sync.frigate.frigate_coordinator import FrigateObservation
+from custom_components.service_route_sync.frigate.frigate_entity import (
     FrigateStatusBinarySensor,
     FrigateTimestampSensor,
 )

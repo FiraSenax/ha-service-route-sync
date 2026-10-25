@@ -103,7 +103,7 @@ def current_delegation(config):
     ]
     if len(selected) != 1:
         raise PolicyError("ambiguous_primary_interface")
-    known, prefix = delegation(selected[0], 56)
+    known, prefix = delegation(selected[0], config.ula.prefixlen)
     if not known:
         raise PolicyError("delegation_unknown")
     return prefix

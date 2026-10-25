@@ -6,12 +6,16 @@ from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.core import HomeAssistant
-from custom_components.service_route_sync.monitoring_store import MonitoringCheckpointStore
-from custom_components.service_route_sync.monitoring_transaction import MonitoringTransaction
-from custom_components.service_route_sync.windows_cursor import AlertCursor
-from custom_components.service_route_sync.windows_source import WindowsBatch
-from custom_components.service_route_sync.windows_archive import DailyCursor
-from custom_components.service_route_sync.monitoring_history import MonitoringHistory
+from custom_components.service_route_sync.monitoring.monitoring_store import (
+    MonitoringCheckpointStore,
+)
+from custom_components.service_route_sync.monitoring.monitoring_transaction import (
+    MonitoringTransaction,
+)
+from custom_components.service_route_sync.windows.windows_cursor import AlertCursor
+from custom_components.service_route_sync.windows.windows_source import WindowsBatch
+from custom_components.service_route_sync.windows.windows_archive import DailyCursor
+from custom_components.service_route_sync.monitoring.monitoring_history import MonitoringHistory
 
 
 class TransactionTests(unittest.IsolatedAsyncioTestCase):

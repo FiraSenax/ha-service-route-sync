@@ -2,7 +2,7 @@ import copy
 import unittest
 
 import bootstrap  # noqa: F401
-from service_route_sync.core import (
+from service_route_sync.routing.core import (
     SyncError,
     apply_plan,
     build_plan,
@@ -177,7 +177,7 @@ class TransactionTests(unittest.IsolatedAsyncioTestCase):
 
 class BatchTests(unittest.TestCase):
     def test_later_invalid_route_prevents_a_complete_plan(self):
-        from service_route_sync.core import build_plans
+        from service_route_sync.routing.core import build_plans
 
         routes = {"test-route": route()}
         with self.assertRaises(SyncError):
@@ -189,7 +189,7 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(routes["test-route"], route())
 
     def test_two_services_cannot_overwrite_the_same_route(self):
-        from service_route_sync.core import build_plans
+        from service_route_sync.routing.core import build_plans
 
         with self.assertRaises(SyncError):
             build_plans(
@@ -199,7 +199,7 @@ class BatchTests(unittest.TestCase):
             )
 
     def test_large_removals_visible_in_preview_but_blocked_for_writes(self):
-        from service_route_sync.core import build_plans
+        from service_route_sync.routing.core import build_plans
 
         args = ({"test-route": route()}, {"one": ["9.9.9.0/24"]}, {"one": "test-route"})
         self.assertEqual(build_plans(*args)[0].removed, 1)

@@ -1,5 +1,7 @@
 # Service Route Sync
 
+[Architektur, Sicherheitsgrenzen und Kompatibilität](docs/ARCHITECTURE.md) · [Sicherheitsrichtlinie](SECURITY.md)
+
 Deutsch · [English](README.md)
 
 [![Tests](https://github.com/FiraSenax/ha-service-route-sync/actions/workflows/tests.yml/badge.svg)](https://github.com/FiraSenax/ha-service-route-sync/actions/workflows/tests.yml)

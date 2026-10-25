@@ -6,7 +6,9 @@ from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests_ha import test_network_runtime as base
-from custom_components.service_route_sync.client_probe_coordinator import ClientProbeCoordinator
+from custom_components.service_route_sync.clients.client_probe_coordinator import (
+    ClientProbeCoordinator,
+)
 from custom_components.service_route_sync.backends.gateway_ssh import GatewayTransportError
 from homeassistant.util import dt as dt_util
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
@@ -55,7 +57,7 @@ class ProbeRuntimeTests(unittest.IsolatedAsyncioTestCase):
             }
         )
         self.patch = patch(
-            "custom_components.service_route_sync.client_probe_coordinator.read_client_probes",
+            "custom_components.service_route_sync.clients.client_probe_coordinator.read_client_probes",
             self.reader,
         )
         self.patch.start()

@@ -1,7 +1,7 @@
 import unittest
 
 import bootstrap  # noqa: F401
-from service_route_sync.network_metrics import MetricDataError, MetricWriter
+from service_route_sync.network.network_metrics import MetricDataError, MetricWriter
 
 
 class MetricTests(unittest.TestCase):

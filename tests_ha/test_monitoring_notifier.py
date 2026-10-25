@@ -6,9 +6,13 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from custom_components.service_route_sync.monitoring_store import MonitoringCheckpointStore
-from custom_components.service_route_sync.monitoring_transaction import MonitoringTransaction
-from custom_components.service_route_sync.monitoring_notifier import MonitoringNotifier
+from custom_components.service_route_sync.monitoring.monitoring_store import (
+    MonitoringCheckpointStore,
+)
+from custom_components.service_route_sync.monitoring.monitoring_transaction import (
+    MonitoringTransaction,
+)
+from custom_components.service_route_sync.monitoring.monitoring_notifier import MonitoringNotifier
 
 
 class NotifierTests(unittest.IsolatedAsyncioTestCase):

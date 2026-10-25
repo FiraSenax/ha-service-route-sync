@@ -7,7 +7,7 @@ from aiohttp import Fingerprint
 
 import bootstrap  # noqa: F401
 from service_route_sync.backends.unifi import UniFiBackend
-from service_route_sync.core import SyncError
+from service_route_sync.routing.core import SyncError
 
 
 CONNECTION = {
@@ -26,7 +26,11 @@ class UniFiTests(unittest.IsolatedAsyncioTestCase):
         backend = UniFiBackend(SimpleNamespace(), settings)
         session = MagicMock()
         session.close = AsyncMock()
-        response = SimpleNamespace(status=200, json=AsyncMock(return_value={"data": []}))
+
+        async def chunks(size):
+            yield b'{"data": []}'
+
+        response = SimpleNamespace(status=200, content=SimpleNamespace(iter_chunked=chunks))
         session.request.return_value.__aenter__.return_value = response
         with patch("service_route_sync.backends.unifi.ClientSession", return_value=session):
             self.assertEqual(await backend.read_clients(), [])

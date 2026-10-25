@@ -6,13 +6,13 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass, Bina
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .network_entity import NetworkEntity
-from .gateway_entity import GatewayEntity
+from .network.network_entity import NetworkEntity
+from .network.gateway_entity import GatewayEntity
 from .runtime import RouteConfigEntry
-from .client_entity import ClientEntity
-from .monitoring_entity import MonitoringEntity
-from .frigate_entity import FrigateStatusBinarySensor
-from .ipv6_entity import IPv6Entity
+from .clients.client_entity import ClientEntity
+from .monitoring.monitoring_entity import MonitoringEntity
+from .frigate.frigate_entity import FrigateStatusBinarySensor
+from .ipv6.ipv6_entity import IPv6Entity
 
 
 async def async_setup_entry(

@@ -9,12 +9,12 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.service_route_sync.backends.gateway_ssh import GatewayTransportError
 from custom_components.service_route_sync.backends.ipv6_actor_ssh import ActorResult
-from custom_components.service_route_sync.failover import FailoverState, Wan
-from custom_components.service_route_sync.ipv6_coordinator import (
+from custom_components.service_route_sync.network.failover import FailoverState, Wan
+from custom_components.service_route_sync.ipv6.ipv6_coordinator import (
     IPv6Coordinator,
     reconciliation_allowed,
 )
-from custom_components.service_route_sync.ipv6_control import IPv6Controls
+from custom_components.service_route_sync.ipv6.ipv6_control import IPv6Controls
 from tests.test_ipv6_control import NOW, observation, status
 
 
@@ -63,15 +63,15 @@ class IPv6CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         changed = __import__("dataclasses").replace(changed, digest="b" * 64)
         with (
             patch(
-                "custom_components.service_route_sync.ipv6_coordinator.inspect_actor",
+                "custom_components.service_route_sync.ipv6.ipv6_coordinator.inspect_actor",
                 new=AsyncMock(side_effect=[initial, changed]),
             ) as inspect,
             patch(
-                "custom_components.service_route_sync.ipv6_coordinator.apply_actor",
+                "custom_components.service_route_sync.ipv6.ipv6_coordinator.apply_actor",
                 new=AsyncMock(return_value=ActorResult("secondary", True, "b" * 64, False)),
             ) as apply,
             patch(
-                "custom_components.service_route_sync.ipv6_coordinator.dt_util.utcnow",
+                "custom_components.service_route_sync.ipv6.ipv6_coordinator.dt_util.utcnow",
                 return_value=NOW,
             ),
         ):
@@ -92,15 +92,15 @@ class IPv6CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         coordinator = self.coordinator()
         with (
             patch(
-                "custom_components.service_route_sync.ipv6_coordinator.inspect_actor",
+                "custom_components.service_route_sync.ipv6.ipv6_coordinator.inspect_actor",
                 new=AsyncMock(return_value=status("primary")),
             ),
             patch(
-                "custom_components.service_route_sync.ipv6_coordinator.apply_actor",
+                "custom_components.service_route_sync.ipv6.ipv6_coordinator.apply_actor",
                 new=AsyncMock(side_effect=GatewayTransportError("timeout")),
             ),
             patch(
-                "custom_components.service_route_sync.ipv6_coordinator.dt_util.utcnow",
+                "custom_components.service_route_sync.ipv6.ipv6_coordinator.dt_util.utcnow",
                 return_value=NOW,
             ),
         ):

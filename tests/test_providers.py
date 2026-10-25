@@ -1,8 +1,8 @@
 import unittest
 
 import bootstrap  # noqa: F401
-from service_route_sync.core import SyncError
-from service_route_sync.providers import FeedClient, select_prefixes
+from service_route_sync.routing.core import SyncError
+from service_route_sync.routing.providers import FeedClient, select_prefixes
 
 
 class ProviderTests(unittest.TestCase):

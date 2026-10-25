@@ -21,7 +21,7 @@ class MonitoringViewTests(unittest.IsolatedAsyncioTestCase):
             "pending": 0,
             "sources": {
                 key: {"ok": False, "observed_at": None}
-                for key in ("api", "probe", "windows", "dns253", "dns254")
+                for key in ("api", "probe", "windows", "dns_primary", "dns_secondary")
             },
             "history": {"counts": {}, "recent": []},
         }

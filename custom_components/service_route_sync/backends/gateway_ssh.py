@@ -15,7 +15,7 @@ from pathlib import Path
 import stat
 from typing import Any
 
-from ..network import NetworkDataError
+from ..network.network import NetworkDataError
 
 _COMMAND = "service-route-sync observe v1"
 _MAX_RESPONSE = 65_536

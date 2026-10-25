@@ -54,7 +54,7 @@ class ImportTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_full_group_import_preserves_unrelated_options(self):
         with patch(
-            "custom_components.service_route_sync.config_flow.read_client_probes",
+            "custom_components.service_route_sync.flows.clients.read_client_probes",
             AsyncMock(return_value=self.raw),
         ):
             result = await self.flow.async_step_import(self.input)
@@ -68,7 +68,7 @@ class ImportTests(unittest.IsolatedAsyncioTestCase):
     async def test_failed_handshake_never_saves_options(self):
         self.raw["clients"] = {}
         with patch(
-            "custom_components.service_route_sync.config_flow.read_client_probes",
+            "custom_components.service_route_sync.flows.clients.read_client_probes",
             AsyncMock(return_value=self.raw),
         ):
             result = await self.flow.async_step_import(self.input)
@@ -89,7 +89,7 @@ class ImportTests(unittest.IsolatedAsyncioTestCase):
     async def test_mismatched_host_pins_never_save_or_contact_gateway(self):
         self.flow.hass.async_add_executor_job.return_value = False
         with patch(
-            "custom_components.service_route_sync.config_flow.read_client_probes", AsyncMock()
+            "custom_components.service_route_sync.flows.clients.read_client_probes", AsyncMock()
         ) as reader:
             result = await self.flow.async_step_import(self.input)
         self.assertEqual(result["reason"], "invalid_client_import")

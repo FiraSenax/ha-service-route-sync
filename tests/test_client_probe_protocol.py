@@ -2,8 +2,8 @@ import copy
 from datetime import datetime, timezone
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.client_probe_protocol import parse_client_probes
-from service_route_sync.network import NetworkDataError
+from service_route_sync.clients.client_probe_protocol import parse_client_probes
+from service_route_sync.network.network import NetworkDataError
 
 NOW = datetime(2026, 10, 11, 20, tzinfo=timezone.utc)
 STAMP = int(NOW.timestamp() * 1000)

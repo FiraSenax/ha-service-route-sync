@@ -72,3 +72,15 @@ for modification by the SSH caller. See [IPv6 actor provisioning](IPV6_ACTOR.md)
 and [configuration](CONFIGURATION.md) for the matching release's configuration.
 The optional Windows reader needs access only to the configured Wazuh agent's
 source files through its fixed reader command.
+
+## HA authorization and updates
+
+Route switches and buttons (including refresh) require an administrator or a
+trusted HA automation context, since refreshing may trigger enabled writes.
+Ordinary entity-control permission is insufficient. API callers cannot assign
+their own trusted automation context. Work-probe metrics also require an admin;
+client metrics use their entity read permissions.
+
+Upgrade migrations do not provision or broaden controller/SSH permissions.
+Schema-1 upgrades pause external writers; schema-2 upgrades preserve existing
+modes. Review the documented platform requirements before granting gateway access.

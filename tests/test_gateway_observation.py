@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 import unittest
 
 import bootstrap  # noqa: F401
-from service_route_sync.gateway_observation import parse_gateway_observation
-from service_route_sync.network import NetworkDataError
+from service_route_sync.network.gateway_observation import parse_gateway_observation
+from service_route_sync.network.network import NetworkDataError
 
 NOW = datetime(2026, 10, 11, 12, tzinfo=timezone.utc)
 MS = int(NOW.timestamp() * 1000)

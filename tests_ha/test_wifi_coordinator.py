@@ -8,9 +8,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests_ha import CONNECTION
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
-from custom_components.service_route_sync.wifi_coordinator import WifiCoordinator
-from custom_components.service_route_sync.core import SyncError
-from custom_components.service_route_sync.wifi_history import WifiHistory
+from custom_components.service_route_sync.wifi.wifi_coordinator import WifiCoordinator
+from custom_components.service_route_sync.routing.core import SyncError
+from custom_components.service_route_sync.wifi.wifi_history import WifiHistory
 
 
 class WirelessCoordinatorTests(unittest.IsolatedAsyncioTestCase):

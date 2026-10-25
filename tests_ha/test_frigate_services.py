@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.core import HomeAssistant, Context
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.exceptions import Unauthorized, ServiceValidationError
-from custom_components.service_route_sync.frigate_services import register_frigate_services
+from custom_components.service_route_sync.frigate.frigate_services import register_frigate_services
 from custom_components.service_route_sync.backends.gateway_ssh import GatewayTransportError
 
 

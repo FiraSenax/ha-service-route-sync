@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 import bootstrap  # noqa: F401
-from service_route_sync.failover import (
+from service_route_sync.network.failover import (
     FailoverPolicy,
     FailoverState,
     LinkHealth,

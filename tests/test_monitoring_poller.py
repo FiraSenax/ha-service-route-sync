@@ -4,9 +4,11 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock
 
-from custom_components.service_route_sync.monitoring_coordinator import MonitoringCoordinator
-from custom_components.service_route_sync.windows_archive import DailyCursor
-from custom_components.service_route_sync.windows_source import WindowsBatch
+from custom_components.service_route_sync.monitoring.monitoring_coordinator import (
+    MonitoringCoordinator,
+)
+from custom_components.service_route_sync.windows.windows_archive import DailyCursor
+from custom_components.service_route_sync.windows.windows_source import WindowsBatch
 
 
 class WindowsPollTests(unittest.IsolatedAsyncioTestCase):

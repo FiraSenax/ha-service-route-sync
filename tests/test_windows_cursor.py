@@ -2,7 +2,11 @@ from pathlib import Path
 import tempfile
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.windows_cursor import AlertCursor, read_alert_page, WindowsSourceError
+from service_route_sync.windows.windows_cursor import (
+    AlertCursor,
+    read_alert_page,
+    WindowsSourceError,
+)
 
 
 class CursorTests(unittest.TestCase):

@@ -1,3 +1,4 @@
+from tests_ha.flow_backend import patch_flow_backend
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -7,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests_ha import CONNECTION
 from tests_ha.test_network_flow import FlowHarness
-from custom_components.service_route_sync.core import SyncError
+from custom_components.service_route_sync.routing.core import SyncError
 
 MAC = "02:00:00:00:00:01"
 
@@ -21,8 +22,7 @@ class ClientFlowTests(unittest.IsolatedAsyncioTestCase):
             async_close=AsyncMock(),
             read_clients=AsyncMock(return_value=[{"mac": MAC, "name": "PC"}]),
         )
-        self.patch = patch(
-            "custom_components.service_route_sync.config_flow.UniFiBackend",
+        self.patch = patch_flow_backend(
             return_value=self.backend,
         )
         self.patch.start()
@@ -81,19 +81,19 @@ class ClientFlowTests(unittest.IsolatedAsyncioTestCase):
         }
         with (
             patch(
-                "custom_components.service_route_sync.config_flow.prepare_observer_key",
+                "custom_components.service_route_sync.flows.clients.prepare_observer_key",
                 AsyncMock(return_value="public"),
             ),
             patch(
-                "custom_components.service_route_sync.config_flow.validate_host_key",
+                "custom_components.service_route_sync.flows.clients.validate_host_key",
                 return_value="pinned",
             ),
             patch(
-                "custom_components.service_route_sync.config_flow.credential_directory",
+                "custom_components.service_route_sync.flows.clients.credential_directory",
                 return_value=Path("/tmp/example-probe-identity"),
             ),
             patch(
-                "custom_components.service_route_sync.config_flow.read_client_probes",
+                "custom_components.service_route_sync.flows.clients.read_client_probes",
                 AsyncMock(return_value=raw),
             ),
         ):

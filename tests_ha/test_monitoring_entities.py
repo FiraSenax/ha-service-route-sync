@@ -8,7 +8,9 @@ from unittest.mock import AsyncMock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
-from custom_components.service_route_sync.monitoring_coordinator import MonitoringCoordinator
+from custom_components.service_route_sync.monitoring.monitoring_coordinator import (
+    MonitoringCoordinator,
+)
 from custom_components.service_route_sync.sensor import MonitoringStatusSensor
 from custom_components.service_route_sync.binary_sensor import (
     MonitoringSourceSensor,

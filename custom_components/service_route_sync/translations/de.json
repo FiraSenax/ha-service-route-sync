@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Dienste auswählen",
-        "description": "Eigene lokale UniFi-Zugangsdaten eingeben. TLS wird geprüft; für selbstsignierte Zertifikate den SHA-256-Fingerprint angeben. Einrichtung beginnt mit einer Vorschau.",
+        "description": "Eigene lokale UniFi-Zugangsdaten eingeben. TLS wird geprüft; für selbstsignierte Zertifikate den SHA-256-Fingerprint angeben. Einrichtung beginnt mit einer Vorschau. Für reine öffentliche Erreichbarkeitstests kann die UniFi-Verbindung leer bleiben.",
         "data": {
           "services": "Dienste und Spiele",
           "ipv6": "IPv6 einbeziehen",
@@ -114,7 +114,7 @@
       },
       "monitoring_sources": {
         "title": "Lesende Quellen prüfen",
-        "description": "Richte getrennte, auf feste Lesebefehle beschränkte SSH-Zugriffe von HA ein. Host-Schlüssel müssen über einen vertrauten Verwaltungszugang ermittelt werden. DSL-Schlüssel: {dsl_public_key}\n\nPC-Schlüssel: {pc_public_key}\n\nWindows-Schlüssel: {windows_public_key}",
+        "description": "Richte getrennte, auf feste Lesebefehle beschränkte SSH-Zugriffe von HA ein. Host-Schlüssel müssen über einen vertrauten Verwaltungszugang ermittelt werden. Schlüssel für primäres WAN: {dsl_public_key}\n\nPC-Schlüssel: {pc_public_key}\n\nWindows-Schlüssel: {windows_public_key}",
         "data": {
           "monitoring_gateway_host": "Router",
           "monitoring_windows_host": "IP des Wazuh-Hosts",
@@ -180,7 +180,7 @@
     "step": {
       "user": {
         "title": "Dienste auswählen",
-        "description": "Eigene lokale UniFi-Zugangsdaten eingeben. TLS wird geprüft; für selbstsignierte Zertifikate den SHA-256-Fingerprint angeben. Einrichtung beginnt mit einer Vorschau.",
+        "description": "Eigene lokale UniFi-Zugangsdaten eingeben. TLS wird geprüft; für selbstsignierte Zertifikate den SHA-256-Fingerprint angeben. Einrichtung beginnt mit einer Vorschau. Für reine öffentliche Erreichbarkeitstests kann die UniFi-Verbindung leer bleiben.",
         "data": {
           "services": "Dienste und Spiele",
           "ipv6": "IPv6 einbeziehen",
@@ -282,7 +282,7 @@
       },
       "monitoring_sources": {
         "title": "Lesende Quellen prüfen",
-        "description": "Richte getrennte, auf feste Lesebefehle beschränkte SSH-Zugriffe von HA ein. Host-Schlüssel müssen über einen vertrauten Verwaltungszugang ermittelt werden. DSL-Schlüssel: {dsl_public_key}\n\nPC-Schlüssel: {pc_public_key}\n\nWindows-Schlüssel: {windows_public_key}",
+        "description": "Richte getrennte, auf feste Lesebefehle beschränkte SSH-Zugriffe von HA ein. Host-Schlüssel müssen über einen vertrauten Verwaltungszugang ermittelt werden. Schlüssel für primäres WAN: {dsl_public_key}\n\nPC-Schlüssel: {pc_public_key}\n\nWindows-Schlüssel: {windows_public_key}",
         "data": {
           "monitoring_gateway_host": "Router",
           "monitoring_windows_host": "IP des Wazuh-Hosts",
@@ -371,8 +371,10 @@
         "title": "DNS-Server für überwachten PC",
         "data": {
           "primary": "Erster DNS-Server im LAN",
-          "secondary": "Zweiter DNS-Server im LAN"
-        }
+          "secondary": "Zweiter DNS-Server im LAN",
+          "monitoring_dns_name": "DNS-Testname"
+        },
+        "description": "Wähle zwei verschiedene IPv4-/IPv6-DNS-Resolver und einen Testnamen. Link-lokale und Loopback-Adressen sind nicht erlaubt."
       },
       "connection": {
         "title": "UniFi-Verbindung",
@@ -414,7 +416,7 @@
       "frigate_observe_first": "Neue Verbindung zunächst ohne Neustartfreigabe speichern.",
       "ipv6_legacy_writer_running": "Vor der HA-Aktivierung den andere IPv6-Schreiber stoppen.",
       "monitoring_sources_not_ready": "Die lesenden Monitoring-Quellen liefern noch keine aktuelle Beobachtung.",
-      "invalid_dns_servers": "Zwei verschiedene private IPv4-Adressen eingeben (10/8, 172.16/12 oder 192.168/16).",
+      "invalid_dns_servers": "Zwei verschiedene unterstützte IP-Adressen und einen gültigen DNS-Testnamen eingeben.",
       "notification_target_required": "Zuerst einen Benachrichtigungsdienst im Diagnoseprofil auswählen.",
       "router_unavailable": "UniFi-Verbindung prüfen: Host, Zugangsdaten und Zertifikat."
     },

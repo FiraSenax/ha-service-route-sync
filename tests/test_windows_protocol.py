@@ -1,8 +1,8 @@
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.windows_cursor import AlertCursor, WindowsSourceError
-from service_route_sync.windows_archive import DailyCursor
-from service_route_sync.windows_protocol import (
+from service_route_sync.windows.windows_cursor import AlertCursor, WindowsSourceError
+from service_route_sync.windows.windows_archive import DailyCursor
+from service_route_sync.windows.windows_protocol import (
     cursor_request,
     parse_cursor_request,
     parse_windows_response,

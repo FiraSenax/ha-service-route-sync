@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Select services",
-        "description": "Enter this integration’s own local UniFi credentials. TLS certificates are verified; supply the SHA-256 fingerprint for a self-signed certificate. Setup starts with a preview.",
+        "description": "Enter this integration’s own local UniFi credentials. TLS certificates are verified; supply the SHA-256 fingerprint for a self-signed certificate. Setup starts with a preview. For public endpoint probes alone, the UniFi connection can be left empty.",
         "data": {
           "services": "Services and games",
           "ipv6": "Include IPv6",
@@ -114,7 +114,7 @@
       },
       "monitoring_sources": {
         "title": "Verify read-only sources",
-        "description": "Configure separate SSH access from HA restricted to fixed read commands. Obtain host keys through a trusted administrative connection. DSL key: {dsl_public_key}\n\nPC key: {pc_public_key}\n\nWindows key: {windows_public_key}",
+        "description": "Configure separate SSH access from HA restricted to fixed read commands. Obtain host keys through a trusted administrative connection. Primary WAN key: {dsl_public_key}\n\nPC key: {pc_public_key}\n\nWindows key: {windows_public_key}",
         "data": {
           "monitoring_gateway_host": "Router",
           "monitoring_windows_host": "Wazuh host IP",
@@ -180,7 +180,7 @@
     "step": {
       "user": {
         "title": "Select services",
-        "description": "Enter this integration’s own local UniFi credentials. TLS certificates are verified; supply the SHA-256 fingerprint for a self-signed certificate. Setup starts with a preview.",
+        "description": "Enter this integration’s own local UniFi credentials. TLS certificates are verified; supply the SHA-256 fingerprint for a self-signed certificate. Setup starts with a preview. For public endpoint probes alone, the UniFi connection can be left empty.",
         "data": {
           "services": "Services and games",
           "ipv6": "Include IPv6",
@@ -282,7 +282,7 @@
       },
       "monitoring_sources": {
         "title": "Verify read-only sources",
-        "description": "Configure separate SSH access from HA restricted to fixed read commands. Obtain host keys through a trusted administrative connection. DSL key: {dsl_public_key}\n\nPC key: {pc_public_key}\n\nWindows key: {windows_public_key}",
+        "description": "Configure separate SSH access from HA restricted to fixed read commands. Obtain host keys through a trusted administrative connection. Primary WAN key: {dsl_public_key}\n\nPC key: {pc_public_key}\n\nWindows key: {windows_public_key}",
         "data": {
           "monitoring_gateway_host": "Router",
           "monitoring_windows_host": "Wazuh host IP",
@@ -371,8 +371,10 @@
         "title": "DNS resolvers for monitored host",
         "data": {
           "primary": "Primary LAN resolver",
-          "secondary": "Secondary LAN resolver"
-        }
+          "secondary": "Secondary LAN resolver",
+          "monitoring_dns_name": "DNS probe name"
+        },
+        "description": "Select two different IPv4/IPv6 DNS resolvers and a test name. Link-local and loopback addresses are not allowed."
       },
       "connection": {
         "title": "UniFi connection",
@@ -414,7 +416,7 @@
       "frigate_observe_first": "Save a new connection without restart enablement first.",
       "ipv6_legacy_writer_running": "Stop the other IPv6 writer before activating HA.",
       "monitoring_sources_not_ready": "Monitoring read-only sources have not provided a current observation.",
-      "invalid_dns_servers": "Enter two different private IPv4 addresses (10/8, 172.16/12 or 192.168/16).",
+      "invalid_dns_servers": "Enter two different supported IP addresses and a valid DNS probe name.",
       "notification_target_required": "Select a notification service in the diagnostic profile first.",
       "router_unavailable": "Check the UniFi host, credentials and TLS certificate."
     },

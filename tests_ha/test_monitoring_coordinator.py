@@ -8,14 +8,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
-from custom_components.service_route_sync.monitoring_coordinator import (
+from custom_components.service_route_sync.monitoring.monitoring_coordinator import (
     MonitoringCoordinator,
     TimedObservation,
 )
-from custom_components.service_route_sync.monitoring_store import MonitoringCheckpointStore
-from custom_components.service_route_sync.monitoring_transaction import MonitoringTransaction
-from custom_components.service_route_sync.windows_archive import DailyCursor
-from custom_components.service_route_sync.windows_source import WindowsBatch
+from custom_components.service_route_sync.monitoring.monitoring_store import (
+    MonitoringCheckpointStore,
+)
+from custom_components.service_route_sync.monitoring.monitoring_transaction import (
+    MonitoringTransaction,
+)
+from custom_components.service_route_sync.windows.windows_archive import DailyCursor
+from custom_components.service_route_sync.windows.windows_source import WindowsBatch
 
 
 class CoordinatorTests(unittest.IsolatedAsyncioTestCase):

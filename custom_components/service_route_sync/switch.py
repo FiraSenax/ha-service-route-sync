@@ -3,7 +3,8 @@
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.entity import EntityCategory
 
-from .entity import RouteEntity
+from .routing.entity import RouteEntity
+from .security import require_admin
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -20,7 +21,9 @@ class RouteSwitch(RouteEntity, SwitchEntity):
         return self.coordinator.settings.get("automatic_apply", False)
 
     async def async_turn_on(self, **kwargs):
+        await require_admin(self.hass, self._context)
         await self.coordinator.set_automatic(True)
 
     async def async_turn_off(self, **kwargs):
+        await require_admin(self.hass, self._context)
         await self.coordinator.set_automatic(False)

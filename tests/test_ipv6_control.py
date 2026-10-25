@@ -6,12 +6,12 @@ from ipaddress import IPv6Network
 import unittest
 
 from custom_components.service_route_sync.backends.ipv6_actor_ssh import ActorStatus
-from custom_components.service_route_sync.failover import FailoverState, Wan
-from custom_components.service_route_sync.gateway_observation import (
+from custom_components.service_route_sync.network.failover import FailoverState, Wan
+from custom_components.service_route_sync.network.gateway_observation import (
     GatewayObservation,
     ProtocolObservation,
 )
-from custom_components.service_route_sync.ipv6_control import IPv6Controls, plan_ipv6
+from custom_components.service_route_sync.ipv6.ipv6_control import IPv6Controls, plan_ipv6
 
 
 NOW = datetime(2026, 10, 12, 12, tzinfo=timezone.utc)

@@ -15,9 +15,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from custom_components.service_route_sync.core import SyncError
-from custom_components.service_route_sync.network import parse_gateway
-from custom_components.service_route_sync.network_coordinator import NetworkCoordinator
+from custom_components.service_route_sync.routing.core import SyncError
+from custom_components.service_route_sync.network.network import parse_gateway
+from custom_components.service_route_sync.network.network_coordinator import NetworkCoordinator
 from custom_components.service_route_sync.sensor import NetworkMetricSensor, NetworkUpdateSensor
 from custom_components.service_route_sync.binary_sensor import NetworkLinkSensor
 
@@ -113,9 +113,11 @@ class NetworkRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(primary.available)
 
     async def test_failing_cloud_feature_recovers_soon_without_logging_private_body(self):
-        from custom_components.service_route_sync.coordinator import RouteCoordinator
+        from custom_components.service_route_sync.routing.coordinator import RouteCoordinator
 
-        with patch("custom_components.service_route_sync.coordinator.async_get_clientsession"):
+        with patch(
+            "custom_components.service_route_sync.routing.coordinator.async_get_clientsession"
+        ):
             routes = RouteCoordinator(self.hass, self.entry)
         self.addAsyncCleanup(routes.async_shutdown)
         routes.feeds.all_prefixes = AsyncMock(side_effect=SyncError("private-example"))

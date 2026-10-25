@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.client_observation import ClientObservation, PortObservation
-from service_route_sync.monitoring_client import incident_port
+from service_route_sync.clients.client_observation import ClientObservation, PortObservation
+from service_route_sync.monitoring.monitoring_client import incident_port
 
 
 class MonitoringClientTests(unittest.TestCase):

@@ -3,9 +3,13 @@ from types import SimpleNamespace
 import unittest
 
 import bootstrap  # noqa: F401
-from service_route_sync.client_metrics import ProbeObservation, RoutingObservation, render_clients
-from service_route_sync.client_observation import observe_client
-from service_route_sync.network_metrics import MetricDataError
+from service_route_sync.clients.client_metrics import (
+    ProbeObservation,
+    RoutingObservation,
+    render_clients,
+)
+from service_route_sync.clients.client_observation import observe_client
+from service_route_sync.network.network_metrics import MetricDataError
 
 NOW = datetime(2026, 10, 11, 20, tzinfo=timezone.utc)
 MAC = "02:00:00:00:00:01"

@@ -2,7 +2,7 @@ import copy
 from datetime import datetime, timezone
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.monitoring_engine import (
+from service_route_sync.monitoring.monitoring_engine import (
     MonitoringIncidentEngine,
     counter_delta,
     pc_monitoring_status,

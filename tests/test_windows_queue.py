@@ -1,7 +1,7 @@
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.windows_queue import prepare_replay
-from service_route_sync.windows_cursor import WindowsSourceError
+from service_route_sync.windows.windows_queue import prepare_replay
+from service_route_sync.windows.windows_cursor import WindowsSourceError
 
 
 class ReplayTests(unittest.TestCase):

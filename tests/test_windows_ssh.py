@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 import bootstrap  # noqa: F401
 
 from service_route_sync.backends.windows_ssh import WindowsSSHConfig, read_windows
-from service_route_sync.windows_cursor import AlertCursor
+from service_route_sync.windows.windows_cursor import AlertCursor
 
 
 class WindowsTransportTests(unittest.IsolatedAsyncioTestCase):

@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
-from custom_components.service_route_sync.monitoring_coordinator import TimedObservation
-from custom_components.service_route_sync.monitoring_probes import (
+from custom_components.service_route_sync.monitoring.monitoring_coordinator import TimedObservation
+from custom_components.service_route_sync.monitoring.monitoring_probes import (
     MonitoringProbeReader,
     MonitoringPCProbeReader,
 )

@@ -135,13 +135,41 @@ validated with automated controller, Home Assistant and gateway tests; live
 controller authentication and router writes still need validation in your own
 setup before enabling automatic writes.
 
-## Upgrading to 0.4.0
+## Upgrading to 0.5.0
 
-Configuration schema 2 uses the neutral `monitoring_*` namespace. Older entries
-are not loaded under the new schema: recreate the integration and select your
-profiles and sources again, or migrate the entry, entity/device registry IDs,
-checkpoint keys and history directories offline with a complete backup. Preserve
-accepted cursors and history revisions together; do not reset only one of them.
-Upgrade the restricted gateway command to `service-route-sync monitoring-client v1`
-and install `monitoring_client_observer.py` with `monitoring-client.json`. Update
-metrics consumers to `/api/service_route_sync/{entry_id}/metrics/monitoring`.
+Home Assistant automatically migrates schema-1 entries to the neutral
+`monitoring_*` namespace. Entity IDs, user-chosen profile names, accepted Windows
+cursors, queues and matching history revisions are preserved. Source files remain
+as a recovery copy. Conflicting destinations, unsafe paths or missing accepted
+history stop the migration instead of guessing which state to retain.
+
+No other integration's credentials are copied. Entries without their own UniFi
+API key request reauthentication. Old route, IPv6 and notification writers remain
+paused after schema-1 migration until their new configuration and external readers
+have been checked. Existing schema-2 installations keep their selected modes.
+
+The gateway is a separate deployment: update its restricted reader command to
+`service-route-sync monitoring-client v1` and install `monitoring_client_observer.py`
+with `monitoring-client.json` when upgrading from the old namespace. The HA upgrade
+cannot safely rewrite a gateway's SSH authorization or privileged firewall state.
+
+Client metrics are available at `/api/service_route_sync/{entry_id}/metrics/clients`
+without work probes or gateway probes. Work metrics use `/metrics/work` and require
+an administrator. `/metrics/gaming` remains compatible for existing consumers;
+its work metrics are included only for administrators. Monitoring uses
+`/metrics/monitoring`; DNS source roles are `dns_primary` and `dns_secondary`.
+
+For public HTTPS probes alone, leave the UniFi connection empty during setup and
+select only that feature. To add controller-dependent features, create a separate
+entry with the controller's own API key. Features remain optional; enabling SSH
+observation does not enable route or IPv6 writes.
+
+DNS monitoring accepts two explicit unicast IPv4/IPv6 resolver addresses and a
+configurable query name (default `example.com`). Loopback, link-local, multicast,
+unspecified and documentation addresses are rejected. The resolver ports and DNS
+record type remain fixed; service callers cannot choose a destination.
+
+IPv6 NETMAP requires the configured ULA and provider delegation to have the same
+prefix length, between /48 and /64. Configure the observer's delegation length to
+match. Interface names, tables and marks must be explicitly selected for the
+installation. See [architecture and supported platform boundaries](ARCHITECTURE.md).

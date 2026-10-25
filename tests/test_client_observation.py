@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime, timezone
 
 import bootstrap  # noqa: F401
-from service_route_sync.client_observation import ClientDataError, observe_client
+from service_route_sync.clients.client_observation import ClientDataError, observe_client
 
 NOW = datetime(2026, 10, 11, 20, tzinfo=timezone.utc)
 MAC = "02:00:00:00:00:01"

@@ -1,5 +1,7 @@
 """Observer setup validates trust and cannot overwrite active credentials."""
 
+from tests_ha.flow_backend import patch_flow_backend
+
 from pathlib import Path
 import tempfile
 import unittest
@@ -27,7 +29,7 @@ class GatewayFlowTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_invalid_trust_or_interfaces_do_not_attempt_connections(self):
         with patch(
-            "custom_components.service_route_sync.config_flow.read_gateway",
+            "custom_components.service_route_sync.flows.network.read_gateway",
             new_callable=AsyncMock,
         ) as read:
             data = {
@@ -48,7 +50,7 @@ class GatewayFlowTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_verified_handshake_completes_without_storing_host_key_in_entry(self):
         with patch(
-            "custom_components.service_route_sync.config_flow.read_gateway",
+            "custom_components.service_route_sync.flows.network.read_gateway",
             new_callable=AsyncMock,
         ) as read:
             read.side_effect = lambda _: observation(dt_util.utcnow())
@@ -69,7 +71,7 @@ class GatewayFlowTests(unittest.IsolatedAsyncioTestCase):
         active.mkdir(parents=True, mode=0o700)
         (active / "known_hosts").write_text("existing trust\n")
         self.flow.settings["gateway_observer_enabled"] = True
-        with patch("custom_components.service_route_sync.config_flow.UniFiBackend") as backend:
+        with patch_flow_backend() as backend:
             backend.return_value.async_close = AsyncMock()
             backend.return_value.read_gateways = AsyncMock(
                 return_value={"gateway": {"ip": "192.168.1.1"}}

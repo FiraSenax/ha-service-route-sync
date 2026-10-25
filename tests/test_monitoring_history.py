@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.monitoring_history import (
+from service_route_sync.monitoring.monitoring_history import (
     MonitoringHistory,
     MonitoringHistoryError,
     RETENTION,

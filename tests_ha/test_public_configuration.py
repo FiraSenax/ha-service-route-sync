@@ -8,11 +8,13 @@ from unittest.mock import AsyncMock, patch
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from custom_components.service_route_sync import async_setup_entry
-from custom_components.service_route_sync.config_flow import fields, validate_ipv6_controls
+from custom_components.service_route_sync.flows.fields import fields, validate_ipv6_controls
 from custom_components.service_route_sync.const import DEFAULTS
-from custom_components.service_route_sync.ipv6_coordinator import IPv6Coordinator
-from custom_components.service_route_sync.monitoring_engine import MonitoringIncidentEngine
-from custom_components.service_route_sync.monitoring_metrics import render_monitoring
+from custom_components.service_route_sync.ipv6.ipv6_coordinator import IPv6Coordinator
+from custom_components.service_route_sync.monitoring.monitoring_engine import (
+    MonitoringIncidentEngine,
+)
+from custom_components.service_route_sync.monitoring.monitoring_metrics import render_monitoring
 from custom_components.service_route_sync.backends.unifi import read_controller
 from tests_ha import CONNECTION
 from tests_ha.test_network_flow import FlowHarness
@@ -27,8 +29,21 @@ class PublicConfigurationTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("unifi_password", result)
         self.assertEqual(result["unifi_api_key"], CONNECTION["unifi_api_key"])
 
+    async def test_standalone_public_probes_do_not_request_controller_credentials(self):
+        flow = FlowHarness()
+        flow.defaults = dict(DEFAULTS)
+        with patch(
+            "custom_components.service_route_sync.flows.setup.read_controller", AsyncMock()
+        ) as read:
+            result = await flow.async_step_user({"services": [], "work_probe_enabled": True})
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["data"]["unifi_host"], "")
+        read.assert_not_awaited()
+
     async def test_missing_own_credentials_requests_reauthentication(self):
-        entry = SimpleNamespace(data={"unifi_entry_id": "foreign-entry"}, options={})
+        entry = SimpleNamespace(
+            data={"unifi_entry_id": "foreign-entry", "network_enabled": True}, options={}
+        )
         with self.assertRaises(ConfigEntryAuthFailed):
             await async_setup_entry(SimpleNamespace(), entry)
 
@@ -89,7 +104,7 @@ class PublicConfigurationTests(unittest.IsolatedAsyncioTestCase):
         flow.async_step_monitoring_sources = AsyncMock(return_value={"type": "form"})
         backend = SimpleNamespace(read_clients=AsyncMock(return_value=[]), async_close=AsyncMock())
         with patch(
-            "custom_components.service_route_sync.monitoring_flow.UniFiBackend",
+            "custom_components.service_route_sync.monitoring.monitoring_flow.UniFiBackend",
             return_value=backend,
         ):
             await flow.async_step_monitoring(
@@ -113,7 +128,7 @@ class PublicConfigurationTests(unittest.IsolatedAsyncioTestCase):
             engine = MonitoringIncidentEngine(maintenance_hour=5)
             with (
                 patch(
-                    "custom_components.service_route_sync.monitoring_engine.dt_util.get_default_time_zone",
+                    "custom_components.service_route_sync.monitoring.monitoring_engine.dt_util.get_default_time_zone",
                     return_value=zone,
                 ),
                 patch.object(engine, "check") as check,
@@ -132,17 +147,17 @@ class PublicConfigurationTests(unittest.IsolatedAsyncioTestCase):
             "pending": 0,
             "sources": {
                 key: {"ok": False, "observed_at": None}
-                for key in ("api", "probe", "windows", "dns253", "dns254")
+                for key in ("api", "probe", "windows", "dns_primary", "dns_secondary")
             },
             "history": {"counts": {}, "recent": []},
         }
         with patch(
-            "custom_components.service_route_sync.monitoring_metrics.dt_util.get_default_time_zone",
+            "custom_components.service_route_sync.monitoring.monitoring_metrics.dt_util.get_default_time_zone",
             return_value=timezone.utc,
         ):
             self.assertIn("monitoring_maintenance 1.0", render_monitoring(snapshot, stamp))
         with patch(
-            "custom_components.service_route_sync.monitoring_metrics.dt_util.get_default_time_zone",
+            "custom_components.service_route_sync.monitoring.monitoring_metrics.dt_util.get_default_time_zone",
             return_value=timezone(timedelta(hours=-5)),
         ):
             self.assertIn("monitoring_maintenance 0.0", render_monitoring(snapshot, stamp))

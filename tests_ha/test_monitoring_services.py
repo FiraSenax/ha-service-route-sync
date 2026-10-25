@@ -10,9 +10,16 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.core import HomeAssistant, Context
 from homeassistant.exceptions import ServiceValidationError, Unauthorized
-from custom_components.service_route_sync.monitoring_services import register_monitoring_services
-from custom_components.service_route_sync.monitoring_store import MonitoringCheckpointStore
-from custom_components.service_route_sync.monitoring_history import MonitoringHistory, journal_path
+from custom_components.service_route_sync.monitoring.monitoring_services import (
+    register_monitoring_services,
+)
+from custom_components.service_route_sync.monitoring.monitoring_store import (
+    MonitoringCheckpointStore,
+)
+from custom_components.service_route_sync.monitoring.monitoring_history import (
+    MonitoringHistory,
+    journal_path,
+)
 
 
 class ImportServiceTests(unittest.IsolatedAsyncioTestCase):
@@ -89,7 +96,7 @@ class ImportServiceTests(unittest.IsolatedAsyncioTestCase):
         self.checkpoint["cursor"]["offset"] = 20
         self.events.append({"key": "new", "time": time.time(), "message": "new", "recovery": False})
         with patch(
-            "custom_components.service_route_sync.monitoring_store.Store.async_save",
+            "custom_components.service_route_sync.monitoring.monitoring_store.Store.async_save",
             AsyncMock(side_effect=OSError("synthetic")),
         ):
             with self.assertRaises(ServiceValidationError):

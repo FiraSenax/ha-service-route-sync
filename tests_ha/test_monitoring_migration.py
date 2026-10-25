@@ -3,8 +3,12 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from custom_components.service_route_sync.monitoring_migration import migrate_legacy_checkpoint
-from custom_components.service_route_sync.monitoring_store import MonitoringCheckpointError
+from custom_components.service_route_sync.monitoring.monitoring_migration import (
+    migrate_legacy_checkpoint,
+)
+from custom_components.service_route_sync.monitoring.monitoring_store import (
+    MonitoringCheckpointError,
+)
 
 
 class MigrationTests(unittest.TestCase):

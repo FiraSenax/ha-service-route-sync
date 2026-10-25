@@ -10,8 +10,8 @@ from unittest.mock import AsyncMock, Mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.core import HomeAssistant, Context
 from homeassistant.exceptions import ServiceValidationError, Unauthorized
-from custom_components.service_route_sync.wifi_history import WifiHistory, COLUMNS
-from custom_components.service_route_sync.wifi_services import register_wifi_services
+from custom_components.service_route_sync.wifi.wifi_history import WifiHistory, COLUMNS
+from custom_components.service_route_sync.wifi.wifi_services import register_wifi_services
 
 
 class WifiImportTests(unittest.IsolatedAsyncioTestCase):

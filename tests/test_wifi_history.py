@@ -7,8 +7,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import bootstrap  # noqa: F401
-from service_route_sync.wifi_history import WifiHistory, WifiHistoryError, COLUMNS
-from service_route_sync.wifi_observation import observe_wireless
+from service_route_sync.wifi.wifi_history import WifiHistory, WifiHistoryError, COLUMNS
+from service_route_sync.wifi.wifi_observation import observe_wireless
 
 
 class WifiHistoryTests(unittest.TestCase):

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.0 — modular features and security hardening
+
+- Require administrator or trusted automation context for route controls, including
+  refreshes that can trigger writes. Sanitize unexpected route-action errors.
+- Bound controller JSON to 4 MiB and 64 nesting levels; reject duplicate keys and
+  non-finite values, and decode outside the event loop.
+- Separate routing, network, clients, monitoring, WLAN, IPv6, Frigate, probes and
+  Windows protocols into feature packages and compose smaller configuration flows.
+- Isolate optional feature setup failures and centrally manage shutdown.
+- Automatically migrate schema-1 HA configuration, registry identities, checkpoints
+  and history, preserving entity IDs and recovery sources. Old writers stay paused.
+- Allow standalone public probes and independent client/work metric endpoints.
+- Configure the DNS probe name and IPv4/IPv6 resolvers; explicitly select WAN
+  interfaces and support matching ULA/provider prefixes from /48 through /64.
+- Generate the standalone Windows reader from canonical sources and verify parity
+  in CI. Pin Actions to commits; add Dependabot and extended CodeQL analysis.
+
+
 ## 0.4.0 — neutral client monitoring
 
 - Use neutral client-monitoring names throughout modules, configuration, entities,

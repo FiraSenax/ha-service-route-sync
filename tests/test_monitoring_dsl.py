@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import copy
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.monitoring_dsl import parse_dsl, DSLDataError
+from service_route_sync.monitoring.monitoring_dsl import parse_dsl, DSLDataError
 
 
 class DSLProtocolTests(unittest.TestCase):

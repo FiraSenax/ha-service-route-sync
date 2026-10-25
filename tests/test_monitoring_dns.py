@@ -1,8 +1,9 @@
 import struct
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.monitoring_dns import (
+from service_route_sync.monitoring.monitoring_dns import (
     QUESTION,
+    dns_question,
     response_ok,
     probe_dns,
     validate_dns_servers,
@@ -15,6 +16,33 @@ class DNSTests(unittest.IsolatedAsyncioTestCase):
         if tail is None:
             tail = b"\xc0\x0c" + struct.pack("!HHIH", 1, 1, 60, 4) + b"\x01\x02\x03\x04"
         return struct.pack("!6H", identifier, flags, 1, 1, 0, 0) + QUESTION + tail
+
+    def test_custom_query_and_ipv6_public_resolvers(self):
+        self.assertEqual(
+            validate_dns_servers(["2606:4700:4700::1111", "8.8.8.8"]),
+            ("2606:4700:4700::1111", "8.8.8.8"),
+        )
+        question = dns_question("status.example.net")
+        packet = (
+            struct.pack("!6H", 12, 0x8180, 1, 1, 0, 0)
+            + question
+            + b"\xc0\x0c"
+            + struct.pack("!HHIH", 1, 1, 60, 4)
+            + b"\x01\x02\x03\x04"
+        )
+        self.assertTrue(response_ok(packet, 12, question))
+        with self.assertRaises(ValueError):
+            response_ok(packet, 12)
+        for invalid in [
+            "",
+            "localhost",
+            "a..example",
+            "https://example.com",
+            "-bad.example",
+            "x" * 64 + ".example",
+        ]:
+            with self.assertRaises(ValueError):
+                dns_question(invalid)
 
     def test_valid_answer_and_explicit_dns_failure(self):
         self.assertTrue(response_ok(self.answer(), 12))
@@ -43,7 +71,6 @@ class DNSTests(unittest.IsolatedAsyncioTestCase):
             None,
             ["192.168.1.10"],
             ["192.168.1.10"] * 2,
-            ["8.8.8.8", "192.168.1.10"],
             ["127.0.0.1", "192.168.1.10"],
             ["192.0.2.1", "192.168.1.10"],
         ):

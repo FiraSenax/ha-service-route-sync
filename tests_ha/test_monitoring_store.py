@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.core import HomeAssistant
-from custom_components.service_route_sync.monitoring_store import (
+from custom_components.service_route_sync.monitoring.monitoring_store import (
     MonitoringCheckpointStore,
     MonitoringCheckpointError,
 )

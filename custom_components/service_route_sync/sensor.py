@@ -4,13 +4,13 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.const import PERCENTAGE, UnitOfDataRate, UnitOfTime
 from homeassistant.helpers.entity import EntityCategory
 
-from .entity import RouteEntity
-from .network_entity import NetworkDeviceEntity, NetworkEntity
-from .client_entity import ClientEntity
-from .monitoring_entity import MonitoringEntity
-from .wifi_entity import WifiStatusSensor
-from .frigate_entity import FrigateTimestampSensor
-from .ipv6_entity import IPv6Entity
+from .routing.entity import RouteEntity
+from .network.network_entity import NetworkDeviceEntity, NetworkEntity
+from .clients.client_entity import ClientEntity
+from .monitoring.monitoring_entity import MonitoringEntity
+from .wifi.wifi_entity import WifiStatusSensor
+from .frigate.frigate_entity import FrigateTimestampSensor
+from .ipv6.ipv6_entity import IPv6Entity
 from datetime import datetime, timezone
 
 FIELDS = {

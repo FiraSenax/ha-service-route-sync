@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests_ha import CONNECTION
 from tests_ha.test_wifi_flow import Harness
-from custom_components.service_route_sync.frigate_flow import discover_frigate_scopes
+from custom_components.service_route_sync.frigate.frigate_flow import discover_frigate_scopes
 
 
 class FrigateFlowTests(unittest.IsolatedAsyncioTestCase):
@@ -47,7 +47,7 @@ class FrigateFlowTests(unittest.IsolatedAsyncioTestCase):
         )
         await self.flow.async_step_init()
         self.transport = patch(
-            "custom_components.service_route_sync.frigate_flow.read_frigate_status",
+            "custom_components.service_route_sync.frigate.frigate_flow.read_frigate_status",
             AsyncMock(return_value={}),
         )
         self.read = self.transport.start()

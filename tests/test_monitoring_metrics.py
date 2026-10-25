@@ -1,6 +1,6 @@
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.monitoring_metrics import render_monitoring
+from service_route_sync.monitoring.monitoring_metrics import render_monitoring
 
 
 def snapshot(now=1000):
@@ -20,7 +20,7 @@ def snapshot(now=1000):
         "pending": 2,
         "sources": {
             key: {"ok": True, "observed_at": now}
-            for key in ("api", "probe", "windows", "dns253", "dns254")
+            for key in ("api", "probe", "windows", "dns_primary", "dns_secondary")
         },
         "history": {
             "counts": {"synthetic": 1},

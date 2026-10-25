@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 import bootstrap  # noqa: F401
-from service_route_sync.windows_archive import DailyCursor, read_daily_page
-from service_route_sync.windows_cursor import WindowsSourceError
+from service_route_sync.windows.windows_archive import DailyCursor, read_daily_page
+from service_route_sync.windows.windows_cursor import WindowsSourceError
 
 
 class ArchiveTests(unittest.TestCase):
@@ -17,7 +17,9 @@ class ArchiveTests(unittest.TestCase):
         spy = MagicMock(wraps=raw)
         spy.__enter__.return_value = spy
         spy.__exit__.side_effect = lambda *args: raw.close()
-        with patch("service_route_sync.windows_archive._open_daily", return_value=(spy, False)):
+        with patch(
+            "service_route_sync.windows.windows_archive._open_daily", return_value=(spy, False)
+        ):
             page = read_daily_page(self.root, DailyCursor("2026-10-11", len(prefix)), self.today)
         self.assertEqual(page.records, ({"id": 2},))
         self.assertEqual(spy.read.call_count, 1)

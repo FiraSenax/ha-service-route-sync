@@ -9,8 +9,8 @@ from homeassistant.util import dt as dt_util
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.components.http import KEY_HASS_USER
 from custom_components.service_route_sync.metrics_view import NetworkMetricsView
-from custom_components.service_route_sync.client_observation import observe_client
-from custom_components.service_route_sync.work_probes import WorkProbe
+from custom_components.service_route_sync.clients.client_observation import observe_client
+from custom_components.service_route_sync.probes.work_probes import WorkProbe
 
 
 class MetricsViewTests(unittest.IsolatedAsyncioTestCase):
@@ -62,7 +62,7 @@ class MetricsViewTests(unittest.IsolatedAsyncioTestCase):
         )
         self.view = NetworkMetricsView(self.hass)
         self.user = SimpleNamespace(
-            permissions=SimpleNamespace(check_entity=Mock(return_value=True))
+            is_admin=True, permissions=SimpleNamespace(check_entity=Mock(return_value=True))
         )
         self.patches = [
             patch(
@@ -81,6 +81,26 @@ class MetricsViewTests(unittest.IsolatedAsyncioTestCase):
         for p in self.patches:
             p.start()
             self.addCleanup(p.stop)
+
+    async def test_client_metrics_need_no_work_or_gateway_probes(self):
+        self.entry.runtime_data.work_probes = None
+        self.entry.runtime_data.client_probes = None
+        response = await self.view.get({KEY_HASS_USER: self.user}, "entry")
+        self.assertEqual(response.status, 200)
+        self.assertIn("gaming_source_ok", response.text)
+        self.assertNotIn("work_endpoint", response.text)
+
+    async def test_client_permission_does_not_grant_work_metrics(self):
+        self.user.is_admin = False
+        response = await self.view.get({KEY_HASS_USER: self.user}, "entry")
+        self.assertEqual(response.status, 200)
+        self.assertNotIn("work_endpoint", response.text)
+        self.entry.runtime_data.clients = None
+        self.assertEqual((await self.view.get({KEY_HASS_USER: self.user}, "entry")).status, 403)
+        self.user.is_admin = True
+        response = await self.view.get({KEY_HASS_USER: self.user}, "entry")
+        self.assertEqual(response.status, 200)
+        self.assertIn("work_endpoint", response.text)
 
     async def test_authentication_required_and_no_user_denied(self):
         self.assertTrue(self.view.requires_auth)

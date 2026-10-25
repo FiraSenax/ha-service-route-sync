@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from homeassistant.core import HomeAssistant
-from custom_components.service_route_sync.frigate_coordinator import FrigateActorCoordinator
+from custom_components.service_route_sync.frigate.frigate_coordinator import FrigateActorCoordinator
 from custom_components.service_route_sync.backends.gateway_ssh import GatewayTransportError
 
 
@@ -29,7 +29,7 @@ class FrigateCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.coordinator = FrigateActorCoordinator(self.hass, self.entry)
         self.status = {"running": True, "started": "2026-10-12T04:00:00Z"}
         self.trust = patch(
-            "custom_components.service_route_sync.frigate_coordinator.FrigateStatusSSHConfig.validate_files"
+            "custom_components.service_route_sync.frigate.frigate_coordinator.FrigateStatusSSHConfig.validate_files"
         )
         self.trust.start()
         self.addCleanup(self.trust.stop)
@@ -52,14 +52,14 @@ class FrigateCoordinatorTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_observation_failure_retains_data_but_is_not_success(self):
         with patch(
-            "custom_components.service_route_sync.frigate_coordinator.read_frigate_status",
+            "custom_components.service_route_sync.frigate.frigate_coordinator.read_frigate_status",
             AsyncMock(return_value=self.status),
         ):
             await self.coordinator.async_refresh()
         previous = self.coordinator.data
         self.assertTrue(previous.running)
         with patch(
-            "custom_components.service_route_sync.frigate_coordinator.read_frigate_status",
+            "custom_components.service_route_sync.frigate.frigate_coordinator.read_frigate_status",
             AsyncMock(side_effect=GatewayTransportError("synthetic")),
         ):
             await self.coordinator.async_refresh()
@@ -68,7 +68,7 @@ class FrigateCoordinatorTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_disabled_or_rebound_profile_never_sends_control(self):
         with patch(
-            "custom_components.service_route_sync.frigate_coordinator.request_frigate_restart",
+            "custom_components.service_route_sync.frigate.frigate_coordinator.request_frigate_restart",
             AsyncMock(),
         ) as request:
             with self.assertRaises(GatewayTransportError):
@@ -89,11 +89,11 @@ class FrigateCoordinatorTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "custom_components.service_route_sync.frigate_coordinator.FrigateRestartSSHConfig.validate_files",
+                "custom_components.service_route_sync.frigate.frigate_coordinator.FrigateRestartSSHConfig.validate_files",
                 side_effect=disable,
             ),
             patch(
-                "custom_components.service_route_sync.frigate_coordinator.request_frigate_restart",
+                "custom_components.service_route_sync.frigate.frigate_coordinator.request_frigate_restart",
                 AsyncMock(),
             ) as request,
         ):
@@ -110,7 +110,7 @@ class FrigateCoordinatorTests(unittest.IsolatedAsyncioTestCase):
             "protocol": 1,
         }
         with patch(
-            "custom_components.service_route_sync.frigate_coordinator.request_frigate_restart",
+            "custom_components.service_route_sync.frigate.frigate_coordinator.request_frigate_restart",
             AsyncMock(return_value=receipt),
         ) as request:
             result = await self.coordinator.async_request_restart()
@@ -121,7 +121,7 @@ class FrigateCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.entry.options = {"frigate_restart_enabled": True}
         async with self.coordinator.restart_lock:
             with patch(
-                "custom_components.service_route_sync.frigate_coordinator.request_frigate_restart",
+                "custom_components.service_route_sync.frigate.frigate_coordinator.request_frigate_restart",
                 AsyncMock(),
             ) as request:
                 with self.assertRaises(GatewayTransportError):
@@ -134,7 +134,7 @@ class FrigateCoordinatorTests(unittest.IsolatedAsyncioTestCase):
             return self.status
 
         with patch(
-            "custom_components.service_route_sync.frigate_coordinator.read_frigate_status",
+            "custom_components.service_route_sync.frigate.frigate_coordinator.read_frigate_status",
             side_effect=rebind,
         ):
             await self.coordinator.async_refresh()
@@ -145,7 +145,7 @@ class FrigateCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.entry.options["frigate_restart_enabled"] = True
         await self.coordinator.async_shutdown()
         with patch(
-            "custom_components.service_route_sync.frigate_coordinator.request_frigate_restart",
+            "custom_components.service_route_sync.frigate.frigate_coordinator.request_frigate_restart",
             AsyncMock(),
         ) as request:
             with self.assertRaises(GatewayTransportError):

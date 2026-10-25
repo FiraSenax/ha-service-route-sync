@@ -2,7 +2,11 @@ from datetime import datetime, timezone
 from dataclasses import fields
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.wifi_observation import observe_wireless, WirelessObservation, WifiDataError
+from service_route_sync.wifi.wifi_observation import (
+    observe_wireless,
+    WirelessObservation,
+    WifiDataError,
+)
 
 NOW = datetime(2026, 10, 12, tzinfo=timezone.utc)
 

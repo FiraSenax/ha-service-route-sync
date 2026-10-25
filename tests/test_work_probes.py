@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 import unittest
 import bootstrap  # noqa: F401
-from service_route_sync.work_probes import parse_curl, render_work_probes
-from service_route_sync.network import NetworkDataError
+from service_route_sync.probes.work_probes import parse_curl, render_work_probes
+from service_route_sync.network.network import NetworkDataError
 
 NOW = datetime(2026, 10, 11, 20, tzinfo=timezone.utc)
 

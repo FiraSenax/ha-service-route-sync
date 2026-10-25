@@ -9,8 +9,9 @@ import re
 
 from aiohttp import ClientError, ClientSession, ClientTimeout, Fingerprint
 
-from ..core import SyncError
-from ..client_observation import canonical_mac
+from ..routing.core import SyncError
+from ..clients.client_observation import canonical_mac
+from .http_json import read_json
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -143,7 +144,7 @@ class UniFiBackend:
                 raise SyncError("The configured UniFi API request failed")
             if request.method == "put":
                 return None
-            return await response.json(content_type=None)
+            return await read_json(response)
 
     async def read_routes(self):
         response = await self._request(ApiRequest("get", "/trafficroutes"))

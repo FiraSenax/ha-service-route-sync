@@ -52,7 +52,8 @@ def parse_config(raw):
         raise PolicyError("invalid_configuration") from None
     if (
         not ula.is_private
-        or ula.prefixlen != 56
+        or not ula.subnet_of(ipaddress.IPv6Network("fc00::/7"))
+        or not 48 <= ula.prefixlen <= 64
         or ula.is_multicast
         or primary_ip == star_ip
         or not primary_ip.is_private
@@ -124,7 +125,7 @@ def expected_nat(config, mode, delegation):
             prefix = ipaddress.IPv6Network(delegation, strict=True)
         except (TypeError, ValueError):
             raise PolicyError("delegation_unavailable") from None
-        if not prefix.is_global or prefix.prefixlen != 56:
+        if not prefix.is_global or prefix.prefixlen != config.ula.prefixlen:
             raise PolicyError("delegation_unavailable")
         return (
             "-N IOB_V6_NAT",
@@ -211,7 +212,7 @@ def owned_mode(snapshot, config):
                 mapped = ipaddress.IPv6Network(match[2], strict=True)
             except ValueError:
                 mapped = None
-            if mapped is not None and mapped.is_global and mapped.prefixlen == 56:
+            if mapped is not None and mapped.is_global and mapped.prefixlen == config.ula.prefixlen:
                 return "primary", str(mapped)
     return "unknown", None
 
@@ -238,7 +239,7 @@ def recoverable(snapshot, config):
         if match and match[1] == str(config.ula):
             try:
                 mapped = ipaddress.IPv6Network(match[2], strict=True)
-                known_nat = mapped.is_global and mapped.prefixlen == 56
+                known_nat = mapped.is_global and mapped.prefixlen == config.ula.prefixlen
                 nat_mode = "primary" if known_nat else None
             except ValueError:
                 pass
