@@ -19,9 +19,10 @@ SHA-256 certificate fingerprint. A self-signed certificate requires that
 fingerprint. Leaving the API key empty when editing options preserves the key
 already saved by Service Route Sync.
 
-Existing entries without these settings open a reauthentication flow. All
-features wait for an explicitly configured connection. Reauthentication disables
-automatic route updates; inspect the new preview before enabling them again.
+Controller-dependent features require these settings. Entries missing their own
+connection settings request reauthentication; public HTTPS probes can run without
+a controller. Reauthentication disables automatic route updates; inspect the new
+preview before enabling them again.
 
 Route writes additionally require an explicitly configured route API key and
 certificate pin in **Route TLS**. Use a separate key for route changes where
@@ -46,9 +47,9 @@ in the network settings. Missing, unavailable or invalid helpers stop planning;
 there is no fallback to a personal entity ID.
 
 Provision the matching gateway actor from this release before activating it.
-Old configurations and journals using `dsl`/`starlink` modes are not translated.
-Deactivate old writers and resolve any pending journal before replacing the
-configuration. An unrecognized journal is rejected rather than discarded.
+Only `primary` and `secondary` are valid policy modes. Stop other writers and
+resolve any pending journal before replacing the configuration. An unrecognized
+journal is rejected rather than discarded.
 See [IPv6 actor provisioning](IPV6_ACTOR.md) for the configuration format and
 write safeguards. Primary and secondary interfaces must match the WAN observer.
 
@@ -113,8 +114,8 @@ regular and single-profile diagnostic client observers read
 
 Use your own marks; `vpn1` and `vpn2` are optional additional keys. The file and
 parent directory have the same root ownership and private permissions as the
-other gateway configurations. Old `dsl`/`starlink` route labels are no longer
-accepted by the client-observation protocol. Upgrade both sides together.
+other gateway configurations. Use these generic protocol roles on both the
+gateway and HA sides, independently of your WAN display names.
 
 Set the expected LAN port speed in the diagnostic profile. Optional maintenance
 suppression starts at the selected hour in HA's time zone and lasts the configured
@@ -126,13 +127,15 @@ time zone. No `ZoneInfo` filesystem lookup runs in the sampling loop.
 ## Routes and rollout
 
 Fortnite can be bound to any eligible IP route. The integration preserves its
-existing `ip_ranges`; it no longer requires two particular address ranges.
+existing `ip_ranges`; no particular address ranges are required.
 All other destination, removal, backup and readback safeguards remain in place.
 
 Configure the new release in observation/preview mode first. This change is
 validated with automated controller, Home Assistant and gateway tests; live
 controller authentication and router writes still need validation in your own
 setup before enabling automatic writes.
+See [validation and compatibility](VALIDATION.md) for the release's actual test
+scope and the limits of the live evidence.
 
 ## Installation and updates
 

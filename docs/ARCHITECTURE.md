@@ -72,7 +72,8 @@ with only `/integration/v1`, a different route schema or incompatible permission
 is rejected by setup; an API key alone is not a compatibility guarantee.
 
 Public HTTPS phase probes require `/usr/bin/curl`; user curl configuration is
-disabled and response bodies are limited to 1 MiB. SSH features require OpenSSH in the HA runtime and a gateway supporting the exact
+disabled and response bodies are limited to 1 MiB. SSH features require OpenSSH
+in the HA runtime and a gateway supporting the exact
 reader's Linux/UbiOS tools. IPv6 writes additionally require the documented chain
 layout, matching ULA/provider prefix lengths (/48–/64), explicit interface/table/
 mark configuration and exclusive ownership of the managed policy. A different
@@ -84,5 +85,8 @@ Windows event collection service. Public endpoint probes use explicit shipped
 presets and do not offer arbitrary request URLs.
 
 Tests cover unrelated profile names, addresses, interfaces, prefix sizes, disabled
-features, denied callers, malformed responses and upgrade conflicts. This is
-compatibility evidence, not a claim to have tested every controller or firmware.
+features, denied callers, malformed responses and interrupted writes. The private
+entry-schema adapter and checkpoint converter were removed in 0.5.1; their tests
+are no longer part of the suite. Current configuration schema 2.1 is unchanged.
+See [validation and compatibility](VALIDATION.md) for the tested environments,
+live checks and remaining gaps.

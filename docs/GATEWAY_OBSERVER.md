@@ -12,8 +12,8 @@ Use an existing trusted administrator connection. Never use `ssh-keyscan` as
 proof of identity or copy an unrestricted administrator private key into HA.
 Confirm the gateway's Ed25519 host public key through that trusted connection.
 The flow accepts the full `ssh-ed25519 <base64>` key, without comments, rather
-than a fingerprint. Authentication, forwarding and arbitrary shell access are
-not needed for the observer key.
+than a fingerprint. Password authentication, forwarding and arbitrary shell
+access are not needed for the observer key.
 
 1. Enable protocol observations in the integration's network settings. The next
    step displays the newly generated **public** observer key; its private part
@@ -28,13 +28,16 @@ not needed for the observer key.
    ```json
    {
      "schema": 1,
-     "primary_interface": "ppp0",
-     "secondary_interface": "eth1",
-     "primary_table": 201,
-     "secondary_table": 202,
+     "primary_interface": "wan0",
+     "secondary_interface": "wan1",
+     "primary_table": 301,
+     "secondary_table": 302,
      "delegated_prefix_length": 56
    }
    ```
+
+   These are example values. When using the IPv6 actor, match its WAN settings
+   and configured ULA/provider prefix length; the actor supports /48 through /64.
 
 4. Add only the flow's public key to the gateway's existing authorized-key file,
    preserving other administrator keys. Constrain it to the actual HA address:
@@ -64,8 +67,9 @@ Observations refresh every 10 seconds. Samples older than 20 seconds or from
 the future become unavailable; missing required facts also become unavailable.
 The helper rate-limits calls to five seconds, bounds command duration/output,
 and cleans up children on cancellation. SSH has pinned host identity, no agent,
-password or proxy fallback, and bounded output. Configuration changes reset
-automatic route application to off, consistent with existing options behavior.
+password or proxy fallback, and bounded output. Changing only observer settings
+does not disable route automation. Changes to the controller connection or route
+policy require explicitly enabling route automation again.
 
 Unchanged observer settings reuse the existing identity. Choosing reconfigure,
 or changing the discovered gateway address, creates a separate key directory;
@@ -78,5 +82,5 @@ removed after confirming their IDs are absent from active entries.
 Gateway firmware upgrades, SSH policy changes or reboots require checking the
 helper/configuration/authorized-key persistence. Failure results in unavailable
 diagnostics, not a new routing decision. No firmware persistence hook or router
-restart is installed by this integration. A supervised future IPv6 cutover
-requires the separate acceptance criteria in `NETWORK_ARCHITECTURE.md`.
+restart is installed by this integration. Optional write access uses the separate
+[IPv6 actor](IPV6_ACTOR.md), with its own key and explicit activation.

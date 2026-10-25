@@ -13,3 +13,6 @@ platform limitations](docs/ARCHITECTURE.md) and [required permissions](docs/PERM
 CI includes extended CodeQL analysis, negative authorization/parser tests, pinned
 GitHub Actions and generated-reader consistency checks. These controls do not
 replace review of the gateway deployment, API-key privileges or HA backup security.
+The [validation record](docs/VALIDATION.md) distinguishes automated checks, live
+evidence and work still needed, including coverage measurement and static type
+checking. A clean CodeQL result is not an independent security audit.
