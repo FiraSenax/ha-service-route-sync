@@ -1,4 +1,4 @@
-"""Legacy Monitoring metric names, backed by accepted native observations/history."""
+"""Monitoring metrics backed by accepted observations and history."""
 
 from datetime import datetime
 from homeassistant.util import dt as dt_util

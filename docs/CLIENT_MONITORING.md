@@ -16,18 +16,18 @@ Both the containing directory and file must be root-owned and private (0700 dire
 
 Neighbor IP/MAC identity is checked before and after bounded ping and conntrack reads. Unknown identity yields no probe; a changed identity discards all results. This protects attribution against ordinary DHCP changes but is not cryptographic client authentication. An offline machine without a usable neighbor entry remains unknown to this probe. UniFi presence is a separate observation. DHCP reservations and profile aliases must be checked before installation.
 
-An exclusive private runtime lock prevents concurrent scans and limits starts to one per five seconds. Each subprocess has a deadline and bounded output and is killed on cancellation. Whole scan is bounded to 55 seconds for up to sixteen targets with four workers. HA must use a dedicated transport deadline allowing this bound, rather than the existing WAN observer transport timeout. The future scheduler must not promise a five-second cadence for configurations whose scan duration exceeds it.
+An exclusive private runtime lock prevents concurrent scans and limits starts to one per five seconds. Each subprocess has a deadline and bounded output and is killed on cancellation. The whole scan is bounded to 55 seconds for up to sixteen targets with four workers. The dedicated client transport accommodates this bound; larger configurations may take longer than five seconds to sample.
 
-Only reduced results leave the gateway. Raw conntrack lines, neighbor MACs and addresses are not returned. Source timestamps are emitted only for successful observations. Failed command reads yield missing data; successful empty conntrack output yields real zero counts. DSL/Starlink/VPN route marks preserve the actual old implementation and require a live routing-policy check on deployment.
+Only reduced results leave the gateway. Raw conntrack lines, neighbor MACs and addresses are not returned. Source timestamps are emitted only for successful observations. Failed command reads yield missing data; successful empty conntrack output yields real zero counts. Configure routing marks for the generic primary, secondary and optional VPN roles and verify them against the gateway's actual routing policy.
 
-## Outstanding acceptance
+## Setup and verification
 
-Closed HA protocol parser, dedicated pinned SSH transport, actual live measurements, HA runtime/UI installation, fixed HTTPS work probes, complete Monitoring incident/Windows/history/outbox migration, authenticated scrape endpoint and NAS config/history continuity remain pending. Current helper entrypoint tests prove code behavior, not installed SSH restrictions or live target identity.
+Select clients through the normal Home Assistant configuration flow. Optional SSH probes require their own key and a verified live handshake. The authenticated client metrics endpoint can run without work probes or WAN monitoring. Automated tests cover the protocol and identity checks; verify SSH restrictions and target identity on each deployment. See [configuration](CONFIGURATION.md) and [permissions](PERMISSIONS.md).
 
-## Active adapter selection (local candidate)
+## Active adapter selection
 
 The native UniFi client collector selects the freshest active adapter of each existing profile. The client SSH transport can pass its selected IPv4 addresses as a bounded JSON stdin frame, never as a command or argument. The gateway accepts only its configured profile set and RFC1918 addresses; both pre- and post-measurement neighbor checks must match a MAC from the gateway-owned profile. Fixed-address profiles cannot be widened. Offline or failed/stale UniFi observations send null and do not fall back to historical neighbors.
 
 The optional request is `{"schema":1,"addresses":{"example":"192.168.1.10"}}`. Empty stdin retains the existing gateway-only resolution mode for provisioning and backwards compatibility. Reading stdin is bounded to 16 KiB and two seconds; duplicate JSON keys are rejected. This authorizes an address through a configured MAC identity rather than trusting the proposed address. It does not authorize arbitrary LAN or public probes.
 
-The active adapter selection is installed on HA and the gateway. A live check confirms successful periodic acquisition and rejection of public targets; a foreign local MAC produces unknown with no probe or connection measurements. Empty-input gateway-only resolution remains available for provisioning.
+Both HA and the gateway validate active adapter selection. Public targets are rejected; a foreign local MAC produces unknown with no probe or connection measurements. Empty-input gateway-only resolution remains available for provisioning.

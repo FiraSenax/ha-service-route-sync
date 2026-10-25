@@ -17,7 +17,7 @@ def incident_port(client):
         or not 1 <= int(index) <= 65535
     ):
         raise ClientDataError("Invalid Monitoring port identity")
-    # Legacy incidents use the display identity; preserve it during migration.
+    # Incident messages use the display identity.
     # The tracked MAC/index remains separate and is the authoritative location.
     return {
         "port_identity": port.name,

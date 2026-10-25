@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 — remove private migration paths
+
+- Remove the experimental entry-schema adapter and old checkpoint converter.
+- Remove the obsolete adapter tests and automatic-upgrade documentation.
+- Keep configuration schema 2.1 and existing accepted state unchanged. New users
+  use the regular setup flow; upgrades from experimental schemas are unsupported.
+
 ## 0.5.0 — modular features and security hardening
 
 - Require administrator or trusted automation context for route controls, including

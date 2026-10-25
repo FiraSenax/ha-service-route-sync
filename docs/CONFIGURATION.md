@@ -1,9 +1,8 @@
-# Public configuration (0.3)
+# Configuration
 
-This release uses explicit configuration instead of the original installation's
-UniFi entry, helper names, profile identity and notification service. Existing
-installations must enter their values again. No credentials are copied from
-another integration and no personal helper names are used as fallbacks.
+Configure this integration's own connection, helper entities, profile identities
+and notification service. No credentials are copied from another integration and
+no personal helper names are used as fallbacks.
 
 ## UniFi connection
 
@@ -135,23 +134,20 @@ validated with automated controller, Home Assistant and gateway tests; live
 controller authentication and router writes still need validation in your own
 setup before enabling automatic writes.
 
-## Upgrading to 0.5.0
+## Installation and updates
 
-Home Assistant automatically migrates schema-1 entries to the neutral
-`monitoring_*` namespace. Entity IDs, user-chosen profile names, accepted Windows
-cursors, queues and matching history revisions are preserved. Source files remain
-as a recovery copy. Conflicting destinations, unsafe paths or missing accepted
-history stop the migration instead of guessing which state to retain.
+Version 0.5.1 uses configuration schema 2.1. Existing installations on this schema
+keep their configuration, entity IDs, accepted cursors, history and operating
+modes. Back up Home Assistant before updating. Automatic upgrades from earlier
+experimental schemas are not supported; new users configure the integration
+through its setup flow.
 
-No other integration's credentials are copied. Entries without their own UniFi
-API key request reauthentication. Old route, IPv6 and notification writers remain
-paused after schema-1 migration until their new configuration and external readers
-have been checked. Existing schema-2 installations keep their selected modes.
+The gateway is a separate deployment. Monitoring uses the restricted command
+`service-route-sync monitoring-client v1` with `monitoring_client_observer.py`
+and `monitoring-client.json`. HA updates do not rewrite gateway SSH authorization
+or privileged firewall state.
 
-The gateway is a separate deployment: update its restricted reader command to
-`service-route-sync monitoring-client v1` and install `monitoring_client_observer.py`
-with `monitoring-client.json` when upgrading from the old namespace. The HA upgrade
-cannot safely rewrite a gateway's SSH authorization or privileged firewall state.
+## Independent metrics and probes
 
 Client metrics are available at `/api/service_route_sync/{entry_id}/metrics/clients`
 without work probes or gateway probes. Work metrics use `/metrics/work` and require
