@@ -14,7 +14,7 @@
           "client_monitoring_enabled": "PC-Netzwerk überwachen (nur lesend)",
           "work_probe_enabled": "Microsoft-365-Verbindung vom Haus messen",
           "network_metrics_enabled": "Geschützten Prometheus-Kompatibilitätsexport aktivieren",
-          "lady_enabled": "Client-Netzwerkdiagnose",
+          "monitoring_enabled": "Client-Netzwerkdiagnose",
           "wifi_history_enabled": "WLAN-Historie aller Clients alle 30 Minuten speichern (lokal)",
           "unifi_host": "UniFi-Host",
           "unifi_port": "HTTPS-Port",
@@ -96,28 +96,28 @@
           "probe_host": "Gateway-Adresse des Probe-Zugangs"
         }
       },
-      "lady": {
+      "monitoring": {
         "title": "Diagnoseprofil",
         "description": "Wähle die Netzwerkschnittstellen dieses PCs. Die Gaming-Profile bleiben getrennt. Eine neue Einrichtung startet mit Beobachtung ohne Benachrichtigungen. Ist der PC offline, trage seine bekannte MAC-Adresse in das separate Feld ein.",
         "data": {
-          "lady_clients": "PC-Schnittstellen",
-          "lady_reconfigure": "Quellenzugriffe neu prüfen",
-          "lady_manual_mac": "MAC-Adresse einer derzeit offline befindlichen PC-Schnittstelle",
-          "lady_profile_id": "Profilkennung",
-          "lady_profile_name": "Profilname",
-          "lady_windows_enabled": "Windows-/Wazuh-Quelle verwenden",
-          "lady_notify_service": "Benachrichtigungsdienst",
-          "lady_expected_speed": "Erwartete LAN-Geschwindigkeit (Mbit/s)",
-          "lady_maintenance_hour": "Wartungsstunde (HA-Zeitzone, −1 deaktiviert)",
-          "lady_maintenance_minutes": "Wartungsdauer ab voller Stunde (Minuten)"
+          "monitoring_clients": "PC-Schnittstellen",
+          "monitoring_reconfigure": "Quellenzugriffe neu prüfen",
+          "monitoring_manual_mac": "MAC-Adresse einer derzeit offline befindlichen PC-Schnittstelle",
+          "monitoring_profile_id": "Profilkennung",
+          "monitoring_profile_name": "Profilname",
+          "monitoring_windows_enabled": "Windows-/Wazuh-Quelle verwenden",
+          "monitoring_notify_service": "Benachrichtigungsdienst",
+          "monitoring_expected_speed": "Erwartete LAN-Geschwindigkeit (Mbit/s)",
+          "monitoring_maintenance_hour": "Wartungsstunde (HA-Zeitzone, −1 deaktiviert)",
+          "monitoring_maintenance_minutes": "Wartungsdauer ab voller Stunde (Minuten)"
         }
       },
-      "lady_sources": {
+      "monitoring_sources": {
         "title": "Lesende Quellen prüfen",
         "description": "Richte getrennte, auf feste Lesebefehle beschränkte SSH-Zugriffe von HA ein. Host-Schlüssel müssen über einen vertrauten Verwaltungszugang ermittelt werden. DSL-Schlüssel: {dsl_public_key}\n\nPC-Schlüssel: {pc_public_key}\n\nWindows-Schlüssel: {windows_public_key}",
         "data": {
-          "lady_gateway_host": "Router",
-          "lady_windows_host": "IP des Wazuh-Hosts",
+          "monitoring_gateway_host": "Router",
+          "monitoring_windows_host": "IP des Wazuh-Hosts",
           "gateway_host_public_key": "Öffentlicher Ed25519-Host-Schlüssel des Routers",
           "windows_host_public_key": "Öffentlicher Ed25519-Host-Schlüssel des Wazuh-Hosts"
         }
@@ -172,7 +172,7 @@
       "no_clients": "UniFi liefert keine auswählbaren Geräte.",
       "invalid_client_import": "Profilübernahme ungültig oder Probe-Zugang nicht bestätigt.",
       "client_profiles_imported": "Profile übernommen; die Integration wird neu geladen.",
-      "invalid_lady_configuration": "Die vorhandene Lady-Konfiguration ist ungültig.",
+      "invalid_monitoring_configuration": "Die vorhandene Monitoring-Konfiguration ist ungültig.",
       "reauth_successful": "UniFi-Verbindung aktualisiert."
     }
   },
@@ -191,7 +191,7 @@
           "client_monitoring_enabled": "PC-Netzwerk überwachen (nur lesend)",
           "work_probe_enabled": "Microsoft-365-Verbindung vom Haus messen",
           "network_metrics_enabled": "Geschützten Prometheus-Kompatibilitätsexport aktivieren",
-          "lady_enabled": "Client-Netzwerkdiagnose",
+          "monitoring_enabled": "Client-Netzwerkdiagnose",
           "wifi_history_enabled": "WLAN-Historie aller Clients alle 30 Minuten speichern (lokal)",
           "unifi_host": "UniFi-Host",
           "unifi_port": "HTTPS-Port",
@@ -264,28 +264,28 @@
           "gateway_host_public_key": "Öffentlicher Ed25519-Hostkey"
         }
       },
-      "lady": {
+      "monitoring": {
         "title": "Diagnoseprofil",
         "description": "Wähle die Netzwerkschnittstellen dieses PCs. Die Gaming-Profile bleiben getrennt. Eine neue Einrichtung startet mit Beobachtung ohne Benachrichtigungen. Ist der PC offline, trage seine bekannte MAC-Adresse in das separate Feld ein.",
         "data": {
-          "lady_clients": "PC-Schnittstellen",
-          "lady_reconfigure": "Quellenzugriffe neu prüfen",
-          "lady_manual_mac": "MAC-Adresse einer derzeit offline befindlichen PC-Schnittstelle",
-          "lady_profile_id": "Profilkennung",
-          "lady_profile_name": "Profilname",
-          "lady_windows_enabled": "Windows-/Wazuh-Quelle verwenden",
-          "lady_notify_service": "Benachrichtigungsdienst",
-          "lady_expected_speed": "Erwartete LAN-Geschwindigkeit (Mbit/s)",
-          "lady_maintenance_hour": "Wartungsstunde (HA-Zeitzone, −1 deaktiviert)",
-          "lady_maintenance_minutes": "Wartungsdauer ab voller Stunde (Minuten)"
+          "monitoring_clients": "PC-Schnittstellen",
+          "monitoring_reconfigure": "Quellenzugriffe neu prüfen",
+          "monitoring_manual_mac": "MAC-Adresse einer derzeit offline befindlichen PC-Schnittstelle",
+          "monitoring_profile_id": "Profilkennung",
+          "monitoring_profile_name": "Profilname",
+          "monitoring_windows_enabled": "Windows-/Wazuh-Quelle verwenden",
+          "monitoring_notify_service": "Benachrichtigungsdienst",
+          "monitoring_expected_speed": "Erwartete LAN-Geschwindigkeit (Mbit/s)",
+          "monitoring_maintenance_hour": "Wartungsstunde (HA-Zeitzone, −1 deaktiviert)",
+          "monitoring_maintenance_minutes": "Wartungsdauer ab voller Stunde (Minuten)"
         }
       },
-      "lady_sources": {
+      "monitoring_sources": {
         "title": "Lesende Quellen prüfen",
         "description": "Richte getrennte, auf feste Lesebefehle beschränkte SSH-Zugriffe von HA ein. Host-Schlüssel müssen über einen vertrauten Verwaltungszugang ermittelt werden. DSL-Schlüssel: {dsl_public_key}\n\nPC-Schlüssel: {pc_public_key}\n\nWindows-Schlüssel: {windows_public_key}",
         "data": {
-          "lady_gateway_host": "Router",
-          "lady_windows_host": "IP des Wazuh-Hosts",
+          "monitoring_gateway_host": "Router",
+          "monitoring_windows_host": "IP des Wazuh-Hosts",
           "gateway_host_public_key": "Öffentlicher Ed25519-Host-Schlüssel des Routers",
           "windows_host_public_key": "Öffentlicher Ed25519-Host-Schlüssel des Wazuh-Hosts"
         }
@@ -300,8 +300,8 @@
           "frigate_actor": "Frigate-Steuerung",
           "gateway_management": "Gateway-Verwaltungsadresse",
           "ipv6_policy": "IPv6-Regelsteuerung",
-          "lady_mode": "Client-Betriebsmodus",
-          "lady_dns": "DNS-Server für überwachten PC"
+          "monitoring_mode": "Client-Betriebsmodus",
+          "monitoring_dns": "DNS-Server für überwachten PC"
         }
       },
       "wifi_history": {
@@ -360,14 +360,14 @@
           "use_existing_management_host": "Vorhandene Verwaltungsadresse des Client-Beobachters nutzen"
         }
       },
-      "lady_mode": {
+      "monitoring_mode": {
         "title": "Diagnose-Benachrichtigungen",
         "description": "Benachrichtigungen für den ausgewählten Dienst aktivieren. Ohne Aktivierung bleibt die Diagnose im Beobachtungsmodus.",
         "data": {
-          "lady_active": "Benachrichtigungen aktiv"
+          "monitoring_active": "Benachrichtigungen aktiv"
         }
       },
-      "lady_dns": {
+      "monitoring_dns": {
         "title": "DNS-Server für überwachten PC",
         "data": {
           "primary": "Erster DNS-Server im LAN",
@@ -413,7 +413,7 @@
       "invalid_clients": "Wähle mindestens ein gültiges Gerät ohne doppelte Zuordnung.",
       "frigate_observe_first": "Neue Verbindung zunächst ohne Neustartfreigabe speichern.",
       "ipv6_legacy_writer_running": "Vor der HA-Aktivierung den andere IPv6-Schreiber stoppen.",
-      "lady_sources_not_ready": "Die lesenden Lady-Quellen liefern noch keine aktuelle Beobachtung.",
+      "monitoring_sources_not_ready": "Die lesenden Monitoring-Quellen liefern noch keine aktuelle Beobachtung.",
       "invalid_dns_servers": "Zwei verschiedene private IPv4-Adressen eingeben (10/8, 172.16/12 oder 192.168/16).",
       "notification_target_required": "Zuerst einen Benachrichtigungsdienst im Diagnoseprofil auswählen.",
       "router_unavailable": "UniFi-Verbindung prüfen: Host, Zugangsdaten und Zertifikat."
@@ -426,8 +426,8 @@
       "observer_address_unavailable": "Das ausgewählte Gateway hat keine gültige lokale IP-Adresse.",
       "observer_key_unavailable": "Der eigene Beobachtungsschlüssel konnte nicht sicher angelegt werden.",
       "no_clients": "UniFi liefert keine auswählbaren Geräte.",
-      "invalid_lady_configuration": "Die vorhandene Lady-Konfiguration ist ungültig.",
-      "lady_not_configured": "Client ist noch nicht eingerichtet."
+      "invalid_monitoring_configuration": "Die vorhandene Monitoring-Konfiguration ist ungültig.",
+      "monitoring_not_configured": "Client ist noch nicht eingerichtet."
     }
   },
   "entity": {
@@ -480,23 +480,23 @@
       "client_link_down_count": {
         "name": "Link-Unterbrechungen"
       },
-      "lady_mode": {
+      "monitoring_mode": {
         "name": "Betriebsart",
         "state": {
           "observation": "Beobachtung",
           "active": "Aktiv"
         }
       },
-      "lady_pending": {
+      "monitoring_pending": {
         "name": "Ausstehende Benachrichtigungen"
       },
-      "lady_active_incidents": {
+      "monitoring_active_incidents": {
         "name": "Aktive Störungen"
       },
-      "lady_last_observation": {
+      "monitoring_last_observation": {
         "name": "Letzte Messung"
       },
-      "lady_pc_monitoring": {
+      "monitoring_pc_monitoring": {
         "name": "PC-Alarmstatus",
         "state": {
           "active": "Aktiv",
@@ -532,19 +532,19 @@
       "client_online": {
         "name": "Verbunden"
       },
-      "lady_source_api": {
+      "monitoring_source_api": {
         "name": "UniFi-Messwerte aktuell"
       },
-      "lady_source_probe": {
+      "monitoring_source_probe": {
         "name": "Router-Messwerte aktuell"
       },
-      "lady_source_dns": {
+      "monitoring_source_dns": {
         "name": "DNS-Messwerte aktuell"
       },
-      "lady_source_windows": {
+      "monitoring_source_windows": {
         "name": "Windows-Quelle verfügbar"
       },
-      "lady_notification": {
+      "monitoring_notification": {
         "name": "Benachrichtigung fehlgeschlagen"
       },
       "frigate_control_connection": {

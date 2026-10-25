@@ -11,7 +11,7 @@ from .client_metrics import render_clients
 from .const import DOMAIN
 from .network_metrics import MetricDataError
 from .work_probes import render_work_probes
-from .lady_metrics import render_lady
+from .monitoring_metrics import render_monitoring
 
 
 class NetworkMetricsView(HomeAssistantView):
@@ -78,9 +78,9 @@ class NetworkMetricsView(HomeAssistantView):
         )
 
 
-class LadyMetricsView(HomeAssistantView):
-    url = "/api/service_route_sync/{entry_id}/metrics/lady"
-    name = "api:service_route_sync:lady_metrics"
+class MonitoringMetricsView(HomeAssistantView):
+    url = "/api/service_route_sync/{entry_id}/metrics/monitoring"
+    name = "api:service_route_sync:monitoring_metrics"
     requires_auth = True
 
     def __init__(self, hass):
@@ -95,12 +95,12 @@ class LadyMetricsView(HomeAssistantView):
             return web.Response(status=404)
         settings = {**entry.data, **entry.options}
         runtime = getattr(entry, "runtime_data", None)
-        lady = getattr(runtime, "lady", None)
+        monitoring = getattr(runtime, "monitoring", None)
         if (
             entry.state is not ConfigEntryState.LOADED
             or not settings.get("network_metrics_enabled")
-            or not settings.get("lady_enabled")
-            or lady is None
+            or not settings.get("monitoring_enabled")
+            or monitoring is None
         ):
             return web.Response(status=503)
         registry = er.async_get(self.hass)
@@ -109,10 +109,10 @@ class LadyMetricsView(HomeAssistantView):
             for row in er.async_entries_for_config_entry(registry, entry_id)
             if row.unique_id.startswith(
                 (
-                    entry_id + "_lady_",
+                    entry_id + "_monitoring_",
                     entry_id
                     + "_client_"
-                    + settings.get("lady_profile", {}).get("id", "unconfigured")
+                    + settings.get("monitoring_profile", {}).get("id", "unconfigured")
                     + "_",
                 )
             )
@@ -121,7 +121,7 @@ class LadyMetricsView(HomeAssistantView):
             not user.permissions.check_entity(entity, POLICY_READ) for entity in entities
         ):
             return web.Response(status=403)
-        coordinator = lady.incidents
+        coordinator = monitoring.incidents
         if not coordinator.last_update_success or coordinator.metrics_snapshot is None:
             return web.Response(status=503)
         now = dt_util.utcnow()
@@ -140,7 +140,7 @@ class LadyMetricsView(HomeAssistantView):
                 "download": primary.download_mbit_s,
             }
         try:
-            text = render_lady(coordinator.metrics_snapshot, now.timestamp(), bandwidth)
+            text = render_monitoring(coordinator.metrics_snapshot, now.timestamp(), bandwidth)
         except (MetricDataError, ValueError, TypeError, KeyError):
             return web.Response(status=503)
         return web.Response(
@@ -156,5 +156,5 @@ def register_metrics_view(hass):
     data = hass.data.setdefault(DOMAIN, {})
     if not data.get("metrics_view_registered"):
         hass.http.register_view(NetworkMetricsView(hass))
-        hass.http.register_view(LadyMetricsView(hass))
+        hass.http.register_view(MonitoringMetricsView(hass))
         data["metrics_view_registered"] = True

@@ -10,7 +10,7 @@ from .network_entity import NetworkEntity
 from .gateway_entity import GatewayEntity
 from .runtime import RouteConfigEntry
 from .client_entity import ClientEntity
-from .lady_entity import LadyEntity
+from .monitoring_entity import MonitoringEntity
 from .frigate_entity import FrigateStatusBinarySensor
 from .ipv6_entity import IPv6Entity
 
@@ -25,14 +25,18 @@ async def async_setup_entry(
             FrigateStatusBinarySensor(coordinator, key)
             for key in ("connection", "running", "restart_enabled")
         )
-    if lady := getattr(entry.runtime_data, "lady", None):
+    if monitoring := getattr(entry.runtime_data, "monitoring", None):
         async_add_entities(
-            [ClientOnlineSensor(lady.clients, next(iter(lady.clients.profiles)), "online")]
+            [
+                ClientOnlineSensor(
+                    monitoring.clients, next(iter(monitoring.clients.profiles)), "online"
+                )
+            ]
         )
         async_add_entities(
-            LadySourceSensor(lady, key) for key in ("api", "probe", "dns", "windows")
+            MonitoringSourceSensor(monitoring, key) for key in ("api", "probe", "dns", "windows")
         )
-        async_add_entities([LadyNotificationSensor(lady, "notification")])
+        async_add_entities([MonitoringNotificationSensor(monitoring, "notification")])
     if coordinator := entry.runtime_data.clients:
         async_add_entities(
             ClientOnlineSensor(coordinator, key, "online") for key in coordinator.profiles
@@ -71,7 +75,7 @@ class GatewayProtocolSensor(GatewayEntity, BinarySensorEntity):
         return self.health
 
 
-class LadySourceSensor(LadyEntity, BinarySensorEntity):
+class MonitoringSourceSensor(MonitoringEntity, BinarySensorEntity):
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
 
     def __init__(self, runtime, source):
@@ -84,7 +88,7 @@ class LadySourceSensor(LadyEntity, BinarySensorEntity):
         return data["sources"][self.source] if data else None
 
 
-class LadyNotificationSensor(LadyEntity, BinarySensorEntity):
+class MonitoringNotificationSensor(MonitoringEntity, BinarySensorEntity):
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
 
     @property

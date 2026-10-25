@@ -29,11 +29,11 @@ async def async_get_config_entry_diagnostics(hass, entry):
             "running": data.running if data else None,
             "restart_enabled": frigate.restart_enabled,
         }
-    if lady := getattr(runtime, "lady", None):
-        data = lady.incidents.data
-        report["lady"] = {
-            "active": lady.active,
-            "last_update_success": lady.incidents.last_update_success,
+    if monitoring := getattr(runtime, "monitoring", None):
+        data = monitoring.incidents.data
+        report["monitoring"] = {
+            "active": monitoring.active,
+            "last_update_success": monitoring.incidents.last_update_success,
             "observed_at": data["observed_at"] if data else None,
             "sources": dict(data["sources"]) if data else None,
             "pending": data["pending"] if data else None,

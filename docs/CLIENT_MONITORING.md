@@ -22,7 +22,7 @@ Only reduced results leave the gateway. Raw conntrack lines, neighbor MACs and a
 
 ## Outstanding acceptance
 
-Closed HA protocol parser, dedicated pinned SSH transport, actual live measurements, HA runtime/UI installation, fixed HTTPS work probes, complete Lady incident/Windows/history/outbox migration, authenticated scrape endpoint and NAS config/history continuity remain pending. Current helper entrypoint tests prove code behavior, not installed SSH restrictions or live target identity.
+Closed HA protocol parser, dedicated pinned SSH transport, actual live measurements, HA runtime/UI installation, fixed HTTPS work probes, complete Monitoring incident/Windows/history/outbox migration, authenticated scrape endpoint and NAS config/history continuity remain pending. Current helper entrypoint tests prove code behavior, not installed SSH restrictions or live target identity.
 
 ## Active adapter selection (local candidate)
 

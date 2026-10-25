@@ -13,9 +13,9 @@ from .client_probe_coordinator import ClientProbeCoordinator
 from .work_probe_coordinator import WorkProbeCoordinator
 from .metrics_view import register_metrics_view
 from .runtime import RuntimeData
-from .lady_runtime import prepare_lady
+from .monitoring_runtime import prepare_monitoring
 from .backends.gateway_ssh import GatewayTransportError
-from .lady_services import register_lady_services
+from .monitoring_services import register_monitoring_services
 from .wifi_coordinator import prepare_wifi
 from .wifi_api import register_wifi_api
 from .wifi_services import register_wifi_services
@@ -30,7 +30,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass, config):
     await register_frontend(hass)
-    register_lady_services(hass)
+    register_monitoring_services(hass)
     register_wifi_api(hass)
     register_wifi_services(hass)
     register_frigate_services(hass)
@@ -81,11 +81,11 @@ async def async_setup_entry(hass, entry):
             runtime.frigate_actor = FrigateActorCoordinator(hass, entry)
         except (ValueError, OSError, GatewayTransportError):
             failures.append(ConfigEntryNotReady("Frigate peer trust is not ready"))
-    if settings.get("lady_enabled"):
+    if settings.get("monitoring_enabled"):
         try:
-            runtime.lady = await prepare_lady(hass, entry, settings)
+            runtime.monitoring = await prepare_monitoring(hass, entry, settings)
         except (ValueError, OSError, GatewayTransportError, ConfigEntryNotReady):
-            failures.append(ConfigEntryNotReady("Lady observation sources are not ready"))
+            failures.append(ConfigEntryNotReady("Monitoring observation sources are not ready"))
     coordinators = (
         runtime.routes,
         runtime.network,
@@ -96,8 +96,8 @@ async def async_setup_entry(hass, entry):
         runtime.work_probes,
         runtime.wifi,
         runtime.frigate_actor,
-        runtime.lady.clients if runtime.lady else None,
-        runtime.lady.incidents if runtime.lady else None,
+        runtime.monitoring.clients if runtime.monitoring else None,
+        runtime.monitoring.incidents if runtime.monitoring else None,
     )
     if not any(coordinators):
         raise ConfigEntryNotReady("No feature is configured or ready")
@@ -130,8 +130,8 @@ async def async_setup_entry(hass, entry):
         runtime.work_probes,
         runtime.wifi,
         runtime.frigate_actor,
-        runtime.lady.clients if runtime.lady else None,
-        runtime.lady.incidents if runtime.lady else None,
+        runtime.monitoring.clients if runtime.monitoring else None,
+        runtime.monitoring.incidents if runtime.monitoring else None,
     ):
         if coordinator is not None:
             entry.async_on_unload(coordinator.async_add_listener(lambda: None))
@@ -155,8 +155,8 @@ async def async_unload_entry(hass, entry):
             runtime.work_probes,
             runtime.wifi,
             runtime.frigate_actor,
-            runtime.lady.clients if runtime.lady else None,
-            runtime.lady.incidents if runtime.lady else None,
+            runtime.monitoring.clients if runtime.monitoring else None,
+            runtime.monitoring.incidents if runtime.monitoring else None,
         ):
             if coordinator is not None:
                 await coordinator.async_shutdown()

@@ -11,8 +11,8 @@ from custom_components.service_route_sync import async_setup_entry
 from custom_components.service_route_sync.config_flow import fields, validate_ipv6_controls
 from custom_components.service_route_sync.const import DEFAULTS
 from custom_components.service_route_sync.ipv6_coordinator import IPv6Coordinator
-from custom_components.service_route_sync.lady_engine import LadyIncidentEngine
-from custom_components.service_route_sync.lady_metrics import render_lady
+from custom_components.service_route_sync.monitoring_engine import MonitoringIncidentEngine
+from custom_components.service_route_sync.monitoring_metrics import render_monitoring
 from custom_components.service_route_sync.backends.unifi import read_controller
 from tests_ha import CONNECTION
 from tests_ha.test_network_flow import FlowHarness
@@ -85,34 +85,35 @@ class PublicConfigurationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_arbitrary_profile_name_and_optional_windows_source(self):
         flow = FlowHarness()
-        flow.settings["lady_enabled"] = True
-        flow.async_step_lady_sources = AsyncMock(return_value={"type": "form"})
+        flow.settings["monitoring_enabled"] = True
+        flow.async_step_monitoring_sources = AsyncMock(return_value={"type": "form"})
         backend = SimpleNamespace(read_clients=AsyncMock(return_value=[]), async_close=AsyncMock())
         with patch(
-            "custom_components.service_route_sync.lady_flow.UniFiBackend", return_value=backend
+            "custom_components.service_route_sync.monitoring_flow.UniFiBackend",
+            return_value=backend,
         ):
-            await flow.async_step_lady(
+            await flow.async_step_monitoring(
                 {
-                    "lady_profile_id": "office_pc",
-                    "lady_profile_name": "Office computer",
-                    "lady_manual_mac": "02:00:00:00:00:04",
-                    "lady_windows_enabled": False,
-                    "lady_notify_service": "test_target",
+                    "monitoring_profile_id": "office_pc",
+                    "monitoring_profile_name": "Office computer",
+                    "monitoring_manual_mac": "02:00:00:00:00:04",
+                    "monitoring_windows_enabled": False,
+                    "monitoring_notify_service": "test_target",
                 }
             )
-        self.assertEqual(flow.settings["lady_profile"]["id"], "office_pc")
-        self.assertEqual(flow.settings["lady_profile"]["name"], "Office computer")
-        self.assertFalse(flow.settings["lady_windows_enabled"])
-        self.assertEqual(flow.settings["lady_notify_service"], "test_target")
-        flow.async_step_lady_sources.assert_awaited_once()
+        self.assertEqual(flow.settings["monitoring_profile"]["id"], "office_pc")
+        self.assertEqual(flow.settings["monitoring_profile"]["name"], "Office computer")
+        self.assertFalse(flow.settings["monitoring_windows_enabled"])
+        self.assertEqual(flow.settings["monitoring_notify_service"], "test_target")
+        flow.async_step_monitoring_sources.assert_awaited_once()
 
     def test_incident_engine_uses_configured_home_assistant_timezone(self):
         stamp = datetime(2026, 1, 1, 5, 1, tzinfo=timezone.utc).timestamp()
         for zone, maintenance in ((timezone.utc, True), (timezone(timedelta(hours=-5)), False)):
-            engine = LadyIncidentEngine(maintenance_hour=5)
+            engine = MonitoringIncidentEngine(maintenance_hour=5)
             with (
                 patch(
-                    "custom_components.service_route_sync.lady_engine.dt_util.get_default_time_zone",
+                    "custom_components.service_route_sync.monitoring_engine.dt_util.get_default_time_zone",
                     return_value=zone,
                 ),
                 patch.object(engine, "check") as check,
@@ -136,12 +137,12 @@ class PublicConfigurationTests(unittest.IsolatedAsyncioTestCase):
             "history": {"counts": {}, "recent": []},
         }
         with patch(
-            "custom_components.service_route_sync.lady_metrics.dt_util.get_default_time_zone",
+            "custom_components.service_route_sync.monitoring_metrics.dt_util.get_default_time_zone",
             return_value=timezone.utc,
         ):
-            self.assertIn("lady_maintenance 1.0", render_lady(snapshot, stamp))
+            self.assertIn("monitoring_maintenance 1.0", render_monitoring(snapshot, stamp))
         with patch(
-            "custom_components.service_route_sync.lady_metrics.dt_util.get_default_time_zone",
+            "custom_components.service_route_sync.monitoring_metrics.dt_util.get_default_time_zone",
             return_value=timezone(timedelta(hours=-5)),
         ):
-            self.assertIn("lady_maintenance 0.0", render_lady(snapshot, stamp))
+            self.assertIn("monitoring_maintenance 0.0", render_monitoring(snapshot, stamp))

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from .client_coordinator import ClientCoordinator
     from .client_probe_coordinator import ClientProbeCoordinator
     from .work_probe_coordinator import WorkProbeCoordinator
-    from .lady_runtime import LadyRuntime
+    from .monitoring_runtime import MonitoringRuntime
     from .wifi_coordinator import WifiCoordinator
     from .frigate_coordinator import FrigateActorCoordinator
     from .ipv6_coordinator import IPv6Coordinator
@@ -30,7 +30,7 @@ class RuntimeData:
     clients: ClientCoordinator | None = None
     client_probes: ClientProbeCoordinator | None = None
     work_probes: WorkProbeCoordinator | None = None
-    lady: LadyRuntime | None = None
+    monitoring: MonitoringRuntime | None = None
     wifi: WifiCoordinator | None = None
     frigate_actor: FrigateActorCoordinator | None = None
     ipv6_actor: IPv6Coordinator | None = None

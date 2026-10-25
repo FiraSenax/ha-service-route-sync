@@ -14,7 +14,7 @@ from custom_components.service_route_sync.work_probes import WorkProbe
 
 
 class MetricsViewTests(unittest.IsolatedAsyncioTestCase):
-    async def test_lady_permissions_do_not_widen_gaming_endpoint_scope(self):
+    async def test_monitoring_permissions_do_not_widen_gaming_endpoint_scope(self):
         self.user.permissions.check_entity.side_effect = lambda entity, policy: (
             entity == "binary_sensor.pc_connected"
         )
@@ -23,8 +23,8 @@ class MetricsViewTests(unittest.IsolatedAsyncioTestCase):
                 entity_id="binary_sensor.pc_connected", unique_id="entry_client_pc_online"
             ),
             SimpleNamespace(
-                entity_id="binary_sensor.lady_connected",
-                unique_id="entry_client_ladyofgames_online",
+                entity_id="binary_sensor.monitoring_connected",
+                unique_id="entry_client_office_pc_online",
             ),
         ]
         with patch(

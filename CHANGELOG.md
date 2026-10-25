@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 — neutral client monitoring
+
+- Use neutral client-monitoring names throughout modules, configuration, entities,
+  services, metrics and gateway commands. Remove personal profile names from fixtures.
+- Breaking: configuration schema 2 replaces the previous diagnostic namespace.
+  Existing installations must migrate their configuration, registry identifiers,
+  checkpoint/history paths and restricted gateway command together, or recreate
+  the integration with the new configuration. No legacy runtime aliases are retained.
+- Update monitoring consumers to `/metrics/monitoring` and `monitoring_*` metrics.
+
+
 ## 0.3.0 — explicit public configuration
 
 - Breaking: configure this integration's own UniFi host, site and local Network API key;

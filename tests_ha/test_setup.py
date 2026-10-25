@@ -74,20 +74,20 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
         wifi.async_add_listener.assert_called_once()
         wifi.async_shutdown.assert_not_awaited()
 
-    async def test_lady_source_setup_failure_does_not_block_existing_wan(self):
+    async def test_monitoring_source_setup_failure_does_not_block_existing_wan(self):
         with patch(
-            "custom_components.service_route_sync.prepare_lady",
+            "custom_components.service_route_sync.prepare_monitoring",
             AsyncMock(side_effect=ConfigEntryNotReady()),
         ):
             result, _, entry, _, network = await self.run_setup(
-                {"network_enabled": True, "lady_enabled": True}
+                {"network_enabled": True, "monitoring_enabled": True}
             )
         self.assertTrue(result)
         self.assertIs(entry.runtime_data.network, network)
-        self.assertIsNone(entry.runtime_data.lady)
+        self.assertIsNone(entry.runtime_data.monitoring)
 
-    async def test_lady_polling_and_shutdown_are_independent_of_gaming(self):
-        hass, entry = self.environment({"lady_enabled": True})
+    async def test_monitoring_polling_and_shutdown_are_independent_of_gaming(self):
+        hass, entry = self.environment({"monitoring_enabled": True})
 
         def coordinator():
             return SimpleNamespace(
@@ -97,9 +97,10 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
             )
 
         clients, incidents = coordinator(), coordinator()
-        lady = SimpleNamespace(clients=clients, incidents=incidents, active=False)
+        monitoring = SimpleNamespace(clients=clients, incidents=incidents, active=False)
         with patch(
-            "custom_components.service_route_sync.prepare_lady", AsyncMock(return_value=lady)
+            "custom_components.service_route_sync.prepare_monitoring",
+            AsyncMock(return_value=monitoring),
         ):
             self.assertTrue(await async_setup_entry(hass, entry))
         self.assertIsNone(entry.runtime_data.clients)

@@ -134,3 +134,14 @@ Configure the new release in observation/preview mode first. This change is
 validated with automated controller, Home Assistant and gateway tests; live
 controller authentication and router writes still need validation in your own
 setup before enabling automatic writes.
+
+## Upgrading to 0.4.0
+
+Configuration schema 2 uses the neutral `monitoring_*` namespace. Older entries
+are not loaded under the new schema: recreate the integration and select your
+profiles and sources again, or migrate the entry, entity/device registry IDs,
+checkpoint keys and history directories offline with a complete backup. Preserve
+accepted cursors and history revisions together; do not reset only one of them.
+Upgrade the restricted gateway command to `service-route-sync monitoring-client v1`
+and install `monitoring_client_observer.py` with `monitoring-client.json`. Update
+metrics consumers to `/api/service_route_sync/{entry_id}/metrics/monitoring`.

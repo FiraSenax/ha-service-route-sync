@@ -40,7 +40,7 @@ class IPv6FlowTests(unittest.IsolatedAsyncioTestCase):
             gateway_observer_enabled=True,
             gateway_observer_host="192.0.2.1",
             wifi_history_enabled=True,
-            lady_active=True,
+            monitoring_active=True,
             ipv6_actor_enabled=True,
         )
         result = await OptionsFlow.async_step_ipv6_policy(
@@ -54,7 +54,7 @@ class IPv6FlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result["data"]["ipv6_actor_enabled"])
         self.assertFalse(result["data"]["ipv6_actor_active"])
         self.assertTrue(result["data"]["wifi_history_enabled"])
-        self.assertTrue(result["data"]["lady_active"])
+        self.assertTrue(result["data"]["monitoring_active"])
 
     async def test_new_key_starts_in_inspection_mode(self):
         flow = FlowHarness()

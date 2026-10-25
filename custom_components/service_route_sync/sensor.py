@@ -7,7 +7,7 @@ from homeassistant.helpers.entity import EntityCategory
 from .entity import RouteEntity
 from .network_entity import NetworkDeviceEntity, NetworkEntity
 from .client_entity import ClientEntity
-from .lady_entity import LadyEntity
+from .monitoring_entity import MonitoringEntity
 from .wifi_entity import WifiStatusSensor
 from .frigate_entity import FrigateTimestampSensor
 from .ipv6_entity import IPv6Entity
@@ -42,13 +42,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
         async_add_entities(
             WifiStatusSensor(coordinator, key) for key in ("client_count", "last_observation")
         )
-    if lady := getattr(entry.runtime_data, "lady", None):
+    if monitoring := getattr(entry.runtime_data, "monitoring", None):
         async_add_entities(
-            LadyStatusSensor(lady, key)
+            MonitoringStatusSensor(monitoring, key)
             for key in ("mode", "pending", "active_incidents", "last_observation", "pc_monitoring")
         )
         async_add_entities(
-            ClientPortSensor(lady.clients, next(iter(lady.clients.profiles)), key)
+            ClientPortSensor(monitoring.clients, next(iter(monitoring.clients.profiles)), key)
             for key in (
                 "speed_mbit_s",
                 "rx_errors",
@@ -133,7 +133,7 @@ class RouteSensor(RouteEntity, SensorEntity):
         )
 
 
-class LadyStatusSensor(LadyEntity, SensorEntity):
+class MonitoringStatusSensor(MonitoringEntity, SensorEntity):
     def __init__(self, runtime, key):
         super().__init__(runtime, key)
         self.key = key

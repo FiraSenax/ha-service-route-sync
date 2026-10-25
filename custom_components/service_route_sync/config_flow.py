@@ -30,7 +30,7 @@ from .client_observation import ClientDataError, canonical_mac
 from .client_probe_protocol import parse_client_probes
 from .backends.client_probe_ssh import ClientProbeSSHConfig, read_client_probes
 from homeassistant.util import dt as dt_util
-from .lady_flow import LadyFlowSteps
+from .monitoring_flow import MonitoringFlowSteps
 from .wifi_observation import observe_wireless, WifiDataError
 from .frigate_flow import FrigateFlowSteps
 
@@ -115,7 +115,7 @@ def fields(hass, defaults):
                 "work_probe_enabled", default=defaults.get("work_probe_enabled", False)
             ): selector.BooleanSelector(),
             vol.Optional(
-                "lady_enabled", default=defaults.get("lady_enabled", False)
+                "monitoring_enabled", default=defaults.get("monitoring_enabled", False)
             ): selector.BooleanSelector(),
             vol.Optional(
                 "wifi_history_enabled", default=defaults.get("wifi_history_enabled", False)
@@ -137,7 +137,7 @@ def fields(hass, defaults):
     )
 
 
-class Steps(LadyFlowSteps):
+class Steps(MonitoringFlowSteps):
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
@@ -163,7 +163,7 @@ class Steps(LadyFlowSteps):
                 and not self.settings.get("network_enabled")
                 and not self.settings.get("client_monitoring_enabled")
                 and not self.settings.get("work_probe_enabled")
-                and not self.settings.get("lady_enabled")
+                and not self.settings.get("monitoring_enabled")
                 and not self.settings.get("wifi_history_enabled")
             ):
                 errors["base"] = "no_services"
@@ -511,7 +511,7 @@ class Steps(LadyFlowSteps):
         if not self.settings.get("client_monitoring_enabled"):
             self.settings["client_profiles"] = []
             self.settings["client_probe_enabled"] = False
-            return await self.async_step_lady()
+            return await self.async_step_monitoring()
         existing = self.settings.get("client_profiles", [])
         try:
             if existing:
@@ -574,7 +574,7 @@ class Steps(LadyFlowSteps):
                 ):
                     self.settings["client_probe_key_id"] = uuid4().hex
                     return await self.async_step_client_probe()
-                return await self.async_step_lady()
+                return await self.async_step_monitoring()
             except (vol.Invalid, ClientDataError):
                 errors["base"] = "invalid_clients"
         return self.async_show_form(step_id="clients", data_schema=schema, errors=errors)
@@ -630,7 +630,7 @@ class Steps(LadyFlowSteps):
                     tuple(validate_profiles(self.settings["client_profiles"])),
                 )
                 self.settings["client_probe_host"] = host
-                return await self.async_step_lady()
+                return await self.async_step_monitoring()
             except (OSError, GatewayTransportError, NetworkDataError):
                 errors["base"] = "observer_unavailable"
             except (vol.Invalid, ValueError, ClientDataError):
@@ -644,7 +644,7 @@ class Steps(LadyFlowSteps):
 
 
 class ConfigFlow(Steps, config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self):
         self.defaults = dict(DEFAULTS)
@@ -800,8 +800,8 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
                 "ipv6_policy",
                 "wifi_history",
                 "frigate_actor",
-                "lady_mode",
-                "lady_dns",
+                "monitoring_mode",
+                "monitoring_dns",
             ],
         )
 
@@ -931,25 +931,31 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
                 errors["base"] = "invalid_configuration"
         return self.async_show_form(step_id="ipv6_policy", data_schema=schema, errors=errors)
 
-    async def async_step_lady_mode(self, user_input=None):
+    async def async_step_monitoring_mode(self, user_input=None):
         """Enable notifications for the explicitly selected service."""
-        if not self.defaults.get("lady_enabled"):
-            return self.async_abort(reason="lady_not_configured")
+        if not self.defaults.get("monitoring_enabled"):
+            return self.async_abort(reason="monitoring_not_configured")
         schema = vol.Schema(
-            {vol.Required("lady_active", default=self.defaults.get("lady_active", False)): bool}
+            {
+                vol.Required(
+                    "monitoring_active", default=self.defaults.get("monitoring_active", False)
+                ): bool
+            }
         )
         errors = {}
         if user_input is not None:
             try:
                 values = schema(user_input)
-                if values["lady_active"] and not self.defaults.get("lady_notify_service"):
+                if values["monitoring_active"] and not self.defaults.get(
+                    "monitoring_notify_service"
+                ):
                     errors["base"] = "notification_target_required"
                 else:
                     self.settings = {**self.defaults, **values}
                     return self.finish()
             except vol.Invalid:
                 errors["base"] = "invalid_configuration"
-        return self.async_show_form(step_id="lady_mode", data_schema=schema, errors=errors)
+        return self.async_show_form(step_id="monitoring_mode", data_schema=schema, errors=errors)
 
     async def async_step_route_services(self, user_input=None):
         """Edit route sources and bindings without reprovisioning network or actors."""
@@ -1065,7 +1071,7 @@ class OptionsFlow(FrigateFlowSteps, Steps, config_entries.OptionsFlow):
 
     def finish(self):
         # Only route-policy changes require a fresh manual enablement. Editing
-        # an independent IPv6, Lady, Frigate or Wi-Fi feature must not silently
+        # an independent IPv6, Monitoring, Frigate or Wi-Fi feature must not silently
         # stop the already reviewed daily route updates.
         route_fields = (
             "services",

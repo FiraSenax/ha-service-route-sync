@@ -46,9 +46,9 @@ import_wifi_history:
       required: true
       selector:
         text:
-import_lady_checkpoint:
-  name: Import Lady checkpoint
-  description: Import a verified daily checkpoint while Lady is loaded in observation mode. Requires an authenticated administrator. Does not activate notifications.
+import_monitoring_checkpoint:
+  name: Import Monitoring checkpoint
+  description: Import a verified daily checkpoint while Monitoring is loaded in observation mode. Requires an authenticated administrator. Does not activate notifications.
   fields:
     entry_id:
       name: Integration
