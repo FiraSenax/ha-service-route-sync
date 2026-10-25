@@ -69,7 +69,7 @@ share the IPv6 writer or its credentials.
 ## Tests
 
 Router-independent suite: `python -m unittest discover -s tests -v`.
-Real HA runtime suite: Python 3.14, Home Assistant 2026.10.0, aiounifi 95,
+Real HA runtime suite: Python 3.14, Home Assistant 2026.10.0,
 `python -m unittest discover -s tests_ha -v`. It covers entity units and zeroes,
 stale/future data, unavailable/recovery, unload, partial feature setup, old
 route-only entries and read-only flow validation. Both suites run in CI.

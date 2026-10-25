@@ -116,7 +116,7 @@ WLAN-Karte sind zusätzlich die Texte in `frontend/wifi-history-card.js` zu erg�
 
 ```sh
 python -m venv .venv
-.venv/bin/pip install homeassistant==2026.10.0 aiounifi==95 ruff==0.17.0
+.venv/bin/pip install homeassistant==2026.10.0 ruff==0.17.0
 .venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python -m unittest discover -s tests_gateway -v
 .venv/bin/python -m unittest discover -s tests_ha -t . -v
@@ -124,7 +124,7 @@ python -m venv .venv
 .venv/bin/ruff format --check .
 ```
 
-`core.py` enthält routerunabhängige Planung und Schreibprüfungen, `providers.py` die Datenquellen und `backends/unifi.py` den Adapter. Der Adapter verwendet eine eigene `aiounifi`-Clientinstanz mit explizit konfigurierten Zugangsdaten; Änderungen dieser Schnittstelle können Anpassungen benötigen. GitHub Actions prüft Tests, Formatierung, Python-Kompilierung, Hassfest und HACS.
+`core.py` enthält routerunabhängige Planung und Schreibprüfungen, `providers.py` die Datenquellen und `backends/unifi.py` den Adapter. Der Adapter verwendet eine eigene `aiohttp`-Sitzung mit ausdrücklich konfiguriertem lokalem API-Schlüssel; Änderungen dieser Schnittstelle können Anpassungen benötigen. GitHub Actions prüft Tests, Formatierung, Python-Kompilierung, Hassfest und HACS.
 
 ## Quellen
 

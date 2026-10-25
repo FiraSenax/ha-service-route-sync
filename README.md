@@ -97,7 +97,7 @@ The Home Assistant setup and entities include complete English (`en`) and German
 
 ```sh
 python -m venv .venv
-.venv/bin/pip install homeassistant==2026.10.0 aiounifi==95 ruff==0.17.0
+.venv/bin/pip install homeassistant==2026.10.0 ruff==0.17.0
 .venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python -m unittest discover -s tests_gateway -v
 .venv/bin/python -m unittest discover -s tests_ha -t . -v
@@ -105,7 +105,7 @@ python -m venv .venv
 .venv/bin/ruff format --check .
 ```
 
-`core.py` contains router-independent planning and write checks, `providers.py` contains feed selection, and `backends/unifi.py` contains the UniFi adapter. The adapter owns its `aiounifi` client and explicitly configured credentials, so upstream API changes may require updates. GitHub Actions runs tests, formatting, Python compilation, Hassfest, and HACS validation.
+`core.py` contains router-independent planning and write checks, `providers.py` contains feed selection, and `backends/unifi.py` contains the UniFi adapter. The adapter owns its `aiohttp` session and explicitly configured local API key, so upstream API changes may require updates. GitHub Actions runs tests, formatting, Python compilation, Hassfest, and HACS validation.
 
 ## Sources
 

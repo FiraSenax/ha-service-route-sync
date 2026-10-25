@@ -40,7 +40,7 @@ class UniFiTests(unittest.IsolatedAsyncioTestCase):
             await backend.async_close()
             session.close.assert_awaited_once()
 
-    async def test_client_and_device_reads_use_fixed_parent_paths(self):
+    async def test_client_and_device_reads_use_fixed_controller_paths(self):
         for method, expected in [("read_clients", "/stat/sta"), ("read_devices", "/stat/device")]:
             source = {"data": [{"mac": "02:00:00:00:00:01", "port_table": [{"speed": 2500}]}]}
             backend, api = self.backend(source)
@@ -111,7 +111,7 @@ class UniFiTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(SyncError):
             await UniFiBackend(hass, {}).read_routes()
 
-    async def test_gateway_reads_fixed_path_and_keeps_parent_data_private(self):
+    async def test_gateway_reads_fixed_path_and_keeps_controller_data_private(self):
         source = {
             "data": [
                 {"_id": "switch", "name": "Switch"},
@@ -139,10 +139,10 @@ class UniFiTests(unittest.IsolatedAsyncioTestCase):
                 await backend.read_gateways()
 
     async def test_api_failure_does_not_include_private_response_body(self):
-        from aiounifi.errors import Unauthorized
+        from aiohttp import ClientConnectionError
 
         backend, api = self.backend({})
-        api.request.side_effect = Unauthorized("private-example")
+        api.request.side_effect = ClientConnectionError("private-example")
         with self.assertRaises(SyncError) as captured:
             await backend.read_gateways()
         self.assertNotIn("private-example", str(captured.exception))

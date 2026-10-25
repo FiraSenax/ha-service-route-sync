@@ -1,6 +1,7 @@
 """UniFi access using credentials explicitly supplied to this integration."""
 
 from copy import deepcopy
+from dataclasses import dataclass
 import ipaddress
 from json import JSONDecodeError
 import logging
@@ -12,6 +13,15 @@ from ..core import SyncError
 from ..client_observation import canonical_mac
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class ApiRequest:
+    """A fixed controller operation; never supplied by service callers."""
+
+    method: str
+    path: str
+    data: dict | None = None
 
 
 class UniFiBackend:
@@ -31,15 +41,11 @@ class UniFiBackend:
 
     async def read_clients(self):
         """Read only active clients using a fixed API path."""
-        from aiounifi.models.client import ClientListRequest
-
-        return await self._read_identity_records(ClientListRequest.create())
+        return await self._read_identity_records(ApiRequest("get", "/stat/sta"))
 
     async def read_devices(self):
         """Read switch port records without accepting a host, path or credentials."""
-        from aiounifi.models.device import DeviceListRequest
-
-        return await self._read_identity_records(DeviceListRequest.create())
+        return await self._read_identity_records(ApiRequest("get", "/stat/device"))
 
     def __init__(self, hass, settings):
         self.settings = dict(settings)
@@ -89,15 +95,13 @@ class UniFiBackend:
         Authentication is owned exclusively by this config entry.
         Cancellation is deliberately not caught.
         """
-        from aiounifi.errors import AiounifiException
-
         try:
             if request.path.startswith("/trafficroutes"):
                 return await self._route_key_request(request)
             if request.method != "get" or request.path not in ("/stat/sta", "/stat/device"):
                 raise SyncError("Unexpected UniFi observation operation")
             return await self._key_request(request)
-        except (AiounifiException, ClientError, JSONDecodeError, TimeoutError, OSError) as exc:
+        except (ClientError, JSONDecodeError, TimeoutError, OSError) as exc:
             _LOGGER.warning("UniFi API request failed (%s)", type(exc).__name__)
             raise SyncError("The selected UniFi API request failed") from None
 
@@ -142,9 +146,7 @@ class UniFiBackend:
             return await response.json(content_type=None)
 
     async def read_routes(self):
-        from aiounifi.models.traffic_route import TrafficRouteListRequest
-
-        response = await self._request(TrafficRouteListRequest.create())
+        response = await self._request(ApiRequest("get", "/trafficroutes"))
         rows = response.get("data") if isinstance(response, dict) else response
         if not isinstance(rows, list):
             raise SyncError("Unexpected UniFi route response")
@@ -159,19 +161,15 @@ class UniFiBackend:
         return routes
 
     async def write_route(self, route):
-        from aiounifi.models.traffic_route import TrafficRouteSaveRequest
-
         if self.tls_pin_sha256 is None or self.route_api_key is None:
             raise SyncError(
                 "A pinned certificate and dedicated API key are required for route writes"
             )
-        await self._request(TrafficRouteSaveRequest.create(deepcopy(route)))
+        await self._request(ApiRequest("put", f"/trafficroutes/{route['_id']}", deepcopy(route)))
 
     async def read_gateways(self) -> dict[str, dict]:
         """Read WAN-capable devices with this entry's credentials."""
-        from aiounifi.models.device import DeviceListRequest
-
-        response = await self._request(DeviceListRequest.create())
+        response = await self._request(ApiRequest("get", "/stat/device"))
         rows = response.get("data") if isinstance(response, dict) else None
         if not isinstance(rows, list):
             raise SyncError("Unexpected UniFi device response")
