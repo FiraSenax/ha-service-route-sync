@@ -78,9 +78,9 @@ does not need credentials from these workflows.
 ## Repository settings
 
 Configured on 2026-11-06: an active main ruleset requires PRs, current `CI`
-and `CodeQL` results from GitHub Actions and resolved conversations. The required
-CodeQL job directly blocks high/critical security findings and errors from its
-SARIF reports. It blocks deletion
+and `CodeQL` results from GitHub Actions, resolved conversations, and native
+CodeQL results without high/critical security findings or errors. The CodeQL
+job also checks its SARIF reports directly. It blocks deletion
 and force pushes, with no bypass actors. Approvals are zero for this single-
 maintainer repository. A separate active `v*` ruleset blocks tag updates,
 deletion and force pushes while allowing fresh release tags to be created.
@@ -88,10 +88,10 @@ Private vulnerability reporting, dependency graph, Dependabot/malware alerts,
 secret scanning and push protection are enabled.
 
 Release calls check CodeQL reports locally without creating a second uploaded
-scan configuration. Branch protection uses the mandatory CodeQL job and its
-direct finding gate rather than GitHub's separate all-configurations rule,
-which would also demand release-only configurations on every PR. Existing
-analysis history is retained.
+scan configuration. This keeps the native CodeQL protection rule compatible with
+PRs, which run the canonical security workflow. The empty extra configuration
+created by the initial validation-only run was backed up and removed; all
+canonical analysis history is retained.
 
 The minimum is now **2026.11.0**. The previous 2026.9.0 endpoint passed all 445
 functionality tests but its HA-owned packages produced 69 advisory entries in
