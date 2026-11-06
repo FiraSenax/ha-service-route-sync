@@ -5,7 +5,6 @@ from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, PLATFORMS
 from .connection import requires_controller
-from .migration import async_migrate_entry as async_migrate_entry
 from .routing.coordinator import RouteCoordinator
 from .network.network_coordinator import NetworkCoordinator
 from .network.gateway_coordinator import GatewayCoordinator

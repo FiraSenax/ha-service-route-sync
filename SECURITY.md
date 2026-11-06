@@ -7,9 +7,12 @@ If private reporting is unavailable, open an issue requesting a private contact
 without including exploitation details or sensitive data.
 
 Security fixes target the latest release. Installations with older versions should
-upgrade using the documented migration procedure. See [security boundaries and
+upgrade using the documented installation procedure. See [security boundaries and
 platform limitations](docs/ARCHITECTURE.md) and [required permissions](docs/PERMISSIONS.md).
 
 CI includes extended CodeQL analysis, negative authorization/parser tests, pinned
 GitHub Actions and generated-reader consistency checks. These controls do not
 replace review of the gateway deployment, API-key privileges or HA backup security.
+The [validation record](docs/VALIDATION.md) distinguishes automated checks, live
+evidence and work still needed, including coverage measurement and static type
+checking. A clean CodeQL result is not an independent security audit.

@@ -81,6 +81,6 @@ Ordinary entity-control permission is insufficient. API callers cannot assign
 their own trusted automation context. Work-probe metrics also require an admin;
 client metrics use their entity read permissions.
 
-Upgrade migrations do not provision or broaden controller/SSH permissions.
-Schema-1 upgrades pause external writers; schema-2 upgrades preserve existing
-modes. Review the documented platform requirements before granting gateway access.
+Updates do not provision or broaden controller/SSH permissions. Current-schema
+updates preserve existing modes. Review the documented platform requirements
+before granting gateway access.

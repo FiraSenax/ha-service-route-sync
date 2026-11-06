@@ -55,3 +55,38 @@ class WorkProbeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProbeTransportTests(unittest.IsolatedAsyncioTestCase):
+    async def test_no_user_configuration_proxy_environment_or_unbounded_body(self):
+        import asyncio
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, patch
+        from service_route_sync.probes.work_probes import probe_work_endpoint
+
+        stdout, stderr = asyncio.StreamReader(), asyncio.StreamReader()
+        stdout.feed_data(
+            json.dumps(
+                {
+                    "http_code": "200",
+                    "time_namelookup": 0.01,
+                    "time_connect": 0.02,
+                    "time_appconnect": 0.03,
+                    "time_starttransfer": 0.04,
+                    "time_total": 0.05,
+                }
+            ).encode()
+        )
+        stdout.feed_eof()
+        stderr.feed_eof()
+        process = SimpleNamespace(
+            stdout=stdout, stderr=stderr, returncode=0, wait=AsyncMock(return_value=0)
+        )
+        with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)) as execute:
+            result = await probe_work_endpoint("m365-login", lambda: NOW)
+        self.assertTrue(result.transport_ok)
+        args = execute.call_args.args
+        self.assertEqual(args[:2], ("/usr/bin/curl", "-q"))
+        self.assertEqual(args[args.index("--max-filesize") + 1], "1048576")
+        self.assertEqual(set(execute.call_args.kwargs["env"]), {"PATH", "LANG", "LC_ALL"})

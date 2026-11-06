@@ -50,7 +50,7 @@ CONTRACT = MappingProxyType(
         "monitoring_connections": ("route",),
         "monitoring_dns_ms": ("resolver",),
         "monitoring_dns_ok": ("resolver",),
-        "monitoring_dsl_mbps": ("direction",),
+        "monitoring_primary_mbps": ("direction",),
         "monitoring_event_timestamp_seconds": ("category", "event", "message", "status"),
         "monitoring_exporter_build_info": ("version",),
         "monitoring_exporter_collection_ok": (),

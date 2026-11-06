@@ -1,22 +1,33 @@
-# Network extension: design and acceptance
+# Network observations and policy control
+
+For the package layout and shared security boundaries, see
+[Architecture](ARCHITECTURE.md). This document describes the network-specific
+behavior; [Validation](VALIDATION.md) records what has actually been tested.
 
 ## Independently scheduled features
 
-Existing destination routes and local WAN telemetry use separate HA
-DataUpdateCoordinators. A destination feed outage must not suppress local WAN
-measurements. If one feature cannot initialize, the other loads and the failed
-feature remains unavailable and retries through its entity listeners. If all
-selected features fail, HA retries entry setup. The HA coordinator registers
-its shutdown with the config entry; entities remove their listeners on unload.
+Destination routes and local WAN telemetry use separate Home Assistant
+DataUpdateCoordinators. A destination-feed outage does not suppress local WAN
+measurements. Optional features declare their prerequisites in the composition
+root.
 
-Client and WAN reads use this integration's own configured controller, local
-Network API key. No other integration's runtime client or stored
-credentials are accessed. Destination writes use a separate dedicated API key
-stored in this config entry and omitted from diagnostics.
-Those requests use fixed traffic-route paths, HTTPS certificate SHA-256 pinning,
-no redirects, bounded timeouts and sanitized error bodies. A gateway must be
-explicitly selected from discovered WAN-capable devices. Certificate rotation
-stops route updates until the pin is revalidated in the options UI.
+A feature that cannot be constructed is reported in `feature_setup_issues` and
+requires reconfiguration or reload. A constructed coordinator whose initial
+observation fails remains available for polling retries when another feature
+can load. If no selected coordinator becomes ready, HA retries entry setup.
+Shutdown closes coordinators and owned transports; entities remove their
+listeners on unload.
+
+Client and WAN reads use this integration's own controller configuration and
+local Network API key. Destination writes use an explicitly configured route
+API key and certificate pin. Neither path uses another integration's client
+or credentials. Certificate rotation stops pinned requests until the new pin
+is independently verified and saved.
+
+Public feeds have a 30-second total refresh budget. Failed route refreshes use
+a one-minute retry interval and return to the configured interval after success.
+An uncertain-write latch is retained; retrying observations does not authorize
+another ambiguous write.
 
 ## Telemetry semantics
 
@@ -26,103 +37,52 @@ and malformed fields are unknown. Real zero is preserved. Rates are reported
 as decimal Mbit/s, converted once from the byte/s API field. Entity units are
 set during construction, even when the initial state is unavailable.
 
-Receipt freshness is bounded. Samples from the future, naive timestamps, stale
-samples, a disconnected gateway and failed updates make entities unavailable.
-A successful controller reply is not proof of fresh hardware measurements or
-end-to-end connectivity. The first implementation deliberately does not use
-telemetry as input for router actuation. Public IP addresses and raw device
-payloads are not entity attributes or diagnostics. API exception bodies are
-sanitized before they reach HA logging.
+Receipt freshness is bounded. Future or naive timestamps, stale observations,
+a disconnected gateway and failed updates make the relevant entities
+unavailable. A successful controller reply does not establish end-to-end
+connectivity. WAN telemetry alone does not trigger failover; IPv6 policy control
+uses separate protocol-specific observations.
+
+Public IP addresses and raw device payloads are excluded from entity attributes
+and integration diagnostics. API error bodies are sanitized before logging.
+The restricted gateway reader filters raw UDAPI on the gateway, since those
+responses can include credentials and other unrelated private data.
+
+## Protocol health
+
+The observer verifies the intended packet route using the configured interface,
+table and existing UniFi mark before classifying external probe results. It
+creates no routing rules or marks. Local probe setup errors remain unknown
+health rather than a confirmed remote outage.
+
+A fresh, explicit carrier-down observation can report a protocol as down when
+its route or probe setup is absent. A successful probe contradicting carrier-down
+remains unknown; an unknown carrier with a failed probe also remains unknown.
+Positive IPv6 health additionally requires the expected address, delegation
+and default-route evidence.
 
 ## IPv6 controller
 
-The pure planner has no I/O. It requires independently verified protocol-
-specific health, an exact existing router state, continuous elapsed-time
-hysteresis and explicit enablement. Unknown observations reset the hysteresis.
-A restart rediscovers actual router state and resets continuity. A both-down
-result never authorizes dropping policy rules or leaking managed traffic.
+The pure planner performs no I/O. It requires fresh protocol-specific health,
+an exact recognized router state, continuous elapsed-time hysteresis and explicit
+enablement. Unknown observations reset hysteresis. A restart rediscovers actual
+router state and resets continuity. Both WANs being down never authorizes dropping
+policy rules or leaking managed traffic.
 
-The deployed restricted gateway actor owns only the legacy IPv6 NAT and policy
-chains. A separate HA-origin-restricted SSH key requests inspection or one of
-two fixed target modes; arbitrary commands and parameters are denied. It uses
-authoritative DHCPv6 delegation discovery, interface-bound probes, a pinned
-host identity, durable intent, compare-and-swap digest, exact readback after
-every mutation, bounded rollback and a persistent latch on ambiguous results.
-The read-only WAN observer remains independent. The former external service was
-disabled before HA became the sole writer and external has been removed.
+A separate SSH key authorizes only inspection and fixed policy requests to the
+restricted actor. The actor verifies ownership of its exact chains, hooks and
+source policy. It uses a durable intent, a digest comparison before writing,
+exact readback after mutation, bounded rollback and a persistent review latch
+for ambiguous results. The read-only observer remains independent.
 
-### Writer deployment, 2026-10-12
+The current actor supports the documented UbiOS layout, with matching ULA and
+provider prefix lengths from /48 through /64. It is not a generic firewall
+backend. Interfaces, tables, marks, helper entities and WAN preference values
+must be configured for the installation. Provisioning and recovery are described
+in [IPv6 actor](IPV6_ACTOR.md); the required privilege boundary is documented in
+[Permissions](PERMISSIONS.md).
 
-A real HA-originated DSL→Starlink→DSL exercise completed with exact readback
-and closed gateway journals. HA reports DSL, a current decision and no review
-latch. Gateway tests inject failures at every mutation boundary for both WAN
-switches, delegated-prefix rotation, blank gateway reconstruction and missing-
-hook repair. Concurrent edits and changed delegation stop writes. See
-[IPV6_ACTOR.md](IPV6_ACTOR.md) for the recovery procedure and the private
-migration record for the verified pre-cutover rule snapshot and PBS restore.
-
-Automatic route updates use a separate dedicated UniFi route API key and
-pinned certificate. Eight route policies were checked after cutover; the
-automatic update switch is on and its status is current. Route changes do not
-share the IPv6 writer or its credentials.
-
-## Tests
-
-Router-independent suite: `python -m unittest discover -s tests -v`.
-Real HA runtime suite: Python 3.14, Home Assistant 2026.10.0,
-`python -m unittest discover -s tests_ha -v`. It covers entity units and zeroes,
-stale/future data, unavailable/recovery, unload, partial feature setup, old
-route-only entries and read-only flow validation. Both suites run in CI.
-
-## Findings from the live gateway, 2026-10-11
-
-`ubios-udapi-client GET /interfaces` reports active DHCPv6 delegations in
-`ipv6.dhcp6PDStatus[].network`. This is independent of rotated log files. Raw
-responses also include PPPoE credentials: filtering must happen inside the
-forced-command gateway helper, before anything is sent to HA. The new closed
-observation schema rejects unexpected fields and rejects private/unsupported
-prefixes, ambiguous interfaces, nonboolean results and stale/future timestamps.
-
-An interface-bound ping alone did not validate Starlink IPv6. Its unmarked
-route lookup failed locally, despite an existing secondary routing table. A
-lookup using the existing UniFi WAN mark and the intended output interface
-verified table 202 / eth1, and both external IPv6 probes then succeeded. The
-helper must verify the selected packet route before classifying probe failures;
-invalid commands and local probe setup errors are unknown health. No routing
-rule was changed for these tests.
-
-The timestamp sensor and improved cloud-error recovery have additional real HA
-tests. Cloud reads have a 30-second total feed budget, recover on a one-minute
-interval after failure, and return to the configured interval after success.
-An uncertain-write latch is retained during retries; blocked writes are never
-retried automatically. These refinements were deployed with the separately enabled read-only observer
-on 2026-10-11. HA restart, fresh native WAN timestamps and all four IPv4/IPv6
-connectivity entities were verified. Automatic route updates are active after dedicated credential and TLS pin verification.
-The observer key rejected arbitrary and write commands in real HA-originated
-SSH checks; the HA IPv6 controller is now the sole writer. See
-[GATEWAY_OBSERVER.md](GATEWAY_OBSERVER.md) for provisioning and lifecycle.
-
-## Confirmed carrier loss and contradictory observations
-
-A fresh explicit carrier-down observation is sufficient to report that protocol
-as down even when its route or probe setup has disappeared. A successful probe
-contradicting carrier-down remains unknown; an unknown carrier with a failed
-probe also remains unknown. Prefix/address/default evidence is still required
-for positive IPv6 health. Unknown is never converted to a guessed outage.
-Three pure regression cases and a real HA entity test cover this boundary.
-This refinement is deployed to HA.
-
-## Native controller capability check before writer implementation
-
-The live gateway reports UniFi Network 11.0.83-37119-1. Current vendor
-documentation supports IPv6 NAT66 with ULA addresses, including interface-bound
-masquerading. Before building a custom root writer, inspect native NAT policy
-and routing capabilities, including protocol support, source selection and
-multi-WAN failover behavior. NAT66 support alone does not prove automatic IPv6
-failover or equivalence to the old prefix NETMAP behavior. No native policy has
-been created or altered during this capability check.
-
-Primary sources:
-- https://help.ui.com/hc/en-us/articles/36378535649687-Configuring-IPv6-in-UniFi
-- https://help.ui.com/hc/en-us/articles/16437942532759-DNAT-SNAT-and-Masquerading-in-UniFi
-- https://help.ui.com/hc/en-us/articles/12566175125783-UniFi-Gateway-Policy-Based-Routing
+Destination-route automation and IPv6 actuation are separate opt-in controls.
+Enabling an observer does not activate either writer. Check the current HA state
+and gateway rules on each deployment; a past successful check is not evidence
+that rules still match after a reboot or controller reprovisioning.

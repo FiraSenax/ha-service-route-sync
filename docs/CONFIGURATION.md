@@ -1,9 +1,8 @@
-# Public configuration (0.3)
+# Configuration
 
-This release uses explicit configuration instead of the original installation's
-UniFi entry, helper names, profile identity and notification service. Existing
-installations must enter their values again. No credentials are copied from
-another integration and no personal helper names are used as fallbacks.
+Configure this integration's own connection, helper entities, profile identities
+and notification service. No credentials are copied from another integration and
+no personal helper names are used as fallbacks.
 
 ## UniFi connection
 
@@ -20,9 +19,10 @@ SHA-256 certificate fingerprint. A self-signed certificate requires that
 fingerprint. Leaving the API key empty when editing options preserves the key
 already saved by Service Route Sync.
 
-Existing entries without these settings open a reauthentication flow. All
-features wait for an explicitly configured connection. Reauthentication disables
-automatic route updates; inspect the new preview before enabling them again.
+Controller-dependent features require these settings. Entries missing their own
+connection settings request reauthentication; public HTTPS probes can run without
+a controller. Reauthentication disables automatic route updates; inspect the new
+preview before enabling them again.
 
 Route writes additionally require an explicitly configured route API key and
 certificate pin in **Route TLS**. Use a separate key for route changes where
@@ -47,9 +47,9 @@ in the network settings. Missing, unavailable or invalid helpers stop planning;
 there is no fallback to a personal entity ID.
 
 Provision the matching gateway actor from this release before activating it.
-Old configurations and journals using `dsl`/`starlink` modes are not translated.
-Deactivate old writers and resolve any pending journal before replacing the
-configuration. An unrecognized journal is rejected rather than discarded.
+Only `primary` and `secondary` are valid policy modes. Stop other writers and
+resolve any pending journal before replacing the configuration. An unrecognized
+journal is rejected rather than discarded.
 See [IPv6 actor provisioning](IPV6_ACTOR.md) for the configuration format and
 write safeguards. Primary and secondary interfaces must match the WAN observer.
 
@@ -114,8 +114,8 @@ regular and single-profile diagnostic client observers read
 
 Use your own marks; `vpn1` and `vpn2` are optional additional keys. The file and
 parent directory have the same root ownership and private permissions as the
-other gateway configurations. Old `dsl`/`starlink` route labels are no longer
-accepted by the client-observation protocol. Upgrade both sides together.
+other gateway configurations. Use these generic protocol roles on both the
+gateway and HA sides, independently of your WAN display names.
 
 Set the expected LAN port speed in the diagnostic profile. Optional maintenance
 suppression starts at the selected hour in HA's time zone and lasts the configured
@@ -127,31 +127,30 @@ time zone. No `ZoneInfo` filesystem lookup runs in the sampling loop.
 ## Routes and rollout
 
 Fortnite can be bound to any eligible IP route. The integration preserves its
-existing `ip_ranges`; it no longer requires two particular address ranges.
+existing `ip_ranges`; no particular address ranges are required.
 All other destination, removal, backup and readback safeguards remain in place.
 
 Configure the new release in observation/preview mode first. This change is
 validated with automated controller, Home Assistant and gateway tests; live
 controller authentication and router writes still need validation in your own
 setup before enabling automatic writes.
+See [validation and compatibility](VALIDATION.md) for the release's actual test
+scope and the limits of the live evidence.
 
-## Upgrading to 0.5.0
+## Installation and updates
 
-Home Assistant automatically migrates schema-1 entries to the neutral
-`monitoring_*` namespace. Entity IDs, user-chosen profile names, accepted Windows
-cursors, queues and matching history revisions are preserved. Source files remain
-as a recovery copy. Conflicting destinations, unsafe paths or missing accepted
-history stop the migration instead of guessing which state to retain.
+Version 0.5.1 uses configuration schema 2.1. Existing installations on this schema
+keep their configuration, entity IDs, accepted cursors, history and operating
+modes. Back up Home Assistant before updating. Automatic upgrades from earlier
+experimental schemas are not supported; new users configure the integration
+through its setup flow.
 
-No other integration's credentials are copied. Entries without their own UniFi
-API key request reauthentication. Old route, IPv6 and notification writers remain
-paused after schema-1 migration until their new configuration and external readers
-have been checked. Existing schema-2 installations keep their selected modes.
+The gateway is a separate deployment. Monitoring uses the restricted command
+`service-route-sync monitoring-client v1` with `monitoring_client_observer.py`
+and `monitoring-client.json`. HA updates do not rewrite gateway SSH authorization
+or privileged firewall state.
 
-The gateway is a separate deployment: update its restricted reader command to
-`service-route-sync monitoring-client v1` and install `monitoring_client_observer.py`
-with `monitoring-client.json` when upgrading from the old namespace. The HA upgrade
-cannot safely rewrite a gateway's SSH authorization or privileged firewall state.
+## Independent metrics and probes
 
 Client metrics are available at `/api/service_route_sync/{entry_id}/metrics/clients`
 without work probes or gateway probes. Work metrics use `/metrics/work` and require

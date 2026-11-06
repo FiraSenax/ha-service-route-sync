@@ -1,6 +1,6 @@
 # Service Route Sync
 
-[Architecture, security boundaries and compatibility](docs/ARCHITECTURE.md) · [Security policy](SECURITY.md)
+[Architecture and security boundaries](docs/ARCHITECTURE.md) · [Validation and compatibility](docs/VALIDATION.md) · [Security policy](SECURITY.md)
 
 [Deutsch](README.de.md) · English
 
@@ -10,7 +10,9 @@ Service Route Sync keeps the destination IP prefixes of selected games and cloud
 
 **Route changes start in preview mode.** Controller access and route write/restore paths have automated tests with simulated backends. This release still requires live validation in your setup before automatic writes.
 
-**Upgrading to 0.3:** enter this integration’s own credentials and configure your control helpers, diagnostic profile and notification target. There is no personal configuration fallback. See [configuration and rollout](docs/CONFIGURATION.md).
+**Release 0.5.1 uses configuration schema 2.1.** Existing entries on that schema keep their settings and history. New installations use the setup flow; automatic upgrades from older experimental schemas are not supported. The private migration adapters have been removed. See [configuration and updates](docs/CONFIGURATION.md).
+
+The project is at an early community-release stage. Automated checks and one live installation provide evidence for the documented behavior; a broader HA/controller/firmware compatibility matrix is still needed. The [validation record](docs/VALIDATION.md) lists exact test environments and remaining work.
 
 ## Services
 
@@ -37,9 +39,9 @@ Microsoft 365 defaults to the **Optimize** category; **Allow** and **Default** c
 
 | Backend | Status |
 | --- | --- |
-| UniFi Network | Implemented; independent local UniFi credentials |
+| UniFi OS compatibility API | Implemented; independent local Network API key and the documented endpoint layout |
 | FRITZ!Box | Not implemented; equivalent traffic-route control has not been established |
-| Other routers | Backend interface exists, but concrete support is pending |
+| Other routers | No concrete backend is implemented |
 
 The integration only updates `ip_addresses` on explicitly bound IP routes. It neither creates nor deletes routes. WAN selection, source devices or VLANs, enabled state, kill switch, and existing IP-range anchors are preserved. A disabled route stays disabled.
 
@@ -47,13 +49,15 @@ For monitored clients, **Connection type** reports wired, Wi-Fi, or disconnected
 
 ## Installation
 
-You need Home Assistant **2026.9 or newer** and a reachable **UniFi Network** controller. Use a dedicated local Network API key. Required operations and controller permission limits are documented in [Permissions](docs/PERMISSIONS.md).
+HACS declares Home Assistant **2026.9.0** as the minimum. CI currently tests **2026.10.0**; the live check used **2026.10.3**. Routing and controller observations require a reachable UniFi OS controller with the [documented compatibility endpoints](docs/CONFIGURATION.md#unifi-connection) and a dedicated local Network API key. Required operations and controller permission limits are documented in [Permissions](docs/PERMISSIONS.md).
 
 1. In HACS, add `https://github.com/FiraSenax/ha-service-route-sync` as a custom **Integration** repository. A [request for inclusion in the default catalog](https://github.com/hacs/default/pull/11881) is pending.
 2. Download **Service Route Sync** and restart Home Assistant.
 3. In **Settings → Devices & services**, add **Service Route Sync**.
-4. Enter the controller host, port, site and dedicated local credentials, then select services and cloud filters.
+4. Enter the controller host, port, site and dedicated local Network API key, then select services and cloud filters. No username/password login is used.
 5. Bind each service to its own existing UniFi IP route. Create those routes in UniFi first, with the intended WAN and device or network scope.
+
+For fixed public HTTPS probes alone, leave the controller connection empty and select only that feature. This mode needs `/usr/bin/curl` in the HA runtime. To add controller-dependent features later, create a separate entry with its own connection.
 
 ## Operation
 
@@ -67,9 +71,9 @@ After setup, Home Assistant provides:
 - **Automatic route updates:** off by default. Enabling it starts a fresh check.
 - **Restore last route update:** restores one saved route update while automation is off, if nobody has changed the route since.
 
-Disable any other script or integration that writes the same UniFi routes before enabling automatic updates. Configure one Service Route Sync entry per controller endpoint and site.
+Route controls, including refresh and restore, require an administrator or a trusted HA automation context. Disable any other script or integration that writes the same UniFi routes before enabling automatic updates. Configure one Service Route Sync entry per controller endpoint and site.
 
-The default refresh interval is 24 hours and can be set from one hour to one week. Successfully fetched public feeds are cached for one hour. A refresh during that window reuses the feed but reads the router again. Changing integration options turns automatic route updates off.
+The default refresh interval is 24 hours and can be set from one hour to one week. Successfully fetched public feeds are cached for one hour. A refresh during that window reuses the feed but reads the router again. Changing the controller connection or route-policy settings turns automatic route updates off. Editing independent monitoring, Wi-Fi or IPv6 settings preserves the route automation mode.
 
 ## Safeguards and recovery
 
@@ -85,7 +89,7 @@ Diagnostics include service names and counters, not credentials, WAN IDs, source
 
 ## Optional network diagnostics
 
-WAN links, gateway traffic, selected clients, and Wi-Fi history can be observed directly in Home Assistant. In the integration options, enable **Monitor internet connections**, choose a gateway, and name its two links (for example, DSL and Starlink). Each link exposes download, upload, latency, availability over the measurement window, and the link state if UniFi explicitly provides an `up` value. A missing link state stays unavailable.
+WAN links, gateway traffic, selected clients, and Wi-Fi history can be observed directly in Home Assistant. In the integration options, enable **Monitor internet connections**, choose a gateway, and name its two links (for example, Fiber and Mobile). Each link exposes download, upload, latency, availability over the measurement window, and the link state if UniFi explicitly provides an `up` value. A missing link state stays unavailable.
 
 Local monitoring polls independently of public destination feeds. A failed feed does not block WAN readings. WAN measurements alone do not prove IPv4 or IPv6 reachability and do not trigger failover.
 
@@ -98,8 +102,9 @@ The Home Assistant setup and entities include complete English (`en`) and German
 ## Development
 
 ```sh
-python -m venv .venv
+python3.14 -m venv .venv
 .venv/bin/pip install homeassistant==2026.10.0 ruff==0.17.0
+.venv/bin/python scripts/sync_windows_reader.py --check
 .venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python -m unittest discover -s tests_gateway -v
 .venv/bin/python -m unittest discover -s tests_ha -t . -v
@@ -107,7 +112,7 @@ python -m venv .venv
 .venv/bin/ruff format --check .
 ```
 
-`core.py` contains router-independent planning and write checks, `providers.py` contains feed selection, and `backends/unifi.py` contains the UniFi adapter. The adapter owns its `aiohttp` session and explicitly configured local API key, so upstream API changes may require updates. GitHub Actions runs tests, formatting, Python compilation, Hassfest, and HACS validation.
+[`routing/core.py`](custom_components/service_route_sync/routing/core.py) contains router-independent planning and write checks, [`routing/providers.py`](custom_components/service_route_sync/routing/providers.py) contains feed selection, and [`backends/unifi.py`](custom_components/service_route_sync/backends/unifi.py) owns the controller transport. Feature-specific setup lives in [`flows/`](custom_components/service_route_sync/flows/). See [Architecture](docs/ARCHITECTURE.md) for the package boundaries and [Validation](docs/VALIDATION.md#reproducing-the-checks) for frontend/browser commands, CI versions and current test limitations.
 
 ## Sources
 

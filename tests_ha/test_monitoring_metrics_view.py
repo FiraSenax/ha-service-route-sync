@@ -72,3 +72,26 @@ class MonitoringViewTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("monitoring_pc_state -1.0", response.text)
         self.coordinator.last_update_success = False
         self.assertEqual((await self.view.get({KEY_HASS_USER: self.user}, "entry")).status, 503)
+
+    async def test_primary_bandwidth_is_exposed_only_to_administrators(self):
+        self.entry.runtime_data.network = SimpleNamespace(
+            last_update_success=True,
+            data=SimpleNamespace(
+                primary=SimpleNamespace(
+                    observed_at=dt_util.utcnow(), upload_mbit_s=12.5, download_mbit_s=87.25
+                )
+            ),
+        )
+        for admin in (False, True):
+            with self.subTest(admin=admin):
+                self.user.is_admin = admin
+                response = await self.view.get({KEY_HASS_USER: self.user}, "entry")
+                self.assertEqual(response.status, 200)
+                self.assertNotIn("monitoring_dsl_mbps", response.text)
+                if admin:
+                    self.assertIn('monitoring_primary_mbps{direction="upload"} 12.5', response.text)
+                    self.assertIn(
+                        'monitoring_primary_mbps{direction="download"} 87.25', response.text
+                    )
+                else:
+                    self.assertNotIn("monitoring_primary_mbps", response.text)

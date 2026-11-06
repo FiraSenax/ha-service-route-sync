@@ -1,11 +1,19 @@
 # Changelog
 
+## 0.5.1 — remove private migration paths
+
+- Remove the experimental entry-schema adapter and old checkpoint converter.
+- Remove the obsolete adapter tests and automatic-upgrade documentation.
+- Keep configuration schema 2.1 and existing accepted state unchanged. New users
+  use the regular setup flow; upgrades from experimental schemas are unsupported.
+
 ## 0.5.0 — modular features and security hardening
 
 - Require administrator or trusted automation context for route controls, including
   refreshes that can trigger writes. Sanitize unexpected route-action errors.
 - Bound controller JSON to 4 MiB and 64 nesting levels; reject duplicate keys and
-  non-finite values, and decode outside the event loop.
+  non-finite values, and decode outside the event loop. Bound gzip/deflate output
+  allocation for controller and feed responses.
 - Separate routing, network, clients, monitoring, WLAN, IPv6, Frigate, probes and
   Windows protocols into feature packages and compose smaller configuration flows.
 - Isolate optional feature setup failures and centrally manage shutdown.

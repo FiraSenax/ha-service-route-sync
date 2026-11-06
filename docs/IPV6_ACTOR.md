@@ -5,8 +5,8 @@ from destination-route synchronization. It manages exactly the managed
 `IOB_V6_NAT` and `IOB_SAB_PBR` chains, their two UniFi hooks and the source
 policy at preference 31010. It never accepts a shell command, arbitrary
 prefix, interface, mark, table, or rule from Home Assistant. The gateway keeps
-the private ULA, SAB addresses and current delegated prefix. HA receives only
-closed status flags and a SHA-256 digest of the managed state.
+the private ULA, source-routing IPv4 addresses and current delegated prefix.
+HA receives only closed status flags and a SHA-256 digest of the managed state.
 
 ## Provisioning
 
@@ -17,8 +17,9 @@ closed status flags and a SHA-256 digest of the managed state.
 2. Install `gateway/ipv6_policy.py` and `gateway/ipv6_actor.py` under the
    gateway's root-owned `/data/service-route-sync` directory (mode 0700).
    `ipv6_actor.json` must be root-owned 0600 with the exact deployment-specific
-   ULA, marks, SAB addresses and configured WAN interfaces and tables. The actor script must be
-   root-owned 0700. Never put these values in HA options or diagnostics.
+   ULA, marks, source-routing addresses and configured WAN interfaces and tables.
+   The actor script must be root-owned 0700. Never put these values in HA options
+   or diagnostics.
 3. Using an existing trusted gateway administrator connection, add the public
    key to the effective `authorized_keys` with an HA-source restriction and
    a forced command:
@@ -34,7 +35,7 @@ closed status flags and a SHA-256 digest of the managed state.
    an actual read-only inspection.
 4. Confirm that HA reports an exact mode and fresh primary/secondary IPv6
    observations. While inspection-only, compare HA's planned target with the
-   previous controller and the real managed rule set over normal WAN changes.
+   intended policy and the real managed rule set over normal WAN changes.
 5. At the supervised handover, stop and disable any other IPv6 writer. Confirm
    that no other process writes the managed chains. Only then enable the HA
    writer in the integration options. The first active refresh reads a fresh
@@ -45,9 +46,11 @@ closed status flags and a SHA-256 digest of the managed state.
 Use this schema for `/data/service-route-sync/ipv6_actor.json`. All addresses,
 interfaces, tables and marks below are examples to replace with your values.
 Primary and secondary roles are independent of provider names. The policy is
-specifically a /56 ULA NAT policy: primary uses a delegated /56 with NETMAP,
-secondary uses masquerading. Other prefix lengths or policy types are outside
-this actor's scope and are rejected.
+specifically a ULA NAT policy with matching ULA and delegated-prefix lengths
+from /48 through /64: primary uses NETMAP and secondary uses masquerading.
+The example below uses /56. Set the observer's `delegated_prefix_length` to
+the same length. Different firewall layouts or policy types need a different
+backend; they are not accepted by weakening the ownership checks.
 
 ```json
 {
@@ -65,10 +68,11 @@ this actor's scope and are rejected.
 ```
 
 HA options select the control helpers and map the input-select values to the
-`primary` and `secondary` protocol roles. The separate source-routing addresses
-must be distinct. Interface names, table names and marks are validated before
-forming command arguments. The reader and writer must be upgraded together;
-old personal mode names are not accepted.
+`primary` and `secondary` protocol roles. The `sab_primary_ip` and
+`sab_secondary_ip` fields are the two distinct IPv4 source-routing addresses.
+Interface names, table names and marks are validated before forming command
+arguments. Provision reader and writer from the same release and use the
+documented protocol roles on both sides.
 
 ## Failure and recovery
 
@@ -95,23 +99,19 @@ clear it.
 
 If the gateway reboots and the managed state is exactly blank, HA can rebuild
 it only after at least 15 seconds of continuously fresh, healthy WAN evidence.
-An old DSL delegated prefix is recognized separately from foreign rules; a
-fresh authoritative prefix and healthy DSL path allow an exact NETMAP update.
+An old primary-WAN delegated prefix is recognized separately from foreign rules;
+a fresh authoritative prefix and healthy primary path allow an exact NETMAP update.
 Missing hooks are recognized by the actor but do not imply an arbitrary policy
 rewrite. Any extra rule, nonexact source, unfamiliar policy preference or
 ambiguous partial state blocks automatic changes.
 
-## Status
+## Validation scope
 
-On 2026-10-12 the writable restricted actor became the sole IPv6 policy
-writer. The former VM101 service was stopped and disabled before activation;
-VM101 has since been removed. The actor checks the exact managed state after
-every mutation and latches on a concurrent edit, changed delegation or
-ambiguous rollback. A real HA-originated DSL→Starlink→DSL exercise completed
-with exact readback and closed journals. HA reports DSL, a current decision
-and no review latch. The read-only WAN observer remains independent. The
-pre-cutover rule snapshot, restore record and recovery details are kept in the
-private deployment notes, outside this repository.
+Gateway tests exercise failures at mutation boundaries, delegation changes,
+blank-state reconstruction, missing hooks and concurrent edits. A live check
+in one installation confirms an active writer, a current primary-mode decision,
+no review latch and working outbound IPv6. It does not establish compatibility
+with other gateway firmware or firewall layouts. See [validation](VALIDATION.md).
 
 ## Routing marks
 

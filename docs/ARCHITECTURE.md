@@ -37,7 +37,10 @@ layer; they are not independent processes or security sandboxes.
 - API keys belong to this entry. TLS is verified or explicitly certificate-pinned;
   redirects and environment proxies are disabled for authenticated requests.
 - Controller JSON is limited to 4 MiB of decoded content and 64 nesting levels;
-  parsing runs outside the event loop. SSH frames have independent tighter bounds.
+  parsing runs outside the event loop. Automatic aiohttp decompression is disabled;
+  gzip/deflate decoding uses a bounded output allocation for controller responses
+  and feeds, so compressed payloads cannot bypass the byte cap. SSH frames have
+  independent tighter bounds.
 - Route switches/buttons require an administrator or a trusted HA automation
   context. Network writes also retain preview validation, a persistent write latch,
   backups, concurrent-change checks and post-write verification.
@@ -68,7 +71,9 @@ The HTTPS backend currently supports UniFi OS compatibility API paths. A control
 with only `/integration/v1`, a different route schema or incompatible permissions
 is rejected by setup; an API key alone is not a compatibility guarantee.
 
-SSH features require OpenSSH in the HA runtime and a gateway supporting the exact
+Public HTTPS phase probes require `/usr/bin/curl`; user curl configuration is
+disabled and response bodies are limited to 1 MiB. SSH features require OpenSSH
+in the HA runtime and a gateway supporting the exact
 reader's Linux/UbiOS tools. IPv6 writes additionally require the documented chain
 layout, matching ULA/provider prefix lengths (/48–/64), explicit interface/table/
 mark configuration and exclusive ownership of the managed policy. A different
@@ -80,5 +85,8 @@ Windows event collection service. Public endpoint probes use explicit shipped
 presets and do not offer arbitrary request URLs.
 
 Tests cover unrelated profile names, addresses, interfaces, prefix sizes, disabled
-features, denied callers, malformed responses and upgrade conflicts. This is
-compatibility evidence, not a claim to have tested every controller or firmware.
+features, denied callers, malformed responses and interrupted writes. The private
+entry-schema adapter and checkpoint converter were removed in 0.5.1; their tests
+are no longer part of the suite. Current configuration schema 2.1 is unchanged.
+See [validation and compatibility](VALIDATION.md) for the tested environments,
+live checks and remaining gaps.

@@ -1,6 +1,6 @@
 # Service Route Sync
 
-[Architektur, Sicherheitsgrenzen und Kompatibilität](docs/ARCHITECTURE.md) · [Sicherheitsrichtlinie](SECURITY.md)
+[Architektur und Sicherheitsgrenzen](docs/ARCHITECTURE.md) · [Validierung und Kompatibilität](docs/VALIDATION.md) · [Sicherheitsrichtlinie](SECURITY.md)
 
 Deutsch · [English](README.md)
 
@@ -10,7 +10,9 @@ Eine Home-Assistant-Integration, die Zielnetze ausgewählter Spiele und Dienste 
 
 **Vorschau ist standardmäßig aktiv.** Controller-Zugriff, Router-Schreibvorgänge und Wiederherstellung sind automatisiert mit simuliertem Backend getestet. Diese Version muss vor automatischen Schreibzugriffen noch am eigenen Controller geprüft werden.
 
-**Upgrade auf 0.3:** Eigene Zugangsdaten, Steuerungs-Helper, Diagnoseprofil und Benachrichtigungsziel eintragen. Persönliche Standardwerte werden nicht übernommen. Details stehen in der [Konfigurations- und Umstellungsanleitung](docs/CONFIGURATION.md).
+**Version 0.5.1 verwendet Konfigurationsschema 2.1.** Bestehende Einträge mit diesem Schema behalten Einstellungen und Verlauf. Neue Installationen verwenden den Einrichtungsdialog; automatische Upgrades älterer experimenteller Schemata werden nicht unterstützt. Die privaten Migrationsadapter wurden entfernt. Details stehen unter [Konfiguration und Updates](docs/CONFIGURATION.md).
+
+Das Projekt befindet sich in einer frühen Community-Phase. Automatisierte Prüfungen und eine reale Installation belegen das dokumentierte Verhalten; eine breitere Kompatibilitätsmatrix für HA-, Controller- und Firmware-Versionen steht noch aus. Der [Validierungsbericht](docs/VALIDATION.md) nennt die genauen Testumgebungen und offenen Punkte.
 
 ## Dienste
 
@@ -39,9 +41,9 @@ Azure und AWS werden bewusst nach konkreten Tags, Diensten und Regionen ausgewä
 
 | Backend | Stand |
 | --- | --- |
-| UniFi Network | Implementiert; eigene lokale UniFi-Zugangsdaten erforderlich |
+| UniFi-OS-Kompatibilitäts-API | Implementiert; eigener lokaler Network-API-Schlüssel und dokumentierte Endpunkte erforderlich |
 | FRITZ!Box | Noch nicht implementiert; keine gleichwertige API-Funktion zugesagt |
-| Weitere Router | Backend-Schnittstelle vorhanden, konkrete Unterstützung noch offen |
+| Weitere Router | Kein konkretes Backend implementiert |
 
 Die Integration aktualisiert ausschließlich `ip_addresses` ausdrücklich zugeordneter IP-Routen. Sie legt keine Routen an und löscht keine. WAN, Quellgeräte/VLANs, Aktivierung, Kill Switch und vorhandene IP-Bereichsanker bleiben erhalten. Eine deaktivierte Routerroute bleibt deaktiviert.
 
@@ -55,17 +57,19 @@ keinen zuletzt gültigen Client-Snapshot.
 
 ## Installation
 
-Home Assistant **2026.9 oder neuer** und ein erreichbarer **UniFi Network**-Controller werden benötigt. Die Einrichtung erfolgt ausschließlich mit einem lokalen Network-API-Schlüssel. Benötigte Zugriffe und Grenzen der Rechtevergabe stehen unter [Berechtigungen](docs/PERMISSIONS.md). Für Beobachtung werden nur Lesezugriffe benötigt; Routenänderungen brauchen zusätzlich Updates vorhandener Routen. Ein separater Schlüssel ist nicht automatisch auf diese Rechte beschränkt: Entscheidend ist, welche Beschränkungen die eingesetzte UniFi-Version tatsächlich durchsetzt.
+HACS deklariert Home Assistant **2026.9.0** als Mindestversion. CI testet aktuell **2026.10.0**, die Live-Prüfung erfolgte mit **2026.10.3**. Routen und Controller-Beobachtungen benötigen einen erreichbaren UniFi-OS-Controller mit den [dokumentierten Kompatibilitäts-Endpunkten](docs/CONFIGURATION.md#unifi-connection). Die Einrichtung erfolgt ausschließlich mit einem eigenen lokalen Network-API-Schlüssel. Benötigte Zugriffe und Grenzen der Rechtevergabe stehen unter [Berechtigungen](docs/PERMISSIONS.md). Für Beobachtung werden nur Lesezugriffe benötigt; Routenänderungen brauchen zusätzlich Updates vorhandener Routen. Ein separater Schlüssel ist nicht automatisch auf diese Rechte beschränkt: Entscheidend ist, welche Beschränkungen die eingesetzte UniFi-Version tatsächlich durchsetzt.
 
 1. HACS öffnen → Menü → **Benutzerdefinierte Repositories**.
 2. `https://github.com/FiraSenax/ha-service-route-sync` hinzufügen, Typ **Integration**.
 3. **Service Route Sync** herunterladen und HA neu starten.
 4. Einstellungen → Geräte & Dienste → Integration hinzufügen → **Service Route Sync**.
-5. Controller-Host, Port, Site und eigene lokale Zugangsdaten eingeben; Spiele/Dienste und Cloud-Filter auswählen.
+5. Controller-Host, Port, Site und eigenen lokalen Network-API-Schlüssel eingeben; Spiele/Dienste und Cloud-Filter auswählen. Eine Anmeldung mit Benutzername/Passwort wird nicht verwendet.
 6. Jedem Dienst eine eigene vorhandene IP-Route zuordnen. Diese Routen zuvor im UniFi-Gateway mit gewünschtem WAN und Geräte-/Netzbereich anlegen.
 
 Das Repository ist als HACS-Custom-Repository installierbar; eine Aufnahme in den HACS-Standardkatalog ist nicht erfolgt.
 Der [Aufnahme-PR](https://github.com/hacs/default/pull/11881) wartet auf die Maintainer.
+
+Für feste öffentliche HTTPS-Probes allein die Controller-Verbindung leer lassen und nur diese Funktion auswählen. Dafür muss `/usr/bin/curl` in der HA-Laufzeit vorhanden sein. Für spätere Controller-Funktionen einen separaten Eintrag mit eigener Verbindung anlegen.
 
 ## Bedienung
 
@@ -79,9 +83,9 @@ Nach der Einrichtung erscheinen:
 - **Automatic route updates**: Standardmäßig **aus**. Einschalten erlaubt Änderungen und startet eine frische Prüfung.
 - **Restore last route update**: Letzte einzelne Routensicherung zurückspielen, wenn die Automatik aus ist und niemand die Route inzwischen verändert hat.
 
-Vor dem Einschalten externe Skripte oder weitere Integrationen deaktivieren, die dieselben Routen ändern. Pro Controller-Endpunkt und Site wird eine Service-Route-Sync-Instanz eingerichtet.
+Routen-Bedienelemente einschließlich Aktualisierung und Wiederherstellung benötigen Administratorrechte oder einen vertrauenswürdigen HA-Automationskontext. Vor dem Einschalten externe Skripte oder weitere Integrationen deaktivieren, die dieselben Routen ändern. Pro Controller-Endpunkt und Site wird eine Service-Route-Sync-Instanz eingerichtet.
 
-Das Prüfintervall beträgt standardmäßig 24 Stunden, einstellbar zwischen einer Stunde und einer Woche. Erfolgreich geladene Quellen werden eine Stunde zwischengespeichert; erneutes Drücken lädt in dieser Zeit dieselben Quelldaten, liest den Router aber erneut. Änderungen der Integrationsoptionen schalten die Automatik wieder aus.
+Das Prüfintervall beträgt standardmäßig 24 Stunden, einstellbar zwischen einer Stunde und einer Woche. Erfolgreich geladene Quellen werden eine Stunde zwischengespeichert; erneutes Drücken lädt in dieser Zeit dieselben Quelldaten, liest den Router aber erneut. Änderungen an der Controller-Verbindung oder Routenrichtlinie schalten die Routenautomatik aus. Änderungen unabhängiger Monitoring-, WLAN- oder IPv6-Einstellungen erhalten den bisherigen Zustand der Routenautomatik.
 
 ## Prüfungen und Wiederherstellung
 
@@ -97,7 +101,7 @@ Diagnostik enthält Dienstnamen und Zähler, keine Zugangsdaten, WAN-IDs, Quellg
 
 ## Netzwerküberwachung
 
-Optional können WAN-Leitungen, Gateway-Verkehr, ausgewählte Clients und WLAN-Verläufe in Home Assistant beobachtet werden. In den Integrationsoptionen **WAN überwachen** aktivieren, Gateway auswählen und die beiden Leitungen beispielsweise **DSL** und **Starlink** nennen.
+Optional können WAN-Leitungen, Gateway-Verkehr, ausgewählte Clients und WLAN-Verläufe in Home Assistant beobachtet werden. In den Integrationsoptionen **WAN überwachen** aktivieren, Gateway auswählen und die beiden Leitungen beispielsweise **Glasfaser** und **Mobilfunk** nennen.
 Pro Leitung stehen Download, Upload, Latenz, Verfügbarkeit im Messzeitraum
 und — sofern der Router ausdrücklich ein `up`-Feld liefert — der Linkzustand
 zur Verfügung. Ein fehlender Linkzustand bleibt unverfügbar.
@@ -117,8 +121,9 @@ werden; Schlüssel und Platzhalter müssen mit `en.json` übereinstimmen. Für d
 WLAN-Karte sind zusätzlich die Texte in `frontend/wifi-history-card.js` zu ergänzen.
 
 ```sh
-python -m venv .venv
+python3.14 -m venv .venv
 .venv/bin/pip install homeassistant==2026.10.0 ruff==0.17.0
+.venv/bin/python scripts/sync_windows_reader.py --check
 .venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python -m unittest discover -s tests_gateway -v
 .venv/bin/python -m unittest discover -s tests_ha -t . -v
@@ -126,7 +131,7 @@ python -m venv .venv
 .venv/bin/ruff format --check .
 ```
 
-`core.py` enthält routerunabhängige Planung und Schreibprüfungen, `providers.py` die Datenquellen und `backends/unifi.py` den Adapter. Der Adapter verwendet eine eigene `aiohttp`-Sitzung mit ausdrücklich konfiguriertem lokalem API-Schlüssel; Änderungen dieser Schnittstelle können Anpassungen benötigen. GitHub Actions prüft Tests, Formatierung, Python-Kompilierung, Hassfest und HACS.
+[`routing/core.py`](custom_components/service_route_sync/routing/core.py) enthält routerunabhängige Planung und Schreibprüfungen, [`routing/providers.py`](custom_components/service_route_sync/routing/providers.py) die Datenquellen und [`backends/unifi.py`](custom_components/service_route_sync/backends/unifi.py) den eigenen Controller-Transport. Die Einrichtungsschritte liegen in [`flows/`](custom_components/service_route_sync/flows/). [Architektur](docs/ARCHITECTURE.md) erklärt die Modulgrenzen; [Validierung](docs/VALIDATION.md#reproducing-the-checks) enthält Frontend-/Browser-Befehle, CI-Versionen und Grenzen der bisherigen Tests.
 
 ## Quellen
 
@@ -139,8 +144,3 @@ python -m venv .venv
 - [HACS Custom Repositories](https://www.hacs.xyz/docs/faq/custom_repositories/)
 
 MIT-Lizenz. Kein offizielles Produkt von Ubiquiti, Microsoft, AWS oder SAP.
-
-The optional [restricted gateway observer](docs/GATEWAY_OBSERVER.md) provides
-separate native IPv4/IPv6 connectivity entities. It has a dedicated key, pinned
-host identity and a verified read-only setup flow; it does not take over IPv6
-failover or change routing rules.
