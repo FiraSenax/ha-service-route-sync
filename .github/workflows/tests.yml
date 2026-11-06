@@ -2,25 +2,55 @@ name: Tests
 on:
   push:
   pull_request:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * *'
 permissions:
   contents: read
 jobs:
-  hassfest:
+  metadata:
+    name: Resolve supported HA versions
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+          check-latest: true
+      - run: python -m unittest discover -s tests_ci -v
+      - id: matrix
+        run: python scripts/ha_matrix.py --github-output "$GITHUB_OUTPUT"
+  hassfest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361
   hacs:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa
         with:
           category: integration
   browser:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.14'
@@ -30,8 +60,11 @@ jobs:
       - run: python -m unittest discover -s tests_browser -v
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '26'
@@ -40,26 +73,76 @@ jobs:
       - run: node --test tests_frontend/*.test.mjs
   tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.14'
           check-latest: true
-      - run: python -m pip install -r requirements-test.txt
+      - run: python -m pip install -r requirements-tooling.txt
+      - run: python scripts/check_workflows.py
+      - run: python -m unittest discover -s tests_workflows -v
       - run: python scripts/sync_windows_reader.py --check
       - run: ruff check .
       - run: ruff format --check .
-      - run: python -m unittest discover -s tests -v
-      - run: python -m unittest discover -s tests_gateway -v
       - run: python -m compileall -q custom_components
   ha-runtime:
+    name: HA ${{ matrix.channel }} (${{ matrix.version }})
+    needs: metadata
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.metadata.outputs.matrix) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.14'
+          python-version: ${{ matrix.python }}
           check-latest: true
-      - run: python -m pip install -r requirements-test.txt
+      - name: Install exact HA release and its own dependency pins
+        env:
+          HA_VERSION: ${{ matrix.version }}
+        run: python -m pip install "homeassistant==$HA_VERSION"
+      - run: python -m unittest discover -s tests -v
+      - run: python -m unittest discover -s tests_gateway -v
       - run: python -m unittest discover -s tests_ha -t . -v
+      - name: Audit the exact installed HA environment without changing its pins
+        run: |
+          python -m pip freeze > "$RUNNER_TEMP/ha-environment.txt"
+          python -m venv "$RUNNER_TEMP/audit"
+          "$RUNNER_TEMP/audit/bin/python" -m pip install -r requirements-security.txt
+          "$RUNNER_TEMP/audit/bin/pip-audit" --no-deps --disable-pip --progress-spinner off -r "$RUNNER_TEMP/ha-environment.txt"
+  workflows:
+    name: Workflow validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -color
+  ci:
+    name: CI
+    if: ${{ always() }}
+    needs: [metadata, hassfest, hacs, browser, frontend, tests, ha-runtime, workflows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every test job to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          results = json.loads(os.environ["RESULTS"])
+          failed = [name for name, job in results.items() if job["result"] != "success"]
+          if failed:
+              raise SystemExit("Required jobs did not pass: " + ", ".join(failed))
+          PYTHON

@@ -2,6 +2,12 @@
 
 ## Current CI configuration (2026-11-06)
 
+The [release and compatibility workflow](RELEASING.md) resolves the exact
+minimum from `hacs.json` and the latest stable HA release on every run and daily.
+Both run the unit, gateway and HA runtime suites plus installed-dependency audits.
+The Python series follows each HA release's own requirement. The local development
+pin and the earlier evidence below remain dated snapshots.
+
 CI targets Home Assistant **2026.11.0**, the latest Python **3.14** patch
 (Home Assistant requires **3.14.2 or newer**), Node.js **26 LTS**,
 Playwright **1.64.1** and Ruff **0.17.4** on `ubuntu-latest`.
@@ -70,7 +76,7 @@ check did not exercise new route writes or a forced WAN outage.
 
 | Area | Supported contract and limits |
 | --- | --- |
-| Home Assistant | HACS metadata declares 2026.9.0 as the minimum. Current CI targets 2026.11.0; the recorded live check used 2026.10.3. Other versions, including the declared minimum, are not covered by a CI version matrix. |
+| Home Assistant | HACS metadata declares 2026.11.0 as the minimum. Current CI tests the declared minimum and dynamically resolved latest stable release; the recorded live check used 2026.10.3. Intermediate releases are not covered by this endpoint matrix. |
 | UniFi controller | Own local Network API key and the documented UniFi OS compatibility paths. `/integration/v1`-only controllers and other route schemas are not implemented. No firmware compatibility matrix has been established. |
 | Gateway observations | Restricted OpenSSH command plus the reader's documented Python/Linux/UbiOS tools and configuration. An available SSH server alone is insufficient. |
 | IPv6 writes | Exact managed chains/hooks and policy preference, matching ULA/delegated prefix lengths from /48 through /64, explicit interfaces/tables/marks and exclusive writer ownership. Other firewall layouts need a separate backend. |

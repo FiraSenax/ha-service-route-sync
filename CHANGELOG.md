@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Raise the declared Home Assistant minimum to 2026.11.0 after auditing the HA-owned dependency sets. Older HA installations need an HA update for future integration releases.
+- Test the declared minimum and dynamically resolved latest stable HA release on every CI run, daily, and before publishing. Use each release's required Python series and retain its package constraints.
+- Gate GitHub releases on compatibility, packaging, workflow-policy, vulnerability and CodeQL checks, with matching manifest/changelog versions and tags at the exact tested commit.
+- Protect main and release tags; enable private vulnerability reporting and dependency/malware alerts.
+- Document installation through the default HACS catalog and the release procedure.
+
 ## 0.5.1 — remove private migration paths
 
 - Remove the experimental entry-schema adapter and old checkpoint converter.
