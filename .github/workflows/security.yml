@@ -26,3 +26,8 @@ jobs:
           languages: python,javascript-typescript
           queries: security-extended
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        id: analyze
+      - name: Block high/critical CodeQL findings and errors
+        env:
+          SARIF_DIRECTORY: ${{ steps.analyze.outputs.sarif-output }}
+        run: python3 scripts/check_sarif.py "$SARIF_DIRECTORY"

@@ -28,8 +28,9 @@ separate requirement files and weekly Dependabot updates.
 The stable `CI` check requires every test job, HACS, Hassfest, frontend/browser
 checks, workflow validation and both HA endpoints to pass. CodeQL runs separately
 on pull requests and main, and is also required by the release workflow.
-Successful CodeQL execution is not proof that no alerts exist; review the
-repository's code-scanning alerts before approving a release.
+The CodeQL job directly examines its SARIF results and fails for security severity
+7.0 or higher and error-level findings. Missing/malformed results also fail the
+job, so the release gate does not rely on scanner execution status alone.
 
 ## Preparing a release
 
