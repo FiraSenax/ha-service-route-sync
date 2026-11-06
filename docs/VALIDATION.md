@@ -1,5 +1,24 @@
 # Validation and compatibility
 
+## Current CI configuration (2026-11-06)
+
+CI targets Home Assistant **2026.11.0**, the latest Python **3.14** patch
+(Home Assistant requires **3.14.2 or newer**), Node.js **26 LTS**,
+Playwright **1.64.1** and Ruff **0.17.4** on `ubuntu-latest`.
+CodeQL Action **4.39.3** runs the extended Python and JavaScript/TypeScript analysis.
+Python package pins live in `requirements-test.txt` and
+`requirements-browser.txt`; Dependabot checks these and the pinned Actions weekly.
+Home Assistant's own runtime dependency pins are retained.
+
+The integration was [added to the default HACS catalog](https://github.com/hacs/default/pull/11881)
+on **2026-11-04**. Installation now starts by searching for **Service Route Sync**
+in HACS.
+
+The record below preserves the earlier release evidence. It does not describe a
+new live deployment on Home Assistant 2026.11.0.
+
+## Release 0.5.1 validation (2026-10-25)
+
 This record describes release **0.5.1**, commit
 [`c8428c4`](https://github.com/FiraSenax/ha-service-route-sync/commit/c8428c47329fd7ce44482fa6777f0a56d721264e),
 checked on **2026-10-25**. It separates tested behavior from supported API
@@ -51,7 +70,7 @@ check did not exercise new route writes or a forced WAN outage.
 
 | Area | Supported contract and limits |
 | --- | --- |
-| Home Assistant | HACS metadata declares 2026.9.0 as the minimum. CI uses 2026.10.0; the live check used 2026.10.3. Other versions, including the declared minimum, are not covered by a CI version matrix. |
+| Home Assistant | HACS metadata declares 2026.9.0 as the minimum. Current CI targets 2026.11.0; the recorded live check used 2026.10.3. Other versions, including the declared minimum, are not covered by a CI version matrix. |
 | UniFi controller | Own local Network API key and the documented UniFi OS compatibility paths. `/integration/v1`-only controllers and other route schemas are not implemented. No firmware compatibility matrix has been established. |
 | Gateway observations | Restricted OpenSSH command plus the reader's documented Python/Linux/UbiOS tools and configuration. An available SSH server alone is insufficient. |
 | IPv6 writes | Exact managed chains/hooks and policy preference, matching ULA/delegated prefix lengths from /48 through /64, explicit interfaces/tables/marks and exclusive writer ownership. Other firewall layouts need a separate backend. |
@@ -81,11 +100,12 @@ current behavior rather than private deployment history.
 
 ## Reproducing the checks
 
-Run from the repository root with Python 3.14:
+Run the current checks from the repository root with Python 3.14.2 or newer
+within the 3.14 series:
 
 ```sh
 python3.14 -m venv .venv
-.venv/bin/pip install homeassistant==2026.10.0 ruff==0.17.0
+.venv/bin/python -m pip install -r requirements-test.txt
 .venv/bin/python scripts/sync_windows_reader.py --check
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
@@ -95,18 +115,18 @@ python3.14 -m venv .venv
 .venv/bin/python -m compileall -q custom_components
 ```
 
-With Node.js 22:
+With Node.js 26 LTS:
 
 ```sh
 node --input-type=module --check < custom_components/service_route_sync/frontend/wifi-history-card.js
 node --test tests_frontend/*.test.mjs
 ```
 
-The browser job uses its own Python 3.13 environment on Linux:
+The browser job uses its own Python 3.14 environment on the current Ubuntu runner:
 
 ```sh
-python3.13 -m venv .venv-browser
-.venv-browser/bin/pip install playwright==1.58.0
+python3.14 -m venv .venv-browser
+.venv-browser/bin/python -m pip install -r requirements-browser.txt
 .venv-browser/bin/python -m playwright install --with-deps chromium
 .venv-browser/bin/python -m unittest discover -s tests_browser -v
 ```

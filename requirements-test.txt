@@ -1,0 +1,3 @@
+# Home Assistant owns the runtime dependency versions; keep its constraints intact.
+homeassistant==2026.11.0
+ruff==0.17.4
