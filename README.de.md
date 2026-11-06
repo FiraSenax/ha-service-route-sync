@@ -57,17 +57,13 @@ keinen zuletzt gültigen Client-Snapshot.
 
 ## Installation
 
-HACS deklariert Home Assistant **2026.9.0** als Mindestversion. CI testet aktuell **2026.10.0**, die Live-Prüfung erfolgte mit **2026.10.3**. Routen und Controller-Beobachtungen benötigen einen erreichbaren UniFi-OS-Controller mit den [dokumentierten Kompatibilitäts-Endpunkten](docs/CONFIGURATION.md#unifi-connection). Die Einrichtung erfolgt ausschließlich mit einem eigenen lokalen Network-API-Schlüssel. Benötigte Zugriffe und Grenzen der Rechtevergabe stehen unter [Berechtigungen](docs/PERMISSIONS.md). Für Beobachtung werden nur Lesezugriffe benötigt; Routenänderungen brauchen zusätzlich Updates vorhandener Routen. Ein separater Schlüssel ist nicht automatisch auf diese Rechte beschränkt: Entscheidend ist, welche Beschränkungen die eingesetzte UniFi-Version tatsächlich durchsetzt.
+HACS deklariert Home Assistant **2026.9.0** als Mindestversion. CI testet aktuell **2026.11.0**, die Live-Prüfung erfolgte mit **2026.10.3**. Routen und Controller-Beobachtungen benötigen einen erreichbaren UniFi-OS-Controller mit den [dokumentierten Kompatibilitäts-Endpunkten](docs/CONFIGURATION.md#unifi-connection). Die Einrichtung erfolgt ausschließlich mit einem eigenen lokalen Network-API-Schlüssel. Benötigte Zugriffe und Grenzen der Rechtevergabe stehen unter [Berechtigungen](docs/PERMISSIONS.md). Für Beobachtung werden nur Lesezugriffe benötigt; Routenänderungen brauchen zusätzlich Updates vorhandener Routen. Ein separater Schlüssel ist nicht automatisch auf diese Rechte beschränkt: Entscheidend ist, welche Beschränkungen die eingesetzte UniFi-Version tatsächlich durchsetzt.
 
-1. HACS öffnen → Menü → **Benutzerdefinierte Repositories**.
-2. `https://github.com/FiraSenax/ha-service-route-sync` hinzufügen, Typ **Integration**.
-3. **Service Route Sync** herunterladen und HA neu starten.
-4. Einstellungen → Geräte & Dienste → Integration hinzufügen → **Service Route Sync**.
-5. Controller-Host, Port, Site und eigenen lokalen Network-API-Schlüssel eingeben; Spiele/Dienste und Cloud-Filter auswählen. Eine Anmeldung mit Benutzername/Passwort wird nicht verwendet.
-6. Jedem Dienst eine eigene vorhandene IP-Route zuordnen. Diese Routen zuvor im UniFi-Gateway mit gewünschtem WAN und Geräte-/Netzbereich anlegen.
-
-Das Repository ist als HACS-Custom-Repository installierbar; eine Aufnahme in den HACS-Standardkatalog ist nicht erfolgt.
-Der [Aufnahme-PR](https://github.com/hacs/default/pull/11881) wartet auf die Maintainer.
+1. HACS öffnen und nach **Service Route Sync** suchen. Die Integration ist im HACS-Standardkatalog verfügbar.
+2. **Service Route Sync** herunterladen und HA neu starten.
+3. Einstellungen → Geräte & Dienste → Integration hinzufügen → **Service Route Sync**.
+4. Controller-Host, Port, Site und eigenen lokalen Network-API-Schlüssel eingeben; Spiele/Dienste und Cloud-Filter auswählen. Eine Anmeldung mit Benutzername/Passwort wird nicht verwendet.
+5. Jedem Dienst eine eigene vorhandene IP-Route zuordnen. Diese Routen zuvor im UniFi-Gateway mit gewünschtem WAN und Geräte-/Netzbereich anlegen.
 
 Für feste öffentliche HTTPS-Probes allein die Controller-Verbindung leer lassen und nur diese Funktion auswählen. Dafür muss `/usr/bin/curl` in der HA-Laufzeit vorhanden sein. Für spätere Controller-Funktionen einen separaten Eintrag mit eigener Verbindung anlegen.
 
@@ -113,6 +109,8 @@ Aktive IPv6-Policy-Steuerung und weitere Host-Beobachter sind getrennte, ausdrü
 
 ## Entwicklung
 
+Python **ab 3.14.2 innerhalb der 3.14-Reihe** entspricht der Vorgabe von Home Assistant 2026.11.0. CI verwendet den neuesten Python-3.14-Patch und Node.js 26 LTS. Testabhängigkeiten stehen in `requirements-test.txt` und `requirements-browser.txt`; Dependabot prüft sie wöchentlich.
+
 Die HA-Einrichtung und die WLAN-Historienkarte sind auf Englisch und Deutsch
 übersetzt. Weitere
 Sprachen können als BCP-47-Dateien unter
@@ -122,7 +120,7 @@ WLAN-Karte sind zusätzlich die Texte in `frontend/wifi-history-card.js` zu erg�
 
 ```sh
 python3.14 -m venv .venv
-.venv/bin/pip install homeassistant==2026.10.0 ruff==0.17.0
+.venv/bin/python -m pip install -r requirements-test.txt
 .venv/bin/python scripts/sync_windows_reader.py --check
 .venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python -m unittest discover -s tests_gateway -v
@@ -141,6 +139,6 @@ python3.14 -m venv .venv
 - [Microsoft 365 Endpoint Web Service](https://learn.microsoft.com/en-us/microsoft-365/enterprise/microsoft-365-ip-web-service)
 - [Azure Service Tags](https://learn.microsoft.com/en-us/azure/virtual-network/service-tags-overview)
 - [AWS IP address ranges](https://docs.aws.amazon.com/vpc/latest/userguide/aws-ip-ranges.html)
-- [HACS Custom Repositories](https://www.hacs.xyz/docs/faq/custom_repositories/)
+- [HACS](https://www.hacs.xyz/)
 
 MIT-Lizenz. Kein offizielles Produkt von Ubiquiti, Microsoft, AWS oder SAP.

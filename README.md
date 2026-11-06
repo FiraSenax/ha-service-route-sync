@@ -49,9 +49,9 @@ For monitored clients, **Connection type** reports wired, Wi-Fi, or disconnected
 
 ## Installation
 
-HACS declares Home Assistant **2026.9.0** as the minimum. CI currently tests **2026.10.0**; the live check used **2026.10.3**. Routing and controller observations require a reachable UniFi OS controller with the [documented compatibility endpoints](docs/CONFIGURATION.md#unifi-connection) and a dedicated local Network API key. Required operations and controller permission limits are documented in [Permissions](docs/PERMISSIONS.md).
+HACS declares Home Assistant **2026.9.0** as the minimum. CI currently tests **2026.11.0**; the live check used **2026.10.3**. Routing and controller observations require a reachable UniFi OS controller with the [documented compatibility endpoints](docs/CONFIGURATION.md#unifi-connection) and a dedicated local Network API key. Required operations and controller permission limits are documented in [Permissions](docs/PERMISSIONS.md).
 
-1. In HACS, add `https://github.com/FiraSenax/ha-service-route-sync` as a custom **Integration** repository. A [request for inclusion in the default catalog](https://github.com/hacs/default/pull/11881) is pending.
+1. Open HACS and search for **Service Route Sync**. The integration is available in the default HACS catalog.
 2. Download **Service Route Sync** and restart Home Assistant.
 3. In **Settings → Devices & services**, add **Service Route Sync**.
 4. Enter the controller host, port, site and dedicated local Network API key, then select services and cloud filters. No username/password login is used.
@@ -101,9 +101,11 @@ The Home Assistant setup and entities include complete English (`en`) and German
 
 ## Development
 
+Use Python **3.14.2 or newer in the 3.14 series**, as required by Home Assistant 2026.11.0. CI selects the latest Python 3.14 patch and Node.js 26 LTS. Test dependencies are pinned in `requirements-test.txt` and `requirements-browser.txt`; Dependabot checks them weekly.
+
 ```sh
 python3.14 -m venv .venv
-.venv/bin/pip install homeassistant==2026.10.0 ruff==0.17.0
+.venv/bin/python -m pip install -r requirements-test.txt
 .venv/bin/python scripts/sync_windows_reader.py --check
 .venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python -m unittest discover -s tests_gateway -v
@@ -122,6 +124,6 @@ python3.14 -m venv .venv
 - [Microsoft 365 Endpoint Web Service](https://learn.microsoft.com/en-us/microsoft-365/enterprise/microsoft-365-ip-web-service)
 - [Azure Service Tags](https://learn.microsoft.com/en-us/azure/virtual-network/service-tags-overview)
 - [AWS IP address ranges](https://docs.aws.amazon.com/vpc/latest/userguide/aws-ip-ranges.html)
-- [HACS custom repositories](https://www.hacs.xyz/docs/faq/custom_repositories/)
+- [HACS](https://www.hacs.xyz/)
 
 MIT licensed. Not an official product of Ubiquiti, Microsoft, AWS, or SAP.
