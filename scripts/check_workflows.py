@@ -11,7 +11,8 @@ def check_workflow(path, document):
     if document.get("permissions") != {"contents": "read"}:
         errors.append("Default token permissions must be contents: read")
     triggers = document.get("on", {})
-    if isinstance(triggers, dict) and {"pull_request_target", "workflow_run"} & triggers.keys():
+    trigger_names = {triggers} if isinstance(triggers, str) else set(triggers)
+    if {"pull_request_target", "workflow_run"} & trigger_names:
         errors.append("Privileged untrusted-code triggers are forbidden")
     for name, job in document.get("jobs", {}).items():
         permissions = job.get("permissions", {})
@@ -56,7 +57,9 @@ def check_workflow(path, document):
 
 def main():
     errors = []
-    for path in sorted(Path(".github/workflows").glob("*.yml")):
+    for path in sorted(Path(".github/workflows").iterdir()):
+        if path.suffix not in {".yaml", ".yml"}:
+            continue
         document = yaml.load(path.read_text(), Loader=yaml.BaseLoader)
         errors.extend(f"{path}: {message}" for message in check_workflow(path, document))
     if errors:

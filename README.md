@@ -49,7 +49,7 @@ For monitored clients, **Connection type** reports wired, Wi-Fi, or disconnected
 
 ## Installation
 
-HACS declares Home Assistant **2026.9.0** as the minimum. CI tests the declared minimum and the latest stable Home Assistant release on every run; the live check used **2026.10.3**. Routing and controller observations require a reachable UniFi OS controller with the [documented compatibility endpoints](docs/CONFIGURATION.md#unifi-connection) and a dedicated local Network API key. Required operations and controller permission limits are documented in [Permissions](docs/PERMISSIONS.md).
+HACS declares Home Assistant **2026.11.0** as the minimum. CI tests the declared minimum and the latest stable Home Assistant release on every run; the live check used **2026.10.3**. Routing and controller observations require a reachable UniFi OS controller with the [documented compatibility endpoints](docs/CONFIGURATION.md#unifi-connection) and a dedicated local Network API key. Required operations and controller permission limits are documented in [Permissions](docs/PERMISSIONS.md).
 
 1. Open HACS and search for **Service Route Sync**. The integration is available in the default HACS catalog.
 2. Download **Service Route Sync** and restart Home Assistant.

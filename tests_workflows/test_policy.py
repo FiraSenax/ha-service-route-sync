@@ -58,3 +58,10 @@ class WorkflowPolicyTests(unittest.TestCase):
         self.assertEqual(check_workflow(Path("release.yml"), data), [])
         data["jobs"]["publish"]["needs"].remove("security")
         self.assertTrue(check_workflow(Path("release.yml"), data))
+
+    def test_alternative_trigger_syntax_cannot_enable_privileged_events(self):
+        for triggers in ("pull_request_target", ["push", "workflow_run"]):
+            with self.subTest(triggers=triggers):
+                data = copy.deepcopy(self.workflow)
+                data["on"] = triggers
+                self.assertTrue(check_workflow(Path("tests.yaml"), data))
