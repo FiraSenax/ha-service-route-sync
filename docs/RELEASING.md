@@ -28,8 +28,9 @@ separate requirement files and weekly Dependabot updates.
 The stable `CI` check requires every test job, HACS, Hassfest, frontend/browser
 checks, workflow validation and both HA endpoints to pass. CodeQL runs separately
 on pull requests and main, and is also required by the release workflow.
-Successful CodeQL execution is not proof that no alerts exist; review the
-repository's code-scanning alerts before approving a release.
+The CodeQL job directly examines its SARIF results and fails for security severity
+7.0 or higher and error-level findings. Missing/malformed results also fail the
+job, so the release gate does not rely on scanner execution status alone.
 
 ## Preparing a release
 
@@ -77,13 +78,20 @@ does not need credentials from these workflows.
 ## Repository settings
 
 Configured on 2026-11-06: an active main ruleset requires PRs, current `CI`
-and `CodeQL` results from GitHub Actions, resolved conversations, and CodeQL
-results without high/critical security alerts or errors. It blocks deletion
+and `CodeQL` results from GitHub Actions, resolved conversations, and native
+CodeQL results without high/critical security findings or errors. The CodeQL
+job also checks its SARIF reports directly. It blocks deletion
 and force pushes, with no bypass actors. Approvals are zero for this single-
 maintainer repository. A separate active `v*` ruleset blocks tag updates,
 deletion and force pushes while allowing fresh release tags to be created.
 Private vulnerability reporting, dependency graph, Dependabot/malware alerts,
 secret scanning and push protection are enabled.
+
+Release calls check CodeQL reports locally without creating a second uploaded
+scan configuration. This keeps the native CodeQL protection rule compatible with
+PRs, which run the canonical security workflow. The empty extra configuration
+created by the initial validation-only run was backed up and removed; all
+canonical analysis history is retained.
 
 The minimum is now **2026.11.0**. The previous 2026.9.0 endpoint passed all 445
 functionality tests but its HA-owned packages produced 69 advisory entries in
