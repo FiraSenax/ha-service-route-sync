@@ -116,6 +116,30 @@ by a repository administrator:
 No workflow changes HA's package constraints, integration runtime privileges,
 gateway permissions, or HACS download access.
 
+## Copilot assistance
+
+Automatic Copilot reviews are enabled for PRs targeting the default branch,
+including each new push. Draft reviews are disabled; review starts when the PR
+is ready. Review effort uses GitHub's Balanced default. Copilot cannot approve
+PRs on behalf of the maintainer, and its reviews do not replace `CI`, `CodeQL`
+or the release gates.
+
+`.github/copilot-instructions.md` provides HA compatibility, authorization,
+gateway, async lifecycle and validation guidance for reviews and coding work.
+The `copilot-setup-steps.yml` workflow prepares Python 3.14, Node.js 26, the pinned
+HA/tooling environment and Playwright's Chromium headless shell for Copilot
+sessions running on GitHub Actions. GitHub code review reuses these setup steps.
+Standalone cloud sandboxes do not use this Actions setup file; their tools must
+be installed according to the repository instructions.
+
+The setup workflow uses read-only contents permission and no repository secrets.
+Copilot's existing workflow-approval policy and its CodeQL, code-review,
+secret-scanning and dependency-validation tools remain enabled. No additional
+MCP server, live HA/gateway access, autonomous merge or release publication is
+configured. Security suggestions and fixes remain subject to maintainer review.
+
 References: [HACS versions](https://www.hacs.xyz/docs/publish/start/#versions),
 [reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows),
-[GitHub Actions security](https://docs.github.com/en/actions/reference/security/secure-use).
+[GitHub Actions security](https://docs.github.com/en/actions/reference/security/secure-use),
+[Copilot custom instructions](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions),
+[Copilot setup steps](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment).
