@@ -1,0 +1,69 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version already committed in manifest and changelog, for example 0.5.2'
+        required: true
+        type: string
+      publish:
+        description: 'Publish the GitHub release after all checks pass'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  prepare:
+    name: Validate release version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+          check-latest: true
+      - name: Require main and matching release metadata
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          test "$GITHUB_REF" = refs/heads/main
+          python scripts/release.py --version "$RELEASE_VERSION"
+  tests:
+    needs: prepare
+    uses: ./.github/workflows/tests.yml
+    permissions:
+      contents: read
+  security:
+    needs: prepare
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+  publish:
+    name: Publish tested release
+    if: ${{ inputs.publish && github.ref == 'refs/heads/main' }}
+    needs: [prepare, tests, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+          check-latest: true
+      - name: Publish only this exact tested commit
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/release.py --version "$RELEASE_VERSION" --publish

@@ -1,0 +1,7 @@
+# Maintainer review is especially important for privileged automation and gateways.
+/.github/ @FiraSenax
+/scripts/ @FiraSenax
+/gateway/ @FiraSenax
+/custom_components/service_route_sync/manifest.json @FiraSenax
+/hacs.json @FiraSenax
+/requirements*.txt @FiraSenax

@@ -49,7 +49,7 @@ For monitored clients, **Connection type** reports wired, Wi-Fi, or disconnected
 
 ## Installation
 
-HACS declares Home Assistant **2026.9.0** as the minimum. CI currently tests **2026.11.0**; the live check used **2026.10.3**. Routing and controller observations require a reachable UniFi OS controller with the [documented compatibility endpoints](docs/CONFIGURATION.md#unifi-connection) and a dedicated local Network API key. Required operations and controller permission limits are documented in [Permissions](docs/PERMISSIONS.md).
+HACS declares Home Assistant **2026.9.0** as the minimum. CI tests the declared minimum and the latest stable Home Assistant release on every run; the live check used **2026.10.3**. Routing and controller observations require a reachable UniFi OS controller with the [documented compatibility endpoints](docs/CONFIGURATION.md#unifi-connection) and a dedicated local Network API key. Required operations and controller permission limits are documented in [Permissions](docs/PERMISSIONS.md).
 
 1. Open HACS and search for **Service Route Sync**. The integration is available in the default HACS catalog.
 2. Download **Service Route Sync** and restart Home Assistant.
@@ -101,7 +101,7 @@ The Home Assistant setup and entities include complete English (`en`) and German
 
 ## Development
 
-Use Python **3.14.2 or newer in the 3.14 series**, as required by Home Assistant 2026.11.0. CI selects the latest Python 3.14 patch and Node.js 26 LTS. Test dependencies are pinned in `requirements-test.txt` and `requirements-browser.txt`; Dependabot checks them weekly.
+Use Python **3.14.2 or newer in the 3.14 series**, as required by Home Assistant 2026.11.0. CI selects each HA release's required Python series and its latest patch, plus Node.js 26 LTS. Local test dependencies are pinned in `requirements-test.txt` and `requirements-browser.txt`; Dependabot checks them weekly. See [compatibility checks and publishing](docs/RELEASING.md) for the release gates and daily minimum/latest tests.
 
 ```sh
 python3.14 -m venv .venv

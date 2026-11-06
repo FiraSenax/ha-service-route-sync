@@ -57,7 +57,7 @@ keinen zuletzt gültigen Client-Snapshot.
 
 ## Installation
 
-HACS deklariert Home Assistant **2026.9.0** als Mindestversion. CI testet aktuell **2026.11.0**, die Live-Prüfung erfolgte mit **2026.10.3**. Routen und Controller-Beobachtungen benötigen einen erreichbaren UniFi-OS-Controller mit den [dokumentierten Kompatibilitäts-Endpunkten](docs/CONFIGURATION.md#unifi-connection). Die Einrichtung erfolgt ausschließlich mit einem eigenen lokalen Network-API-Schlüssel. Benötigte Zugriffe und Grenzen der Rechtevergabe stehen unter [Berechtigungen](docs/PERMISSIONS.md). Für Beobachtung werden nur Lesezugriffe benötigt; Routenänderungen brauchen zusätzlich Updates vorhandener Routen. Ein separater Schlüssel ist nicht automatisch auf diese Rechte beschränkt: Entscheidend ist, welche Beschränkungen die eingesetzte UniFi-Version tatsächlich durchsetzt.
+HACS deklariert Home Assistant **2026.9.0** als Mindestversion. CI testet bei jedem Lauf die angegebene Mindestversion und das neueste stabile Home-Assistant-Release; die Live-Prüfung erfolgte mit **2026.10.3**. Routen und Controller-Beobachtungen benötigen einen erreichbaren UniFi-OS-Controller mit den [dokumentierten Kompatibilitäts-Endpunkten](docs/CONFIGURATION.md#unifi-connection). Die Einrichtung erfolgt ausschließlich mit einem eigenen lokalen Network-API-Schlüssel. Benötigte Zugriffe und Grenzen der Rechtevergabe stehen unter [Berechtigungen](docs/PERMISSIONS.md). Für Beobachtung werden nur Lesezugriffe benötigt; Routenänderungen brauchen zusätzlich Updates vorhandener Routen. Ein separater Schlüssel ist nicht automatisch auf diese Rechte beschränkt: Entscheidend ist, welche Beschränkungen die eingesetzte UniFi-Version tatsächlich durchsetzt.
 
 1. HACS öffnen und nach **Service Route Sync** suchen. Die Integration ist im HACS-Standardkatalog verfügbar.
 2. **Service Route Sync** herunterladen und HA neu starten.
@@ -109,7 +109,7 @@ Aktive IPv6-Policy-Steuerung und weitere Host-Beobachter sind getrennte, ausdrü
 
 ## Entwicklung
 
-Python **ab 3.14.2 innerhalb der 3.14-Reihe** entspricht der Vorgabe von Home Assistant 2026.11.0. CI verwendet den neuesten Python-3.14-Patch und Node.js 26 LTS. Testabhängigkeiten stehen in `requirements-test.txt` und `requirements-browser.txt`; Dependabot prüft sie wöchentlich.
+Python **ab 3.14.2 innerhalb der 3.14-Reihe** entspricht der Vorgabe von Home Assistant 2026.11.0. CI verwendet die von der jeweiligen HA-Version benötigte Python-Reihe mit ihrem neuesten Patch sowie Node.js 26 LTS. Lokale Testabhängigkeiten stehen in `requirements-test.txt` und `requirements-browser.txt`; Dependabot prüft sie wöchentlich. [Kompatibilitätstests und Veröffentlichung](docs/RELEASING.md) beschreibt die Release-Prüfungen und täglichen Mindest-/Latest-Tests.
 
 Die HA-Einrichtung und die WLAN-Historienkarte sind auf Englisch und Deutsch
 übersetzt. Weitere
