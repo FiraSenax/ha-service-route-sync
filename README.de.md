@@ -10,7 +10,7 @@ Eine Home-Assistant-Integration, die Zielnetze ausgewählter Spiele und Dienste 
 
 **Vorschau ist standardmäßig aktiv.** Controller-Zugriff, Router-Schreibvorgänge und Wiederherstellung sind automatisiert mit simuliertem Backend getestet. Diese Version muss vor automatischen Schreibzugriffen noch am eigenen Controller geprüft werden.
 
-**Version 0.5.1 verwendet Konfigurationsschema 2.1.** Bestehende Einträge mit diesem Schema behalten Einstellungen und Verlauf. Neue Installationen verwenden den Einrichtungsdialog; automatische Upgrades älterer experimenteller Schemata werden nicht unterstützt. Die privaten Migrationsadapter wurden entfernt. Details stehen unter [Konfiguration und Updates](docs/CONFIGURATION.md).
+**Version 0.6.0 benötigt Home Assistant ab 2026.11.0 und verwendet Konfigurationsschema 2.1.** Vor dem Upgrade von 0.5.1 zuerst HA aktualisieren. Bestehende Einträge mit diesem Schema behalten Einstellungen und Verlauf. Neue Installationen verwenden den Einrichtungsdialog; automatische Upgrades älterer experimenteller Schemata werden nicht unterstützt. Details stehen unter [Konfiguration und Updates](docs/CONFIGURATION.md).
 
 Das Projekt befindet sich in einer frühen Community-Phase. Automatisierte Prüfungen und eine reale Installation belegen das dokumentierte Verhalten; eine breitere Kompatibilitätsmatrix für HA-, Controller- und Firmware-Versionen steht noch aus. Der [Validierungsbericht](docs/VALIDATION.md) nennt die genauen Testumgebungen und offenen Punkte.
 

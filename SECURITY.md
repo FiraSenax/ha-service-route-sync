@@ -18,6 +18,9 @@ own pins. Workflow policy checks enforce read-only defaults, SHA-pinned Actions,
 credential-free checkouts and the release gates. Only the final publishing job
 receives contents write permission. See [the release process](docs/RELEASING.md)
 for its checks and the separate administrator-managed repository protections.
+Publication also verifies the remote tag commit, stable release and changelog
+notes after writing. Ambiguous failures stop without automatic write retries;
+existing tags/releases are never replaced by the release script.
 These controls do not
 replace review of the gateway deployment, API-key privileges or HA backup security.
 The [validation record](docs/VALIDATION.md) distinguishes automated checks, live

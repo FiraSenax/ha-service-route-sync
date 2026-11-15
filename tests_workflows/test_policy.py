@@ -52,12 +52,39 @@ class WorkflowPolicyTests(unittest.TestCase):
             "permissions": {"contents": "read"},
             "on": {"workflow_dispatch": ""},
             "jobs": {
-                "publish": {"timeout-minutes": "5", "needs": ["prepare", "tests", "security"]}
+                "tests": {"uses": "./.github/workflows/tests.yml"},
+                "security": {"uses": "./.github/workflows/security.yml"},
+                "publish": {
+                    "timeout-minutes": "5",
+                    "needs": ["prepare", "tests", "security"],
+                    "if": "${{ inputs.publish && github.ref == 'refs/heads/main' }}",
+                },
             },
         }
         self.assertEqual(check_workflow(Path("release.yml"), data), [])
         data["jobs"]["publish"]["needs"].remove("security")
         self.assertTrue(check_workflow(Path("release.yml"), data))
+
+    def test_release_cannot_publish_after_failed_gates_or_use_substitute_checks(self):
+        import yaml
+
+        workflow = yaml.load(
+            Path(".github/workflows/release.yml").read_text(), Loader=yaml.BaseLoader
+        )
+        for change in ("always", "no_opt_in", "no_branch", "tests", "security"):
+            with self.subTest(change=change):
+                data = copy.deepcopy(workflow)
+                if change == "always":
+                    data["jobs"]["publish"]["if"] = (
+                        "${{ always() && inputs.publish && github.ref == 'refs/heads/main' }}"
+                    )
+                elif change == "no_opt_in":
+                    data["jobs"]["publish"]["if"] = "${{ github.ref == 'refs/heads/main' }}"
+                elif change == "no_branch":
+                    data["jobs"]["publish"]["if"] = "${{ inputs.publish }}"
+                else:
+                    data["jobs"][change] = {"timeout-minutes": "5", "steps": [{"run": "true"}]}
+                self.assertTrue(check_workflow(Path("release.yml"), data))
 
     def test_alternative_trigger_syntax_cannot_enable_privileged_events(self):
         for triggers in ("pull_request_target", ["push", "workflow_run"]):

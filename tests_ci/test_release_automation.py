@@ -7,7 +7,13 @@ import tempfile
 import unittest
 
 from scripts.ha_matrix import matrix_entry, resolve_matrix
-from scripts.release import publication_checks, publish_release, release_notes, version_tuple
+from scripts.release import (
+    publication_checks,
+    publish_release,
+    release_notes,
+    verify_release,
+    version_tuple,
+)
 
 
 def package(version, python=">=3.14.2"):
@@ -61,30 +67,67 @@ class ReleaseTests(unittest.TestCase):
 
     def api(self, repository, path, token, payload=None, optional=False):
         self.calls.append((path, payload))
+        if payload is not None:
+            if path == self.fail_write:
+                raise TimeoutError("Response lost; remote outcome is unknown")
+            if path == "git/refs":
+                self.responses["git/ref/tags/v0.5.2"] = {
+                    "object": {"type": "commit", "sha": payload["sha"]}
+                }
+            elif path == "releases":
+                self.responses["releases/tags/v0.5.2"] = copy.deepcopy(self.published)
+                self.responses["releases/latest"] = copy.deepcopy(self.published)
+                if self.corrupt_published_tag:
+                    self.responses["git/ref/tags/v0.5.2"]["object"]["sha"] = "b" * 40
         return copy.deepcopy(self.responses[path])
 
     def setUp(self):
         self.calls = []
+        self.fail_write = None
+        self.corrupt_published_tag = False
+        self.published = {
+            "tag_name": "v0.5.2",
+            "draft": False,
+            "prerelease": False,
+            "published_at": "2026-11-15T12:00:00Z",
+            "body": "- Changes\n",
+            "html_url": "https://github.com/example/repo/releases/tag/v0.5.2",
+        }
         self.responses = {
             "": {"default_branch": "main"},
             "git/ref/heads/main": {"object": {"sha": self.sha}},
             "git/ref/tags/v0.5.2": None,
+            "releases/tags/v0.5.2": None,
             "releases/latest": {"tag_name": "v0.5.1"},
             "git/refs": {"object": {"sha": self.sha}},
             "releases": {"html_url": "https://github.com/example/repo/releases/tag/v0.5.2"},
         }
 
     def test_publication_creates_a_new_tag_at_the_exact_tested_commit(self):
-        publish_release("example/repo", self.sha, "0.5.2", "test-token", "- Changes\n", self.api)
-        self.assertEqual(self.calls[-2], ("git/refs", {"ref": "refs/tags/v0.5.2", "sha": self.sha}))
-        self.assertEqual(self.calls[-1][0], "releases")
-        self.assertEqual(self.calls[-1][1]["target_commitish"], self.sha)
-        self.assertFalse(self.calls[-1][1]["prerelease"])
+        result = publish_release(
+            "example/repo", self.sha, "0.5.2", "test-token", "- Changes\n", self.api
+        )
+        writes = [(path, payload) for path, payload in self.calls if payload is not None]
+        self.assertEqual(writes[0], ("git/refs", {"ref": "refs/tags/v0.5.2", "sha": self.sha}))
+        self.assertEqual(writes[1][0], "releases")
+        self.assertEqual(writes[1][1]["target_commitish"], self.sha)
+        self.assertFalse(writes[1][1]["prerelease"])
+        self.assertEqual(len(writes), 2)
+        self.assertEqual(result, self.published)
+        self.assertEqual(
+            self.calls[-3:],
+            [
+                ("git/ref/tags/v0.5.2", None),
+                ("releases/tags/v0.5.2", None),
+                ("releases/latest", None),
+            ],
+        )
 
     def test_moved_main_existing_tag_or_non_increasing_version_blocks_all_writes(self):
         changes = (
             ("git/ref/heads/main", {"object": {"sha": "b" * 40}}),
             ("git/ref/tags/v0.5.2", {"object": {"sha": self.sha}}),
+            ("releases/tags/v0.5.2", self.published),
             ("releases/latest", {"tag_name": "v0.5.2"}),
             ("", {"default_branch": "development"}),
         )
@@ -99,6 +142,55 @@ class ReleaseTests(unittest.TestCase):
                     )
                 self.assertTrue(all(payload is None for _, payload in self.calls))
                 self.responses[path] = original
+
+    def test_uncertain_writes_are_not_retried_or_repaired(self):
+        for path in ("git/refs", "releases"):
+            with self.subTest(path=path):
+                self.setUp()
+                self.fail_write = path
+                with self.assertRaisesRegex(RuntimeError, "Do not move/delete.*blindly retry"):
+                    publish_release(
+                        "example/repo", self.sha, "0.5.2", "test-token", "- Changes\n", self.api
+                    )
+                writes = [name for name, payload in self.calls if payload is not None]
+                self.assertEqual(
+                    writes, ["git/refs"] if path == "git/refs" else ["git/refs", "releases"]
+                )
+
+    def test_successful_write_responses_do_not_hide_an_incorrect_published_tag(self):
+        self.corrupt_published_tag = True
+        with self.assertRaisesRegex(RuntimeError, "Publication.*may be incomplete"):
+            publish_release(
+                "example/repo", self.sha, "0.5.2", "test-token", "- Changes\n", self.api
+            )
+        self.assertEqual(sum(payload is not None for _, payload in self.calls), 2)
+
+    def test_read_only_verification_rejects_wrong_tag_draft_notes_and_latest(self):
+        valid = {
+            "git/ref/tags/v0.5.2": {"object": {"type": "commit", "sha": self.sha}},
+            "releases/tags/v0.5.2": self.published,
+            "releases/latest": self.published,
+        }
+        changes = (
+            ("git/ref/tags/v0.5.2", {"object": {"type": "commit", "sha": "b" * 40}}),
+            ("git/ref/tags/v0.5.2", {"object": {"type": "tag", "sha": self.sha}}),
+            ("releases/tags/v0.5.2", {**self.published, "tag_name": "v0.5.1"}),
+            ("releases/tags/v0.5.2", {**self.published, "draft": True}),
+            ("releases/tags/v0.5.2", {**self.published, "prerelease": True}),
+            ("releases/tags/v0.5.2", {**self.published, "published_at": None}),
+            ("releases/tags/v0.5.2", {**self.published, "body": "- Different notes"}),
+            ("releases/latest", {"tag_name": "v0.5.1"}),
+        )
+        for path, response in changes:
+            with self.subTest(path=path, response=response):
+                self.responses.update(copy.deepcopy(valid))
+                self.responses[path] = response
+                self.calls = []
+                with self.assertRaises(ValueError):
+                    verify_release(
+                        "example/repo", self.sha, "0.5.2", "test-token", "- Changes\n", self.api
+                    )
+                self.assertTrue(all(payload is None for _, payload in self.calls))
 
     def test_invalid_versions_and_short_commits_are_rejected(self):
         for value in ("v0.5.2", "0.5.2b1", "0.5.2\n", "01.5.2", "$(whoami)"):
@@ -126,4 +218,7 @@ class ReleaseTests(unittest.TestCase):
                 release_notes(root, "0.5.2")
             changelog.write_text("## 0.5.2\n\n")
             with self.assertRaises(ValueError):
+                release_notes(root, "0.5.2")
+            changelog.write_text("## 0.5.2\n- Changes.\n## 0.5.2\n- Duplicate.\n")
+            with self.assertRaisesRegex(ValueError, "unique"):
                 release_notes(root, "0.5.2")

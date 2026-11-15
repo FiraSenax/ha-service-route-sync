@@ -1,6 +1,6 @@
 # Validation and compatibility
 
-## Current CI configuration (2026-11-06)
+## Current CI configuration and 0.6.0 preparation (2026-11-15)
 
 The [release and compatibility workflow](RELEASING.md) resolves the exact
 minimum from `hacs.json` and the latest stable HA release on every run and daily.
@@ -8,20 +8,33 @@ Both run the unit, gateway and HA runtime suites plus installed-dependency audit
 The Python series follows each HA release's own requirement. The local development
 pin and the earlier evidence below remain dated snapshots.
 
-CI targets Home Assistant **2026.11.0**, the latest Python **3.14** patch
+CI currently selects Home Assistant **2026.11.0** (minimum) and **2026.11.1** (latest),
+with the latest Python **3.14** patch
 (Home Assistant requires **3.14.2 or newer**), Node.js **26 LTS**,
-Playwright **1.64.1** and Ruff **0.17.4** on `ubuntu-latest`.
+Playwright **1.65.1** and Ruff **0.17.4** on `ubuntu-latest`.
 CodeQL Action **4.39.3** runs the extended Python and JavaScript/TypeScript analysis.
 Python package pins live in `requirements-test.txt` and
 `requirements-browser.txt`; Dependabot checks these and the pinned Actions weekly.
 Home Assistant's own runtime dependency pins are retained.
+
+The [CI run on 9c354a8](https://github.com/FiraSenax/ha-service-route-sync/actions/runs/43680638236)
+passed both HA endpoints, dependency audits, HACS/Hassfest, workflow checks and
+frontend/browser tests. Its [CodeQL run](https://github.com/FiraSenax/ha-service-route-sync/actions/runs/43680638247)
+also passed. This is the dependency-update baseline before the 0.6.0 version bump
+and release-automation changes. The [release workflow](https://github.com/FiraSenax/ha-service-route-sync/actions/workflows/release.yml)
+reruns all gates on the exact publishing commit and verifies the remote release.
+
+Release 0.6.0 changes the declared support floor and release tooling, with no
+integration-runtime changes beyond its manifest version. Configuration schema 2.1
+is retained. Playwright runs only in development/CI; it is not installed into HA
+as an integration dependency.
 
 The integration was [added to the default HACS catalog](https://github.com/hacs/default/pull/11881)
 on **2026-11-04**. Installation now starts by searching for **Service Route Sync**
 in HACS.
 
 The record below preserves the earlier release evidence. It does not describe a
-new live deployment on Home Assistant 2026.11.0.
+new live deployment on Home Assistant 2026.11.0 or 2026.11.1.
 
 ## Release 0.5.1 validation (2026-10-25)
 
