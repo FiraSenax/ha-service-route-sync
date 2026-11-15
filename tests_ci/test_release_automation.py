@@ -5,15 +5,58 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
 
 from scripts.ha_matrix import matrix_entry, resolve_matrix
 from scripts.release import (
+    github_api,
     publication_checks,
     publish_release,
     release_notes,
     verify_release,
     version_tuple,
 )
+
+
+class GitHubApiTests(unittest.TestCase):
+    def test_repository_root_has_no_trailing_slash_and_subresources_keep_the_separator(self):
+        for path, expected in (
+            ("", "https://api.github.com/repos/example/repo"),
+            ("git/ref/heads/main", "https://api.github.com/repos/example/repo/git/ref/heads/main"),
+        ):
+            with self.subTest(path=path), patch("scripts.release.urlopen") as open_url:
+                response = MagicMock()
+                response.read.return_value = b'{"default_branch": "main"}'
+                open_url.return_value.__enter__.return_value = response
+                self.assertEqual(
+                    github_api("example/repo", path, "test-token"), {"default_branch": "main"}
+                )
+                request = open_url.call_args.args[0]
+                self.assertEqual(request.full_url, expected)
+                self.assertEqual(request.get_method(), "GET")
+                self.assertEqual(open_url.call_args.kwargs["timeout"], 30)
+
+    def test_only_optional_not_found_is_treated_as_absent(self):
+        for status, optional in ((404, True), (404, False), (401, True), (403, True), (500, True)):
+            with (
+                self.subTest(status=status, optional=optional),
+                patch("scripts.release.urlopen") as open_url,
+            ):
+                open_url.side_effect = HTTPError(
+                    "https://api.github.com/test", status, "Failure", {}, None
+                )
+                if status == 404 and optional:
+                    self.assertIsNone(
+                        github_api(
+                            "example/repo", "git/ref/tags/v0.6.0", "test-token", optional=True
+                        )
+                    )
+                else:
+                    with self.assertRaises(HTTPError):
+                        github_api(
+                            "example/repo", "git/ref/tags/v0.6.0", "test-token", optional=optional
+                        )
 
 
 def package(version, python=">=3.14.2"):

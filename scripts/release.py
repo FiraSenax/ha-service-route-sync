@@ -53,7 +53,8 @@ def github_api(repository, path, token, payload=None, optional=False):
     if payload is not None:
         headers["Content-Type"] = "application/json"
         data = json.dumps(payload).encode()
-    request = Request(f"https://api.github.com/repos/{repository}/{path}", data, headers)
+    url = f"https://api.github.com/repos/{repository}" + (f"/{path}" if path else "")
+    request = Request(url, data, headers)
     try:
         with urlopen(request, timeout=30) as response:
             return json.load(response)
