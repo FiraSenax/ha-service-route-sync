@@ -2,11 +2,17 @@
 
 ## Unreleased
 
-- Raise the declared Home Assistant minimum to 2026.11.0 after auditing the HA-owned dependency sets. Older HA installations need an HA update for future integration releases.
-- Test the declared minimum and dynamically resolved latest stable HA release on every CI run, daily, and before publishing. Use each release's required Python series and retain its package constraints.
-- Gate GitHub releases on compatibility, packaging, workflow-policy, vulnerability and CodeQL checks, with matching manifest/changelog versions and tags at the exact tested commit.
-- Protect main and release tags; enable private vulnerability reporting and dependency/malware alerts.
-- Document installation through the default HACS catalog and the release procedure.
+## 0.6.0 — HACS compatibility and verified releases
+
+**Upgrade requirement:** Home Assistant **2026.11.0 or newer** is now required,
+up from 2026.9.0. Update Home Assistant before installing this release.
+
+- Keep the integration's runtime behavior and configuration schema 2.1 unchanged from 0.5.1. Existing settings, entity IDs and history remain intact; older experimental schemas remain unsupported.
+- Document installation from the default HACS catalog, where Service Route Sync is now available, and clarify gateway setup and security boundaries.
+- Test the exact declared minimum and dynamically resolved latest stable HA release on PRs, daily and before publishing. Retain each HA release's own Python and dependency requirements and audit its installed packages separately.
+- Require matching manifest/changelog versions, full compatibility, HACS/Hassfest, browser/frontend, workflow-policy and CodeQL checks before release publication. Check publication prerequisites before running release tests and repeat them immediately before creating a fresh tag at the tested commit.
+- Read back the published stable release, notes, exact tag commit and latest status before reporting success. Detect uncertain publication outcomes without retrying writes or replacing existing tags/releases; provide a read-only verification command and a workflow summary.
+- Protect main and release tags, enable vulnerability reporting and dependency/malware alerts, and add Copilot review guidance. Test dependencies are updated to HA 2026.11.1 and Playwright 1.65.1; Playwright is only a development/CI dependency.
 
 ## 0.5.1 — remove private migration paths
 

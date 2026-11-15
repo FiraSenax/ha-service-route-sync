@@ -1,9 +1,10 @@
 name: Release
+run-name: Release v${{ inputs.version }} (publish=${{ inputs.publish }})
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version already committed in manifest and changelog, for example 0.5.2'
+        description: 'Version already committed in manifest and changelog, for example 0.6.0'
         required: true
         type: string
       publish:
@@ -31,9 +32,14 @@ jobs:
       - name: Require main and matching release metadata
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_PUBLISH: ${{ inputs.publish }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           test "$GITHUB_REF" = refs/heads/main
           python scripts/release.py --version "$RELEASE_VERSION"
+          if [ "$RELEASE_PUBLISH" = true ]; then
+            python scripts/release.py --version "$RELEASE_VERSION" --preflight
+          fi
   tests:
     needs: prepare
     uses: ./.github/workflows/tests.yml

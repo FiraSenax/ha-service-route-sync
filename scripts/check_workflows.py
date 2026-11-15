@@ -50,6 +50,13 @@ def check_workflow(path, document):
         publish = document.get("jobs", {}).get("publish", {})
         if not {"prepare", "tests", "security"} <= set(publish.get("needs", [])):
             errors.append("Release publication must require metadata, tests and security")
+        if publish.get("if") != "${{ inputs.publish && github.ref == 'refs/heads/main' }}":
+            errors.append("Release publication requires explicit opt-in, main and successful gates")
+        for name in ("tests", "security"):
+            if document.get("jobs", {}).get(name, {}).get("uses") != (
+                f"./.github/workflows/{name}.yml"
+            ):
+                errors.append(f"Release must reuse the canonical {name} workflow")
         if set(triggers) != {"workflow_dispatch"}:
             errors.append("Release publication must be explicitly dispatched")
     return errors

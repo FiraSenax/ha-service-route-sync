@@ -36,11 +36,16 @@ job, so the release gate does not rely on scanner execution status alone.
 
 1. Create a release PR from current `main`.
 2. Update `custom_components/service_route_sync/manifest.json` with a new stable
-   version such as `0.5.2`. Add the same version as the first versioned section
+   version such as `0.6.0`. Add the same version as the first versioned section
    of `CHANGELOG.md`, with user-facing changes and any upgrade instructions.
 3. Update README version references and dated validation evidence as needed.
    Change the HA minimum only deliberately; CI reads it directly from `hacs.json`.
 4. Wait for `CI` and `CodeQL`, review changes and security alerts, then merge.
+
+CI validates the manifest against the first versioned changelog section and rejects
+empty notes or duplicate versions on every PR. Run `python scripts/release.py`
+locally for the same read-only metadata check; `--version` can require an explicit
+version. Higher HA minimums belong prominently in the upgrade notes and READMEs.
 
 There is no integration build step: HACS installs the files under
 `custom_components/service_route_sync` from the published GitHub release tag.
@@ -56,6 +61,8 @@ unchecked for a validation-only run. This can also validate the already
 published manifest version without modifying a release.
 
 For a new version, check that option to publish after validation. The workflow
+first checks publication prerequisites with a read-only token, so an existing
+version or moved main fails before the compatibility suites start. It then
 reruns the same reusable tests, dynamically resolving minimum/latest, and
 CodeQL on its own exact commit. Only the final publishing job has repository
 contents write permission. It checks all of the following before creating a tag:
@@ -67,9 +74,22 @@ contents write permission. It checks all of the following before creating a tag:
 
 It creates a new `v<version>` tag at the exact tested SHA, then publishes a stable
 GitHub release using that changelog section. Existing versions are never moved
-or overwritten. If main moved, rerun validation on the new main commit. If a
-network/API failure occurs after tag creation, inspect the tag and release on
-GitHub before recovery; do not move the existing tag or blindly retry publication.
+or overwritten. The publisher reads back the remote tag commit, stable published
+state, release notes and latest-release status before reporting success. Its
+workflow summary links to the release and exact commit and records the HA minimum.
+Workflow policy regression tests reject bypass conditions such as `always()` on
+publication, missing explicit opt-in/main checks or substitute test/security jobs.
+
+If main moved, rerun validation on the new main commit. If a network/API failure
+occurs during publication, the remote outcome can be uncertain even when the
+local request failed. The script stops without retrying writes or repairing tags.
+Inspect the tag and release on GitHub before recovery; do not move/delete an
+existing tag or blindly retry publication. From a checkout of the exact tested
+commit, `python scripts/release.py --version <version> --verify` reads back the
+release without modifying it. It needs `GITHUB_REPOSITORY`, `GITHUB_SHA` and a
+read-capable `GH_TOKEN`. Verification checks publication metadata, not a fresh CI
+run. A missing release after successful tag creation needs deliberate maintainer
+recovery against that same tag and tested commit.
 
 HACS requires a published GitHub release to advertise a new release version;
 pushing a tag alone is insufficient. HACS itself can be public/read-only and

@@ -10,7 +10,7 @@ Service Route Sync keeps the destination IP prefixes of selected games and cloud
 
 **Route changes start in preview mode.** Controller access and route write/restore paths have automated tests with simulated backends. This release still requires live validation in your setup before automatic writes.
 
-**Release 0.5.1 uses configuration schema 2.1.** Existing entries on that schema keep their settings and history. New installations use the setup flow; automatic upgrades from older experimental schemas are not supported. The private migration adapters have been removed. See [configuration and updates](docs/CONFIGURATION.md).
+**Release 0.6.0 requires Home Assistant 2026.11.0 or newer and uses configuration schema 2.1.** Update HA before upgrading from 0.5.1. Existing entries on that schema keep their settings and history. New installations use the setup flow; automatic upgrades from older experimental schemas are not supported. See [configuration and updates](docs/CONFIGURATION.md).
 
 The project is at an early community-release stage. Automated checks and one live installation provide evidence for the documented behavior; a broader HA/controller/firmware compatibility matrix is still needed. The [validation record](docs/VALIDATION.md) lists exact test environments and remaining work.
 
